@@ -1,5 +1,4 @@
-@import "tailwindcss" source(none);
-@source "../src";
+@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -82,8 +81,6 @@
   --border: oklch(0.89 0.025 73);
   --input: oklch(0.89 0.025 73);
   --ring: oklch(0.71 0.19 57);
-  --font-sans: "DM Sans", sans-serif;
-  --font-display: "Manrope", sans-serif;
   --chart-1: oklch(0.71 0.19 57);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

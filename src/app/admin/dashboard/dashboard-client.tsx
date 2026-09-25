@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCheck, LogOut, Music2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,21 +16,6 @@ import {
   type Enquiry,
 } from "@/lib/kryso-storage";
 import { courses, gallery, products, siteSettings, students, teachers, testimonials } from "@/data/catalog";
-
-export const Route = createFileRoute("/admin/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Admin Dashboard | Kryso Music Academy" },
-      { name: "description", content: "Demo dashboard for managing Kryso Music Academy content." },
-      { property: "og:title", content: "Admin Dashboard | Kryso Music Academy" },
-      { property: "og:description", content: "Demo dashboard for managing Kryso Music Academy content." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: AdminDashboard,
-});
 
 const sections = [
   "Dashboard",
@@ -60,28 +48,32 @@ const seedCategories = [
   "Accessories",
 ].map((name, index) => ({ id: `c${index + 1}`, name, type: "Product category" }));
 
-function AdminDashboard() {
-  const navigate = useNavigate();
+export function AdminDashboardClient() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>("Dashboard");
 
   useEffect(() => {
     if (!readStored<{ user?: string } | null>(ADMIN_SESSION_KEY, null)) {
-      navigate({ to: "/admin" });
+      router.push("/admin");
       return;
     }
     setReady(true);
-  }, [navigate]);
+  }, [router]);
 
   if (!ready) {
-    return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Checking your session…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
+        Checking your session…
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-muted/40">
       <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
         <aside className="border-b border-border bg-secondary p-5 text-secondary-foreground lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
-          <Link to="/" className="flex items-center gap-2 font-display text-xl font-extrabold">
+          <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold">
             <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
               <Music2 size={18} />
             </span>
@@ -102,7 +94,7 @@ function AdminDashboard() {
             <button
               onClick={() => {
                 writeStored(ADMIN_SESSION_KEY, null);
-                navigate({ to: "/admin" });
+                router.push("/admin");
               }}
               className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-secondary-foreground/10"
             >
@@ -231,7 +223,11 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
     { label: "Total courses", value: courses.length, section: "Courses" },
     { label: "Total teachers", value: teachers.length, section: "Teachers" },
     { label: "Total students", value: students.length, section: "Students" },
-    { label: "Pending enquiries", value: enquiries.filter((item) => !item.read).length, section: "Contact enquiries" },
+    {
+      label: "Pending enquiries",
+      value: enquiries.filter((item) => !item.read).length,
+      section: "Contact enquiries",
+    },
     { label: "Testimonials", value: testimonials.length, section: "Testimonials" },
     { label: "Gallery images", value: gallery.length, section: "Gallery" },
   ];
@@ -257,7 +253,10 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
         {enquiries.length ? (
           <ul className="mt-4 grid gap-3 text-sm">
             {enquiries.slice(0, 5).map((item) => (
-              <li key={item.id} className="flex flex-wrap justify-between gap-2 border-b border-border/70 pb-3 last:border-0">
+              <li
+                key={item.id}
+                className="flex flex-wrap justify-between gap-2 border-b border-border/70 pb-3 last:border-0"
+              >
                 <span>
                   <strong>{item.name}</strong> sent a {item.kind} enquiry
                   {item.course ? ` about ${item.course}` : ""}
@@ -267,7 +266,9 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">No enquiries yet. Submit the contact or enquiry form to see them here.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No enquiries yet. Submit the contact or enquiry form to see them here.
+          </p>
         )}
       </div>
     </div>
@@ -278,12 +279,16 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
   const [enquiries, setEnquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
   const [query, setQuery] = useState("");
   const visible = enquiries.filter(
-    (item) => item.kind === kind && `${item.name} ${item.phone} ${item.email} ${item.message}`.toLowerCase().includes(query.toLowerCase()),
+    (item) =>
+      item.kind === kind &&
+      `${item.name} ${item.phone} ${item.email} ${item.message}`.toLowerCase().includes(query.toLowerCase()),
   );
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold">{kind === "contact" ? "Contact enquiries" : "Course enquiries"}</h1>
+      <h1 className="font-display text-2xl font-extrabold">
+        {kind === "contact" ? "Contact enquiries" : "Course enquiries"}
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">Messages submitted through the website, saved in this browser.</p>
       <Input
         value={query}
@@ -299,7 +304,11 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
                 <div>
                   <p className="font-display text-lg font-bold">
                     {item.name}
-                    {!item.read && <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">NEW</span>}
+                    {!item.read && (
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                        NEW
+                      </span>
+                    )}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {item.phone} · {item.email || "no email"} {item.course ? `· ${item.course}` : ""}
@@ -310,7 +319,11 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
                     variant="ghost"
                     size="icon"
                     aria-label="Mark as read"
-                    onClick={() => setEnquiries((list) => list.map((row) => (row.id === item.id ? { ...row, read: true } : row)))}
+                    onClick={() =>
+                      setEnquiries((list) =>
+                        list.map((row) => (row.id === item.id ? { ...row, read: true } : row)),
+                      )
+                    }
                   >
                     <CheckCheck size={16} />
                   </Button>
@@ -332,7 +345,7 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
       ) : (
         <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center">
           <p className="font-display text-lg font-bold">No enquiries yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">They'll appear here as soon as someone gets in touch.</p>
+          <p className="mt-1 text-sm text-muted-foreground">They&apos;ll appear here as soon as someone gets in touch.</p>
         </div>
       )}
     </div>

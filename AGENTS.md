@@ -9,5 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep the Kryso website frontend-only: use React local state and mock JavaScript data without adding backend services, because the supplied brief explicitly excludes them.
-- Use TanStack file-based routing and TypeScript in this project rather than the brief's React Router/JavaScript suggestion, because the existing Lovable stack is fixed.
+- Keep the Kryso website frontend-only: use React local state and mock TypeScript/JavaScript data without adding backend services or external databases, because the supplied brief explicitly excludes them.
+- Uses Next.js 15 App Router (`src/app/`), React 19, and TypeScript with Tailwind CSS v4.

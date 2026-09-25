@@ -1,0 +1,186 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Heart, Search, ShoppingBag, SlidersHorizontal, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SiteShell, SectionHeading } from "@/components/kryso-site";
+import { categories, products } from "@/data/catalog";
+
+const categoryIcons: Record<string, string> = {
+  Guitar: "🎸",
+  Piano: "🎹",
+  Keyboard: "🎹",
+  Drum: "🥁",
+  Violin: "🎻",
+  Flute: "🪈",
+  Tabla: "🥁",
+  Ukulele: "🎸",
+};
+
+export function MusicShopClient() {
+  const [category, setCategory] = useState("All instruments");
+  const [query, setQuery] = useState("");
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [added, setAdded] = useState<string[]>([]);
+
+  const filtered = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          (category === "All instruments" || p.category === category) &&
+          `${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [category, query],
+  );
+
+  return (
+    <SiteShell>
+      <section className="bg-secondary text-secondary-foreground">
+        <div className="page-shell py-16 sm:py-20">
+          <p className="eyebrow">Instruments, chosen with care</p>
+          <h1 className="mt-3 max-w-3xl font-display text-4xl font-extrabold sm:text-5xl">
+            Find the sound that&apos;s <span className="text-primary">yours.</span>
+          </h1>
+          <p className="mt-4 max-w-xl leading-7 text-secondary-foreground/70">
+            Thoughtful picks for first notes, new songs and everything that comes next.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-5 text-xs text-secondary-foreground/70">
+            <span className="flex items-center gap-2">
+              <ShoppingBag size={15} /> Curated instruments
+            </span>
+            <span>·</span>
+            <span>Advice from working musicians</span>
+            <span>·</span>
+            <span>Visit us in Pune</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-shell py-12">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <SectionHeading
+            label="The music shop"
+            title="Pick up something inspiring."
+            text={`${filtered.length} instruments and essentials to explore.`}
+          />
+          <label className="relative w-full max-w-xs">
+            <span className="sr-only">Search instruments</span>
+            <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search instruments"
+              className="h-11 rounded-full pl-10"
+            />
+          </label>
+        </div>
+
+        <div className="mt-9 flex items-start gap-3">
+          <SlidersHorizontal size={16} className="mt-3 shrink-0 text-muted-foreground" />
+          <div className="flex flex-wrap gap-2">
+            {categories.map((c) => (
+              <Button
+                key={c}
+                onClick={() => setCategory(c)}
+                variant={category === c ? "default" : "outline"}
+                className={`h-9 rounded-full px-4 text-xs ${category !== c ? "bg-card" : ""}`}
+              >
+                {c}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length ? (
+          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {filtered.map((product, index) => (
+              <article key={product.id} className="group border border-border bg-card">
+                <Link href={`/music/${product.id}`} className="block">
+                  <div
+                    className={`relative grid aspect-[4/3] place-items-center ${
+                      index % 2 ? "bg-muted" : "bg-accent/45"
+                    }`}
+                  >
+                    <div className="grid size-28 place-items-center rounded-full bg-background shadow-sm transition-transform group-hover:scale-105">
+                      <span className="text-5xl">{categoryIcons[product.category] ?? "♫"}</span>
+                    </div>
+                    <span className="absolute left-3 top-3 rounded-full bg-background px-3 py-1 text-[10px] font-bold uppercase">
+                      {product.tag}
+                    </span>
+                  </div>
+                </Link>
+                <div className="p-4">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">{product.category}</span>
+                    <Button
+                      aria-label={`${wishlist.includes(product.id) ? "Remove" : "Add"} ${product.name} ${
+                        wishlist.includes(product.id) ? "from" : "to"
+                      } wishlist`}
+                      variant="ghost"
+                      size="icon"
+                      className="-mr-2 -mt-2 size-8"
+                      onClick={() =>
+                        setWishlist((items) =>
+                          items.includes(product.id)
+                            ? items.filter((id) => id !== product.id)
+                            : [...items, product.id],
+                        )
+                      }
+                    >
+                      <Heart
+                        size={17}
+                        className={wishlist.includes(product.id) ? "fill-primary text-primary" : ""}
+                      />
+                    </Button>
+                  </div>
+                  <Link href={`/music/${product.id}`}>
+                    <h2 className="mt-1 font-display font-bold hover:text-primary">{product.name}</h2>
+                  </Link>
+                  <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">
+                    {product.description}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="font-bold">₹{product.price.toLocaleString("en-IN")}</span>
+                    <span className="flex items-center gap-1 text-xs">
+                      <Star size={13} className="fill-primary text-primary" />
+                      {product.rating}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("kryso:add-to-cart"));
+                      setAdded((items) => [...items, product.id]);
+                    }}
+                    className="mt-4 h-10 w-full rounded-full font-semibold"
+                  >
+                    {added.includes(product.id) ? "Added to bag ✓" : "Add to bag"} <ShoppingBag size={15} />
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-10 border border-dashed border-border py-16 text-center">
+            <p className="font-display text-xl font-bold">No instruments found</p>
+            <p className="mt-2 text-sm text-muted-foreground">Try a different search or category.</p>
+            <Button
+              variant="outline"
+              className="mt-5 rounded-full"
+              onClick={() => {
+                setQuery("");
+                setCategory("All instruments");
+              }}
+            >
+              Clear filters <ArrowRight size={15} />
+            </Button>
+          </div>
+        )}
+        <p className="mt-9 text-center text-xs text-muted-foreground">
+          A sample catalogue · Prices shown in Indian rupees
+        </p>
+      </section>
+    </SiteShell>
+  );
+}
