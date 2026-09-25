@@ -30,3 +30,41 @@ export const testimonials = [
   { name: "Rohan M.", course: "Guitar", text: "The lessons are relaxed but focused. In a few months I was playing full songs with my friends." },
   { name: "Isha P.", course: "Piano", text: "Such a warm space to learn. My daughter loves her piano classes and the teachers make every lesson feel special." },
 ];
+export type Teacher = { id: string; name: string; experience: string; specialization: string; bio: string };
+export const teachers: Teacher[] = [
+  { id: "aarav", name: "Aarav Kulkarni", experience: "9 years", specialization: "Guitar", bio: "Session guitarist who loves teaching first chords as much as advanced solos." },
+  { id: "meera", name: "Meera Deshpande", experience: "12 years", specialization: "Piano", bio: "Classically trained pianist with a warm, patient teaching style." },
+  { id: "sana", name: "Sana Merchant", experience: "7 years", specialization: "Vocals & harmonium", bio: "Vocal coach helping students find a confident, natural voice." },
+  { id: "kabir", name: "Kabir Shah", experience: "8 years", specialization: "Drums", bio: "Groove-first drummer with a knack for building rock-solid timing." },
+  { id: "nikhil", name: "Nikhil Rao", experience: "10 years", specialization: "Tabla & flute", bio: "Grounded in Hindustani tradition, and happiest teaching rhythm." },
+];
+
+export type Student = { id: string; name: string; course: string; level: string; joined: string };
+export const students: Student[] = [
+  { id: "s1", name: "Aditi Sharma", course: "Vocal singing", level: "Intermediate", joined: "Jan 2026" },
+  { id: "s2", name: "Rohan Mehta", course: "Guitar", level: "Beginner", joined: "Mar 2026" },
+  { id: "s3", name: "Isha Pawar", course: "Piano", level: "Beginner", joined: "Apr 2026" },
+  { id: "s4", name: "Dev Naik", course: "Drums", level: "Advanced", joined: "Aug 2025" },
+];
+
+export type GalleryItem = { id: string; caption: string; category: string };
+export const gallery: GalleryItem[] = [
+  { id: "g1", caption: "In the practice room", category: "Music classes" },
+  { id: "g2", caption: "Learning together", category: "Students" },
+  { id: "g3", caption: "Sharing a first song", category: "Performances" },
+  { id: "g4", caption: "Music in the making", category: "Workshops" },
+  { id: "g5", caption: "Annual showcase", category: "Events" },
+  { id: "g6", caption: "Rhythm workshop", category: "Workshops" },
+];
+
+export const siteSettings = {
+  businessName: "Kryso Music Academy",
+  tagline: "Learn Music and Enjoy Music",
+  phone: "+91 87678 28945",
+  altPhone: "+91 97673 78750",
+  email: "krysomusicacademy@gmail.com",
+  address: "Pune, Maharashtra, India",
+  footerText: "© 2026 Kryso Music Academy. All music, all heart.",
+  heroTitle: "Learn music. Enjoy music.",
+  heroSubtitle: "Find your rhythm at Kryso Music Academy.",
+};
