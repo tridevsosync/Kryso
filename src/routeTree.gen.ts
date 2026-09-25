@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcademyRouteImport } from './routes/academy'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as MusicRouteImport } from './routes/music'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as MusicProductIdRouteImport } from './routes/music.$productId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -25,6 +27,11 @@ const AcademyRoute = AcademyRouteImport.update({
   path: '/academy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
@@ -35,6 +42,11 @@ const MusicRoute = MusicRouteImport.update({
   path: '/music',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const MusicProductIdRoute = MusicProductIdRouteImport.update({
   id: '/$productId',
   path: '/$productId',
@@ -44,37 +56,65 @@ const MusicProductIdRoute = MusicProductIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/music': typeof MusicRouteWithChildren
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/music/$productId': typeof MusicProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/music': typeof MusicRouteWithChildren
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/music/$productId': typeof MusicProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/music': typeof MusicRouteWithChildren
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/music/$productId': typeof MusicProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/academy' | '/contact' | '/music' | '/music/$productId'
+  fullPaths:
+    | '/'
+    | '/academy'
+    | '/admin'
+    | '/contact'
+    | '/music'
+    | '/admin/dashboard'
+    | '/music/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/academy' | '/contact' | '/music' | '/music/$productId'
+  to:
+    | '/'
+    | '/academy'
+    | '/admin'
+    | '/contact'
+    | '/music'
+    | '/admin/dashboard'
+    | '/music/$productId'
   id:
-    '__root__' | '/' | '/academy' | '/contact' | '/music' | '/music/$productId'
+    | '__root__'
+    | '/'
+    | '/academy'
+    | '/admin'
+    | '/contact'
+    | '/music'
+    | '/admin/dashboard'
+    | '/music/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcademyRoute: typeof AcademyRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ContactRoute: typeof ContactRoute
   MusicRoute: typeof MusicRouteWithChildren
 }
@@ -95,6 +135,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcademyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
@@ -109,6 +156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MusicRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/music/$productId': {
       id: '/music/$productId'
       path: '/$productId'
@@ -118,6 +172,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface MusicRouteChildren {
   MusicProductIdRoute: typeof MusicProductIdRoute
@@ -132,6 +196,7 @@ const MusicRouteWithChildren = MusicRoute._addFileChildren(MusicRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcademyRoute: AcademyRoute,
+  AdminRoute: AdminRouteWithChildren,
   ContactRoute: ContactRoute,
   MusicRoute: MusicRouteWithChildren,
 }

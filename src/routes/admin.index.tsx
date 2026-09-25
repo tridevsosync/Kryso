@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ADMIN_PASSWORD, ADMIN_SESSION_KEY, ADMIN_USER, writeStored } from "@/lib/kryso-storage";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
       { title: "Admin Login | Kryso Music Academy" },
