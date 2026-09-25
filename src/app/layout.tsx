@@ -15,12 +15,12 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Kryso Music Academy — Learn Music and Enjoy Music",
-  description: "Music lessons and instruments in Pune, Maharashtra.",
+  title: "Kryso Music Academy — Learn Music & Live Concerts",
+  description: "Concert sound, music lessons and instruments in Pune, Maharashtra.",
   authors: [{ name: "Lovable" }],
   openGraph: {
     title: "Kryso Music Academy",
-    description: "Learn music and enjoy music in Pune.",
+    description: "Learn music and enjoy concerts in Pune.",
     type: "website",
   },
   twitter: {
@@ -38,8 +38,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${manrope.variable}`}>
-      <body className="antialiased">
+    <html lang="en" className={`dark ${dmSans.variable} ${manrope.variable}`}>
+      <body className="antialiased bg-background text-foreground selection:bg-primary selection:text-primary-foreground min-h-screen">
         {children}
       </body>
     </html>

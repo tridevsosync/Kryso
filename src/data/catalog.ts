@@ -68,3 +68,43 @@ export const siteSettings = {
   heroTitle: "Learn music. Enjoy music.",
   heroSubtitle: "Find your rhythm at Kryso Music Academy.",
 };
+
+export type SpotlightSlide = {
+  id: string;
+  title: string;
+  description: string;
+  primaryBtnText: string;
+  primaryBtnLink: string;
+  secondaryBtnText: string;
+  secondaryBtnLink: string;
+  imageUrl: string;
+  tag?: string;
+};
+
+export const defaultSpotlightSlides: SpotlightSlide[] = [
+  {
+    id: "dj-pro-producer",
+    title: "Identify Yourself as pro DJ Music producer",
+    description:
+      "Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.",
+    primaryBtnText: "View all courses",
+    primaryBtnLink: "/academy",
+    secondaryBtnText: "Join the Community",
+    secondaryBtnLink: "enquiry",
+    imageUrl: "/dj-producer-hero.png",
+    tag: "PRO DJ & MUSIC PRODUCTION",
+  },
+  {
+    id: "live-stage-mastery",
+    title: "Master the Live Concert Stage & DJ Decks",
+    description:
+      "Step behind professional club & festival gear. Master track curation, harmonic mixing, crowd reading, and performance presence with seasoned concert DJs and sound designers.",
+    primaryBtnText: "Explore music shop",
+    primaryBtnLink: "/music",
+    secondaryBtnText: "Book studio session",
+    secondaryBtnLink: "enquiry",
+    imageUrl: "/dj-producer-hero.png",
+    tag: "STAGE & PERFORMANCE",
+  },
+];
+

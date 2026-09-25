@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CheckCheck, LogOut, Music2, Trash2 } from "lucide-react";
+import heroImage from "@/assets/kryso-hero.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CollectionManager } from "@/components/admin-collection";
+import { SpotlightManager } from "@/components/admin-spotlight";
 import {
   ADMIN_SESSION_KEY,
   ENQUIRIES_KEY,
@@ -28,6 +31,7 @@ const sections = [
   "Gallery",
   "Contact enquiries",
   "Course enquiries",
+  "Homepage spotlight",
   "Homepage content",
   "Settings",
 ] as const;
@@ -63,18 +67,18 @@ export function AdminDashboardClient() {
 
   if (!ready) {
     return (
-      <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
+      <div className="grid min-h-screen place-items-center text-sm text-muted-foreground bg-background">
         Checking your session…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
         <aside className="border-b border-border bg-secondary p-5 text-secondary-foreground lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
           <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold">
-            <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
+            <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/20">
               <Music2 size={18} />
             </span>
             kryso<span className="text-primary">.</span>
@@ -84,8 +88,10 @@ export function AdminDashboardClient() {
               <button
                 key={item}
                 onClick={() => setSection(item)}
-                className={`rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
-                  section === item ? "bg-primary text-primary-foreground" : "hover:bg-secondary-foreground/10"
+                className={`rounded-lg px-3 py-2 text-left text-sm font-semibold transition-all ${
+                  section === item
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 font-bold"
+                    : "text-muted-foreground hover:bg-secondary-foreground/10 hover:text-foreground"
                 }`}
               >
                 {item}
@@ -96,7 +102,7 @@ export function AdminDashboardClient() {
                 writeStored(ADMIN_SESSION_KEY, null);
                 router.push("/admin");
               }}
-              className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-secondary-foreground/10"
+              className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-secondary-foreground/10 hover:text-destructive transition-colors"
             >
               <LogOut size={15} /> Logout
             </button>
@@ -104,6 +110,29 @@ export function AdminDashboardClient() {
         </aside>
 
         <main className="flex-1 p-5 sm:p-8">
+          <div className="relative isolate overflow-hidden rounded-2xl border border-border bg-background p-6 sm:p-8 mb-8 shadow-xl">
+            <Image
+              src={heroImage}
+              alt="Concert stage control room"
+              fill
+              priority
+              sizes="100vw"
+              className="absolute inset-0 -z-20 object-cover object-[center_35%] opacity-25 brightness-75 contrast-125"
+            />
+            <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/90 to-background/70" />
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="eyebrow">Control Room · Live Console</p>
+                <h1 className="mt-1 font-display text-2xl sm:text-3xl font-extrabold text-foreground">
+                  Kryso Stage & Content Management
+                </h1>
+                <p className="mt-1 text-xs text-muted-foreground">Demo admin dashboard · browser local storage active</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+                <span className="size-2 rounded-full bg-primary animate-pulse" /> Live Session Active
+              </div>
+            </div>
+          </div>
           {section === "Dashboard" && <Overview onOpen={setSection} />}
           {section === "Products" && (
             <CollectionManager
@@ -208,7 +237,15 @@ export function AdminDashboardClient() {
           )}
           {section === "Contact enquiries" && <Enquiries kind="contact" />}
           {section === "Course enquiries" && <Enquiries kind="course" />}
-          {section === "Homepage content" && <SettingsForm homepage />}
+          {section === "Homepage spotlight" && <SpotlightManager />}
+          {section === "Homepage content" && (
+            <div className="space-y-12">
+              <SpotlightManager />
+              <div className="border-t border-border pt-10">
+                <SettingsForm homepage />
+              </div>
+            </div>
+          )}
           {section === "Settings" && <SettingsForm />}
         </main>
       </div>
@@ -230,18 +267,19 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
     },
     { label: "Testimonials", value: testimonials.length, section: "Testimonials" },
     { label: "Gallery images", value: gallery.length, section: "Gallery" },
+    { label: "Spotlight slides", value: 2, section: "Homepage spotlight" },
   ];
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-extrabold">Welcome back</h1>
-      <p className="mt-1 text-sm text-muted-foreground">A quick look at your academy and shop.</p>
+      <h1 className="font-display text-3xl font-extrabold text-foreground">Welcome back</h1>
+      <p className="mt-1 text-sm text-muted-foreground">A quick look at your academy and concert shop.</p>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <button
             key={card.label}
             onClick={() => onOpen(card.section)}
-            className="rounded-xl border border-border bg-card p-5 text-left transition-colors hover:border-primary"
+            className="rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/5"
           >
             <p className="font-display text-3xl font-extrabold text-primary">{card.value}</p>
             <p className="mt-2 text-sm text-muted-foreground">{card.label}</p>
@@ -249,7 +287,7 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
         ))}
       </div>
       <div className="mt-8 rounded-xl border border-border bg-card p-6">
-        <h2 className="font-display text-xl font-bold">Recent activity</h2>
+        <h2 className="font-display text-xl font-bold text-foreground">Recent activity</h2>
         {enquiries.length ? (
           <ul className="mt-4 grid gap-3 text-sm">
             {enquiries.slice(0, 5).map((item) => (
@@ -258,8 +296,9 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
                 className="flex flex-wrap justify-between gap-2 border-b border-border/70 pb-3 last:border-0"
               >
                 <span>
-                  <strong>{item.name}</strong> sent a {item.kind} enquiry
-                  {item.course ? ` about ${item.course}` : ""}
+                  <strong className="text-foreground">{item.name}</strong>{" "}
+                  <span className="text-muted-foreground">sent a {item.kind} enquiry</span>
+                  {item.course ? <span className="text-primary"> about {item.course}</span> : ""}
                 </span>
                 <span className="text-muted-foreground">{new Date(item.createdAt).toLocaleDateString("en-IN")}</span>
               </li>
@@ -286,7 +325,7 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold">
+      <h1 className="font-display text-2xl font-extrabold text-foreground">
         {kind === "contact" ? "Contact enquiries" : "Course enquiries"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">Messages submitted through the website, saved in this browser.</p>
@@ -294,7 +333,7 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search enquiries"
-        className="mt-5 h-10 max-w-xs rounded-full"
+        className="mt-5 h-10 max-w-xs rounded-full bg-card border-border text-foreground focus-visible:ring-primary"
       />
       {visible.length ? (
         <div className="mt-6 grid gap-3">
@@ -302,10 +341,10 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
             <article key={item.id} className="rounded-xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-display text-lg font-bold">
+                  <p className="font-display text-lg font-bold text-foreground">
                     {item.name}
                     {!item.read && (
-                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-sm">
                         NEW
                       </span>
                     )}
@@ -319,6 +358,7 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
                     variant="ghost"
                     size="icon"
                     aria-label="Mark as read"
+                    className="hover:bg-secondary text-muted-foreground hover:text-primary"
                     onClick={() =>
                       setEnquiries((list) =>
                         list.map((row) => (row.id === item.id ? { ...row, read: true } : row)),
@@ -331,20 +371,21 @@ function Enquiries({ kind }: { kind: "contact" | "course" }) {
                     variant="ghost"
                     size="icon"
                     aria-label="Delete enquiry"
+                    className="hover:bg-secondary text-muted-foreground hover:text-destructive"
                     onClick={() => setEnquiries((list) => list.filter((row) => row.id !== item.id))}
                   >
-                    <Trash2 size={16} className="text-destructive" />
+                    <Trash2 size={16} />
                   </Button>
                 </div>
               </div>
-              <p className="mt-3 text-sm leading-6">{item.message || "No message provided."}</p>
+              <p className="mt-3 text-sm leading-6 text-foreground">{item.message || "No message provided."}</p>
               <p className="mt-3 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-IN")}</p>
             </article>
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="font-display text-lg font-bold">No enquiries yet</p>
+        <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center bg-card/40">
+          <p className="font-display text-lg font-bold text-foreground">No enquiries yet</p>
           <p className="mt-1 text-sm text-muted-foreground">They&apos;ll appear here as soon as someone gets in touch.</p>
         </div>
       )}
@@ -361,7 +402,7 @@ function SettingsForm({ homepage = false }: { homepage?: boolean }) {
 
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-extrabold">{homepage ? "Homepage content" : "Settings"}</h1>
+      <h1 className="font-display text-2xl font-extrabold text-foreground">{homepage ? "Homepage content" : "Settings"}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {homepage ? "Edit the words shown on the home page hero." : "Business details used across the website."}
       </p>
@@ -374,10 +415,11 @@ function SettingsForm({ homepage = false }: { homepage?: boolean }) {
         }}
       >
         {fields.map((key) => (
-          <label key={key} className="grid gap-1.5 text-sm font-semibold capitalize">
+          <label key={key} className="grid gap-1.5 text-sm font-semibold capitalize text-foreground">
             {key.replace(/([A-Z])/g, " $1")}
             <Input
               value={settings[key]}
+              className="bg-card border-border text-foreground focus-visible:ring-primary"
               onChange={(e) => {
                 setSaved(false);
                 setSettings({ ...settings, [key]: e.target.value });
@@ -385,7 +427,7 @@ function SettingsForm({ homepage = false }: { homepage?: boolean }) {
             />
           </label>
         ))}
-        <Button type="submit" className="h-11 w-fit rounded-full font-bold">
+        <Button type="submit" className="h-11 w-fit rounded-full font-bold shadow-lg shadow-primary/20 hover:bg-primary/90">
           Save changes
         </Button>
         {saved && <p className="text-sm font-semibold text-primary">Saved to this browser.</p>}

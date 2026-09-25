@@ -58,10 +58,10 @@ export function CollectionManager({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-extrabold">{title}</h2>
+          <h2 className="font-display text-2xl font-extrabold text-foreground">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
-        <Button className="rounded-full font-semibold" onClick={() => setEditing(blank())}>
+        <Button className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90" onClick={() => setEditing(blank())}>
           <Plus size={16} /> Add new
         </Button>
       </div>
@@ -70,13 +70,22 @@ export function CollectionManager({
         <label className="relative w-full max-w-xs">
           <span className="sr-only">Search {title}</span>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="h-10 rounded-full pl-9" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search"
+            className="h-10 rounded-full pl-9 bg-card border-border text-foreground focus-visible:ring-primary"
+          />
         </label>
         {filterValues.map((value) => (
           <Button
             key={value}
             variant={filter === value ? "default" : "outline"}
-            className="h-9 rounded-full px-4 text-xs"
+            className={`h-9 rounded-full px-4 text-xs font-semibold transition-all ${
+              filter === value
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            }`}
             onClick={() => setFilter(value)}
           >
             {value}
@@ -85,37 +94,44 @@ export function CollectionManager({
       </div>
 
       {visible.length ? (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
           <table className="w-full min-w-150 text-left text-sm">
-            <thead className="border-b border-border bg-muted/60 text-xs uppercase text-muted-foreground">
+            <thead className="border-b border-border bg-secondary/80 text-xs uppercase text-muted-foreground">
               <tr>
                 {fields.map((field) => (
-                  <th key={field.key} className="px-4 py-3 font-semibold">
+                  <th key={field.key} className="px-4 py-3 font-semibold text-foreground">
                     {field.label}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((row) => (
-                <tr key={row.id} className="border-b border-border/70 last:border-0">
+                <tr key={row.id} className="border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors">
                   {fields.map((field) => (
-                    <td key={field.key} className="max-w-64 truncate px-4 py-3">
+                    <td key={field.key} className="max-w-64 truncate px-4 py-3 text-foreground">
                       {String(row[field.key] ?? "")}
                     </td>
                   ))}
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <Button variant="ghost" size="icon" aria-label={`Edit ${row[fields[0]!.key]}`} onClick={() => setEditing(row)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hover:bg-secondary text-muted-foreground hover:text-primary"
+                      aria-label={`Edit ${row[fields[0]!.key]}`}
+                      onClick={() => setEditing(row)}
+                    >
                       <Pencil size={15} />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="hover:bg-secondary text-muted-foreground hover:text-destructive"
                       aria-label={`Delete ${row[fields[0]!.key]}`}
                       onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}
                     >
-                      <Trash2 size={15} className="text-destructive" />
+                      <Trash2 size={15} />
                     </Button>
                   </td>
                 </tr>
@@ -124,41 +140,43 @@ export function CollectionManager({
           </table>
         </div>
       ) : (
-        <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="font-display text-lg font-bold">Nothing here yet</p>
+        <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center bg-card/40">
+          <p className="font-display text-lg font-bold text-foreground">Nothing here yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Add an entry or clear your search.</p>
         </div>
       )}
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-xs p-4">
           <form
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6 shadow-lg"
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card border border-border p-6 shadow-2xl text-card-foreground"
             onSubmit={(event) => {
               event.preventDefault();
               save(editing);
             }}
           >
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-xl font-bold">Edit entry</h3>
+              <h3 className="font-display text-xl font-bold text-foreground">Edit entry</h3>
               <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={() => setEditing(null)}>
                 <X size={17} />
               </Button>
             </div>
             <div className="mt-5 grid gap-4">
               {fields.map((field) => (
-                <label key={field.key} className="grid gap-1.5 text-sm font-semibold">
+                <label key={field.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
                   {field.label}
                   {field.type === "textarea" ? (
                     <Textarea
                       rows={3}
                       value={String(editing[field.key] ?? "")}
+                      className="bg-background border-border text-foreground focus-visible:ring-primary"
                       onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
                     />
                   ) : (
                     <Input
                       type={field.type === "number" ? "number" : "text"}
                       value={String(editing[field.key] ?? "")}
+                      className="bg-background border-border text-foreground focus-visible:ring-primary"
                       onChange={(e) =>
                         setEditing({
                           ...editing,
@@ -171,10 +189,10 @@ export function CollectionManager({
               ))}
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <Button type="button" variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
+              <Button type="button" variant="outline" className="rounded-full border-border hover:bg-secondary" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
-              <Button type="submit" className="rounded-full font-semibold">
+              <Button type="submit" className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90">
                 Save changes
               </Button>
             </div>
