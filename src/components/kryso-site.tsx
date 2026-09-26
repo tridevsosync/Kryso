@@ -2,28 +2,66 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Headphones, Instagram, Menu, Music2, ShoppingBag, X } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Instagram, Menu, Phone, Mail, MapPin, X, Youtube, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { saveEnquiry } from "@/lib/kryso-storage";
+import { saveEnquiry, useStored } from "@/lib/kryso-storage";
+import { siteSettings, courses as defaultCourses } from "@/data/catalog";
+
+const DEFAULT_COURSE_NAMES = [
+  "Guitar",
+  "Piano",
+  "Keyboard",
+  "Drums",
+  "Violin",
+  "Flute",
+  "Harmonium",
+  "Tabla",
+  "Vocal singing",
+];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [courseError, setCourseError] = useState(false);
+  const [courseNames, setCourseNames] = useState<string[]>(DEFAULT_COURSE_NAMES);
+  const [settings] = useStored("admin-settings", siteSettings);
+
+  // Fetch latest courses from MongoDB/collections API so newly created courses in Admin Academy appear
+  useEffect(() => {
+    fetch("/api/collections?name=academy_courses")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const names = data.items
+            .map((item: { name?: string }) => item.name?.trim())
+            .filter((name: string | undefined): name is string => Boolean(name));
+          if (names.length > 0) {
+            setCourseNames(Array.from(new Set([...names, ...DEFAULT_COURSE_NAMES])));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    const addItem = () => setCartCount((count) => count + 1);
-    const openEnquiry = () => setEnquiryOpen(true);
-    window.addEventListener("kryso:add-to-cart", addItem);
+    const openEnquiry = (event?: Event) => {
+      const custom = event as CustomEvent<{ course?: string }>;
+      if (custom?.detail?.course) {
+        setSelectedCourse(custom.detail.course);
+      }
+      setCourseError(false);
+      setEnquiryOpen(true);
+    };
     window.addEventListener("kryso:open-enquiry", openEnquiry);
     return () => {
-      window.removeEventListener("kryso:add-to-cart", addItem);
       window.removeEventListener("kryso:open-enquiry", openEnquiry);
     };
   }, []);
@@ -39,13 +77,15 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-md">
         <div className="page-shell flex h-[76px] items-center justify-between gap-4 lg:gap-8">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="Kryso Music Academy home">
-            <span className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/20">
-              <Music2 size={20} />
-            </span>
-            <span className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
-              Kryso Music Academy<span className="text-primary">.</span>
-            </span>
+          <Link href="/" className="flex items-center shrink-0 py-1 group" aria-label="KRYSO home">
+            <Image
+              src="/kryso-logo.png"
+              alt="KRYSO"
+              width={140}
+              height={49}
+              priority
+              className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
           <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
             {links.map((link) => {
@@ -64,20 +104,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/music"
-              className="relative hidden size-10 items-center justify-center rounded-full hover:bg-secondary text-foreground hover:text-primary transition-colors sm:flex"
-              aria-label={`Shopping bag, ${cartCount} items`}
-            >
-              <ShoppingBag size={18} />
-              {cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-sm">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
             <Button
-              onClick={() => setEnquiryOpen(true)}
+              onClick={() => {
+                setCourseError(false);
+                setEnquiryOpen(true);
+              }}
               className="hidden h-10 rounded-full px-5 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 sm:inline-flex"
             >
               Enquiry now <ArrowUpRight size={16} />
@@ -112,6 +143,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             })}
             <Button
               onClick={() => {
+                setCourseError(false);
                 setEnquiryOpen(true);
                 setMobileOpen(false);
               }}
@@ -123,149 +155,264 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         )}
       </header>
       <main>{children}</main>
-      <footer className="bg-secondary text-secondary-foreground border-t border-border">
-        <div className="page-shell grid gap-10 py-14 md:grid-cols-[1.3fr_1fr_1fr]">
-          <div>
-            <Link href="/" className="flex items-center gap-2 font-display text-2xl font-extrabold text-foreground">
-              <span className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/20">
-                <Music2 size={19} />
-              </span>
-              Kryso Music Academy<span className="text-primary">.</span>
+      <footer className="border-t border-border bg-card text-card-foreground">
+        <div className="page-shell section-space grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-2">
+            <Link href="/" className="inline-block py-1 group" aria-label="KRYSO home">
+              <Image
+                src="/kryso-logo.png"
+                alt="KRYSO"
+                width={130}
+                height={45}
+                className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
+              />
             </Link>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
-              Learn music and enjoy music. A concert-grade studio to bring real performance and joy to your sound.
+            <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
+              {settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.
             </p>
-            <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-              <Headphones size={14} className="text-primary" /> Pune, Maharashtra
-            </p>
+            <div className="mt-5 flex items-center gap-3 text-muted-foreground">
+              {settings.youtubeUrl && (
+                <a
+                  href={settings.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border p-2 hover:border-primary hover:text-primary transition-colors"
+                  aria-label="YouTube"
+                >
+                  <Youtube size={16} />
+                </a>
+              )}
+              {settings.instagramUrl && (
+                <a
+                  href={settings.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border p-2 hover:border-primary hover:text-primary transition-colors"
+                  aria-label="Instagram"
+                >
+                  <Instagram size={16} />
+                </a>
+              )}
+              {settings.facebookUrl && (
+                <a
+                  href={settings.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border p-2 hover:border-primary hover:text-primary transition-colors"
+                  aria-label="Facebook"
+                >
+                  <Facebook size={16} />
+                </a>
+              )}
+            </div>
           </div>
           <div>
             <p className="eyebrow">Explore</p>
             <div className="mt-4 grid gap-3 text-sm text-muted-foreground">
               <Link href="/music" className="hover:text-primary transition-colors">
-                Shop instruments
+                Music tracks & releases
               </Link>
               <Link href="/academy" className="hover:text-primary transition-colors">
-                Music classes
+                Music classes & academy
               </Link>
               <Link href="/contact" className="hover:text-primary transition-colors">
-                Visit the academy
+                Contact & studio visits
               </Link>
             </div>
           </div>
           <div>
             <p className="eyebrow">Say hello</p>
             <div className="mt-4 grid gap-3 text-sm text-muted-foreground">
-              <a href="tel:+918767828945" className="hover:text-primary transition-colors">+91 87678 28945</a>
-              <a href="tel:+919767378750" className="hover:text-primary transition-colors">+91 97673 78750</a>
-              <a href="mailto:krysomusicacademy@gmail.com" className="hover:text-primary transition-colors">krysomusicacademy@gmail.com</a>
-              <p>Pune, Maharashtra, India</p>
-              <a className="flex items-center gap-2 hover:text-primary transition-colors" href="https://instagram.com" aria-label="Instagram">
-                <Instagram size={16} className="text-primary" /> Instagram
-              </a>
+              {settings.phone && (
+                <a href={`tel:${settings.phone.replace(/[^0-9+]/g, "")}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone size={14} className="text-primary shrink-0" /> {settings.phone}
+                </a>
+              )}
+              {settings.altPhone && (
+                <a href={`tel:${settings.altPhone.replace(/[^0-9+]/g, "")}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone size={14} className="text-primary shrink-0" /> {settings.altPhone}
+                </a>
+              )}
+              {settings.email && (
+                <a href={`mailto:${settings.email}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Mail size={14} className="text-primary shrink-0" /> {settings.email}
+                </a>
+              )}
+              <p className="flex items-center gap-2">
+                <MapPin size={14} className="text-primary shrink-0" /> {settings.address || "Pune, Maharashtra, India"}
+              </p>
             </div>
           </div>
         </div>
         <div className="border-t border-border/50">
           <div className="page-shell flex flex-wrap items-center justify-between gap-3 py-5 text-xs text-muted-foreground">
-            <span>© 2026 Kryso Music Academy. Concerts, Academy & Shop.</span>
+            <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
             <Link href="/admin" className="hover:text-primary transition-colors">
               Admin login
             </Link>
           </div>
         </div>
       </footer>
+
+      {/* Course Enquiry Modal Dialog */}
       <Dialog
         open={enquiryOpen}
         onOpenChange={(open) => {
           setEnquiryOpen(open);
-          if (!open) setSubmitted(false);
+          if (!open) {
+            setSubmitted(false);
+            setCourseError(false);
+          }
         }}
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border text-card-foreground shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-foreground">Let’s get you started</DialogTitle>
+            <DialogTitle className="font-display text-2xl text-foreground">Course Enquiry & Audition</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Tell us what you’d love to learn or perform. We’ll help you find your rhythm.
+              Select your desired course below. Our mentors will reach out with batches, timing, and fee details.
             </DialogDescription>
           </DialogHeader>
+
           {submitted ? (
-            <div className="rounded-xl bg-secondary/80 border border-primary/30 p-6 text-center">
-              <span className="text-3xl text-primary">♫</span>
-              <p className="mt-3 font-semibold text-foreground">Thank you! Your enquiry is ready.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Our concert team will be in touch soon.</p>
+            <div className="rounded-xl bg-secondary/80 border border-primary/30 p-8 text-center">
+              <div className="mx-auto grid size-12 place-items-center rounded-full bg-primary/20 text-primary">
+                <CheckCircle2 size={28} />
+              </div>
+              <p className="mt-4 font-display text-xl font-bold text-foreground">Enquiry Received!</p>
+              <p className="mt-2 text-sm text-foreground">
+                Thank you! We have registered your enquiry for:
+              </p>
+              <div className="mt-3 inline-block rounded-full bg-primary/10 border border-primary/30 px-4 py-1.5 text-sm font-extrabold text-primary">
+                🎵 {selectedCourse}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Our faculty will contact you shortly on your provided phone number.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-6 rounded-full border-border hover:bg-primary hover:text-primary-foreground"
+                onClick={() => {
+                  setSubmitted(false);
+                  setSelectedCourse("");
+                  setEnquiryOpen(false);
+                }}
+              >
+                Close Window
+              </Button>
             </div>
           ) : (
             <form
-              className="grid gap-4"
+              className="grid gap-4 mt-2"
               onSubmit={(event) => {
                 event.preventDefault();
+                if (!selectedCourse || selectedCourse.trim() === "") {
+                  setCourseError(true);
+                  return;
+                }
+
                 const data = new FormData(event.currentTarget);
                 saveEnquiry({
                   kind: "course",
-                  name: String(data.get("name") ?? ""),
-                  phone: String(data.get("phone") ?? ""),
-                  email: String(data.get("email") ?? ""),
-                  course: String(data.get("course") ?? ""),
-                  message: String(data.get("message") ?? ""),
+                  name: String(data.get("name") ?? "").trim(),
+                  phone: String(data.get("phone") ?? "").trim(),
+                  email: String(data.get("email") ?? "").trim(),
+                  course: selectedCourse.trim(),
+                  message: String(data.get("message") ?? "").trim(),
                 });
                 setSubmitted(true);
               }}
             >
+              {/* Mandatory Course Selection */}
               <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                Your name
-                <Input name="name" required placeholder="Name" className="bg-background border-border text-foreground focus-visible:ring-primary" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                Phone number
-                <Input name="phone" required type="tel" placeholder="+91" className="bg-background border-border text-foreground focus-visible:ring-primary" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                Email
-                <Input name="email" type="email" placeholder="you@example.com" className="bg-background border-border text-foreground focus-visible:ring-primary" />
-              </label>
-              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                What would you like to learn?
+                <span className="flex items-center justify-between">
+                  <span>
+                    Select Course <span className="text-primary">*</span>
+                  </span>
+                  {courseError && (
+                    <span className="text-xs font-semibold text-destructive animate-pulse">
+                      * Please select a course
+                    </span>
+                  )}
+                </span>
                 <select
                   name="course"
-                  className="h-10 rounded-md border border-border bg-background px-3 font-normal text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  defaultValue=""
+                  required
+                  value={selectedCourse}
+                  onChange={(e) => {
+                    setSelectedCourse(e.target.value);
+                    if (e.target.value) setCourseError(false);
+                  }}
+                  className={`h-11 rounded-lg border bg-background px-3 font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
+                    courseError ? "border-destructive ring-1 ring-destructive" : "border-border"
+                  }`}
                 >
                   <option value="" disabled className="bg-background text-muted-foreground">
-                    Select a course
+                    -- Choose a course (Required) * --
                   </option>
-                  {[
-                    "Guitar",
-                    "Piano",
-                    "Keyboard",
-                    "Drums",
-                    "Violin",
-                    "Flute",
-                    "Harmonium",
-                    "Tabla",
-                    "Vocal singing",
-                  ].map((name) => (
-                    <option key={name} value={name} className="bg-background text-foreground">
+                  {courseNames.map((name) => (
+                    <option key={name} value={name} className="bg-background text-foreground font-semibold">
                       {name}
                     </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Select the instrument or vocal discipline you want to learn.
+                </p>
               </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Your Name <span className="text-primary">*</span>
+                  <Input
+                    name="name"
+                    required
+                    placeholder="Enter your full name"
+                    className="bg-background border-border text-foreground focus-visible:ring-primary"
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Phone Number <span className="text-primary">*</span>
+                  <Input
+                    name="phone"
+                    required
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    className="bg-background border-border text-foreground focus-visible:ring-primary"
+                  />
+                </label>
+              </div>
+
               <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                A little more about it
-                <Textarea name="message" placeholder="Your message" rows={3} className="bg-background border-border text-foreground focus-visible:ring-primary" />
+                Email Address
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com (optional)"
+                  className="bg-background border-border text-foreground focus-visible:ring-primary"
+                />
               </label>
-              <Button type="submit" className="h-11 rounded-full font-bold shadow-lg shadow-primary/20 hover:bg-primary/90">
-                Send enquiry <ArrowUpRight size={16} />
+
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Notes or Questions
+                <Textarea
+                  name="message"
+                  placeholder="Prior experience, preferred timing, or questions for the mentor..."
+                  rows={3}
+                  className="bg-background border-border text-foreground focus-visible:ring-primary"
+                />
+              </label>
+
+              <Button
+                type="submit"
+                className="h-11 rounded-full font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 mt-2"
+              >
+                Submit Course Enquiry <ArrowUpRight size={16} />
               </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Demo form · saved in your browser for the admin demo.
-              </p>
             </form>
           )}
         </DialogContent>
       </Dialog>
-      {cartCount >= 0 && <div className="sr-only" aria-live="polite">{cartCount} items in bag</div>}
     </div>
   );
 }

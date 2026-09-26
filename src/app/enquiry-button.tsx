@@ -4,12 +4,26 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 
 interface EnquiryButtonProps extends ButtonProps {
   children?: React.ReactNode;
+  course?: string;
 }
 
-export function EnquiryButton({ children, className, variant, size, ...props }: EnquiryButtonProps) {
+export function EnquiryButton({
+  children,
+  className,
+  variant,
+  size,
+  course,
+  onClick,
+  ...props
+}: EnquiryButtonProps) {
   return (
     <Button
-      onClick={() => window.dispatchEvent(new CustomEvent("kryso:open-enquiry"))}
+      onClick={(e) => {
+        if (onClick) onClick(e);
+        window.dispatchEvent(
+          new CustomEvent("kryso:open-enquiry", { detail: { course } })
+        );
+      }}
       className={className}
       variant={variant}
       size={size}

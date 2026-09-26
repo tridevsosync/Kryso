@@ -1,5 +1,5 @@
-export type Product = { id: string; name: string; category: string; price: number; rating: number; description: string; tag: string };
-export type Course = { id: string; name: string; duration: string; fees: number; level: string; instructor: string; description: string; icon: string };
+export type Product = { id: string; name: string; category: string; price: number; rating: number; description: string; tag: string; imageUrl?: string };
+export type Course = { id: string; name: string; duration: string; fees: number; level: string; instructor: string; description: string; icon?: string; imageUrl?: string };
 
 export const categories = ["All instruments", "Guitar", "Piano", "Keyboard", "Drum", "Violin", "Flute", "Harmonium", "Tabla", "Ukulele", "Accessories"];
 export const products: Product[] = [
@@ -13,49 +13,14 @@ export const products: Product[] = [
   { id: "tabla-set", name: "Concert Tabla Set", category: "Tabla", price: 7490, rating: 4.8, description: "A responsive dayan and bayan set for learning rhythm the traditional way.", tag: "New arrival" },
 ];
 
-export const courses: Course[] = [
-  { id: "guitar", name: "Guitar", duration: "3 months", fees: 2500, level: "All levels", instructor: "Aarav Kulkarni", description: "Find your rhythm, build confident technique and play the songs you love.", icon: "♬" },
-  { id: "piano", name: "Piano", duration: "3 months", fees: 2800, level: "Beginner to advanced", instructor: "Meera Deshpande", description: "From first notes to expressive playing, learn music with a strong foundation.", icon: "▥" },
-  { id: "vocals", name: "Vocal singing", duration: "2 months", fees: 2200, level: "All levels", instructor: "Sana Merchant", description: "Discover your voice through breath, pitch and songs from every tradition.", icon: "♫" },
-  { id: "keyboard", name: "Keyboard", duration: "3 months", fees: 2400, level: "Beginner to intermediate", instructor: "Rohan Patil", description: "Learn chords, melodies and the building blocks of modern keyboard playing.", icon: "▤" },
-  { id: "drums", name: "Drums", duration: "3 months", fees: 2600, level: "All levels", instructor: "Kabir Shah", description: "Build timing, coordination and a rock-solid groove behind the kit.", icon: "◉" },
-  { id: "violin", name: "Violin", duration: "4 months", fees: 2800, level: "Beginner to advanced", instructor: "Anaya Joshi", description: "A patient, practical introduction to this wonderfully expressive instrument.", icon: "𝄞" },
-  { id: "tabla", name: "Tabla", duration: "3 months", fees: 2200, level: "All levels", instructor: "Nikhil Rao", description: "Explore taal, hand technique and the rich rhythmic language of tabla.", icon: "◌" },
-  { id: "flute", name: "Flute", duration: "3 months", fees: 2200, level: "Beginner", instructor: "Nikhil Rao", description: "Learn breath, tone and beautiful melodies one note at a time.", icon: "♩" },
-  { id: "harmonium", name: "Harmonium", duration: "3 months", fees: 2200, level: "All levels", instructor: "Sana Merchant", description: "Build an ear for melody and accompany devotional and classical music.", icon: "♪" },
-];
-
-export const testimonials = [
-  { name: "Aditi S.", course: "Vocal singing", text: "I came in too shy to sing in front of anyone. Now I look forward to every class—and my first stage performance was unforgettable." },
-  { name: "Rohan M.", course: "Guitar", text: "The lessons are relaxed but focused. In a few months I was playing full songs with my friends." },
-  { name: "Isha P.", course: "Piano", text: "Such a warm space to learn. My daughter loves her piano classes and the teachers make every lesson feel special." },
-];
+export const courses: Course[] = [];
+export const testimonials: { name: string; course: string; text: string }[] = [];
 export type Teacher = { id: string; name: string; experience: string; specialization: string; bio: string };
-export const teachers: Teacher[] = [
-  { id: "aarav", name: "Aarav Kulkarni", experience: "9 years", specialization: "Guitar", bio: "Session guitarist who loves teaching first chords as much as advanced solos." },
-  { id: "meera", name: "Meera Deshpande", experience: "12 years", specialization: "Piano", bio: "Classically trained pianist with a warm, patient teaching style." },
-  { id: "sana", name: "Sana Merchant", experience: "7 years", specialization: "Vocals & harmonium", bio: "Vocal coach helping students find a confident, natural voice." },
-  { id: "kabir", name: "Kabir Shah", experience: "8 years", specialization: "Drums", bio: "Groove-first drummer with a knack for building rock-solid timing." },
-  { id: "nikhil", name: "Nikhil Rao", experience: "10 years", specialization: "Tabla & flute", bio: "Grounded in Hindustani tradition, and happiest teaching rhythm." },
-];
-
+export const teachers: Teacher[] = [];
 export type Student = { id: string; name: string; course: string; level: string; joined: string };
-export const students: Student[] = [
-  { id: "s1", name: "Aditi Sharma", course: "Vocal singing", level: "Intermediate", joined: "Jan 2026" },
-  { id: "s2", name: "Rohan Mehta", course: "Guitar", level: "Beginner", joined: "Mar 2026" },
-  { id: "s3", name: "Isha Pawar", course: "Piano", level: "Beginner", joined: "Apr 2026" },
-  { id: "s4", name: "Dev Naik", course: "Drums", level: "Advanced", joined: "Aug 2025" },
-];
-
+export const students: Student[] = [];
 export type GalleryItem = { id: string; caption: string; category: string };
-export const gallery: GalleryItem[] = [
-  { id: "g1", caption: "In the practice room", category: "Music classes" },
-  { id: "g2", caption: "Learning together", category: "Students" },
-  { id: "g3", caption: "Sharing a first song", category: "Performances" },
-  { id: "g4", caption: "Music in the making", category: "Workshops" },
-  { id: "g5", caption: "Annual showcase", category: "Events" },
-  { id: "g6", caption: "Rhythm workshop", category: "Workshops" },
-];
+export const gallery: GalleryItem[] = [];
 
 export const siteSettings = {
   businessName: "Kryso Music Academy",
@@ -67,6 +32,24 @@ export const siteSettings = {
   footerText: "© 2026 Kryso Music Academy. All music, all heart.",
   heroTitle: "Learn music. Enjoy music.",
   heroSubtitle: "Find your rhythm at Kryso Music Academy.",
+  youtubeUrl: "https://www.youtube.com/@krysomusicacademy",
+  instagramUrl: "https://www.instagram.com/kryso_music_academy",
+  facebookUrl: "https://www.facebook.com/krysomusicacademy",
+};
+
+export type MusicTrack = {
+  id: string;
+  name: string; // Music Name
+  singer: string; // Singer / Artist Name
+  imageUrl: string; // Artwork Image
+  audioUrl: string; // MP4 / MP3 audio file or link
+  isLocked: boolean; // Lock button / status
+  genre?: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
+  downloadCount?: number;
+  createdAt?: string;
 };
 
 export type SpotlightSlide = {
@@ -91,7 +74,7 @@ export const defaultSpotlightSlides: SpotlightSlide[] = [
     primaryBtnLink: "/academy",
     secondaryBtnText: "Join the Community",
     secondaryBtnLink: "enquiry",
-    imageUrl: "/dj-producer-hero.png",
+    imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
     tag: "PRO DJ & MUSIC PRODUCTION",
   },
   {
@@ -103,7 +86,7 @@ export const defaultSpotlightSlides: SpotlightSlide[] = [
     primaryBtnLink: "/music",
     secondaryBtnText: "Book studio session",
     secondaryBtnLink: "enquiry",
-    imageUrl: "/dj-producer-hero.png",
+    imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
     tag: "STAGE & PERFORMANCE",
   },
 ];

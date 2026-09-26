@@ -69,9 +69,44 @@ export function saveEnquiry(entry: Omit<Enquiry, "id" | "createdAt" | "read">) {
     read: false,
   };
   writeStored(ENQUIRIES_KEY, [record, ...list]);
+
+  if (typeof window !== "undefined") {
+    fetch("/api/enquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record),
+    }).catch(() => {
+      // Local storage already persisted safely
+    });
+  }
+
   return record;
 }
 
+export async function deleteEnquiryRemote(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch(`/api/enquiries?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  } catch {
+    // Local state already updated
+  }
+}
+
+export async function markEnquiryReadRemote(id: string, read = true) {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/enquiries", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, read }),
+    });
+  } catch {
+    // Local state already updated
+  }
+}
+
 export const ADMIN_SESSION_KEY = "admin-session";
-export const ADMIN_USER = "admin";
-export const ADMIN_PASSWORD = "admin123";
+export const ADMIN_USER = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim();
+export const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "").trim();
+export const NEXT_PUBLIC_ADMIN_EMAIL = ADMIN_USER;
+export const NEXT_PUBLIC_ADMIN_PASSWORD = ADMIN_PASSWORD;
