@@ -4,25 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, CheckCircle2, Instagram, Menu, Phone, Mail, MapPin, X, Youtube, Facebook } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Instagram, Menu, Phone, Mail, MapPin, ShieldAlert, Wrench, X, Youtube, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { saveEnquiry, useStored } from "@/lib/kryso-storage";
-import { siteSettings, courses as defaultCourses } from "@/data/catalog";
-
-const DEFAULT_COURSE_NAMES = [
-  "Guitar",
-  "Piano",
-  "Keyboard",
-  "Drums",
-  "Violin",
-  "Flute",
-  "Harmonium",
-  "Tabla",
-  "Vocal singing",
-];
+import { siteSettings } from "@/data/catalog";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -31,10 +19,42 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   const [submitted, setSubmitted] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [courseError, setCourseError] = useState(false);
-  const [courseNames, setCourseNames] = useState<string[]>(DEFAULT_COURSE_NAMES);
-  const [settings] = useStored("admin-settings", siteSettings);
+  const [courseNames, setCourseNames] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("admin-courses-v3");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((c: { name?: string }) => c.name?.trim())
+              .filter((n: string | undefined): n is string => Boolean(n));
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [settings, setSettings] = useStored("admin-settings", siteSettings);
 
-  // Fetch latest courses from MongoDB/collections API so newly created courses in Admin Academy appear
+  // Sync site settings from MongoDB so maintenance mode and footer update globally
+  useEffect(() => {
+    fetch("/api/collections?name=site_settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remote =
+            data.items.find((it: { id?: string }) => it.id === "contact_info" || it.id === "site_config") ||
+            data.items[0];
+          if (remote) {
+            setSettings((prev) => ({ ...prev, ...remote }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [setSettings]);
+
+  // Fetch latest courses from MongoDB/collections API so only real courses created in Admin appear
   useEffect(() => {
     fetch("/api/collections?name=academy_courses")
       .then((res) => res.json())
@@ -44,7 +64,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             .map((item: { name?: string }) => item.name?.trim())
             .filter((name: string | undefined): name is string => Boolean(name));
           if (names.length > 0) {
-            setCourseNames(Array.from(new Set([...names, ...DEFAULT_COURSE_NAMES])));
+            setCourseNames(Array.from(new Set(names)));
           }
         }
       })
@@ -72,6 +92,86 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     { label: "Academy", to: "/academy" },
     { label: "Contact", to: "/contact" },
   ];
+
+  // If Maintenance Mode is enabled and current route is not admin, show Under Maintenance page
+  if (settings.isMaintenanceMode && !pathname.startsWith("/admin")) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-between p-6 relative isolate overflow-hidden">
+        {/* Glowing atmospheric stage effects */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 size-96 rounded-full bg-primary/20 blur-3xl pointer-events-none -z-10" />
+        <div className="absolute bottom-10 right-10 size-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none -z-10" />
+
+        <header className="page-shell flex items-center justify-between py-4">
+          <Link href="/" className="flex items-center gap-2" aria-label="KRYSO home">
+            <Image
+              src="/kryso-logo.png"
+              alt="KRYSO"
+              width={140}
+              height={49}
+              priority
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
+          </Link>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
+            <span className="size-2 rounded-full bg-amber-400 animate-ping" />
+            Maintenance Mode Active
+          </span>
+        </header>
+
+        <main className="page-shell flex-1 flex flex-col items-center justify-center text-center my-12 max-w-2xl mx-auto">
+          <div className="size-20 rounded-3xl bg-secondary/80 border border-border flex items-center justify-center text-primary mb-6 shadow-xl shadow-primary/10">
+            <Wrench size={34} className="animate-spin text-primary" style={{ animationDuration: "6s" }} />
+          </div>
+
+          <p className="eyebrow text-primary">System Tune-up</p>
+          <h1 className="mt-2 font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground">
+            {settings.maintenanceTitle || "Under Scheduled Maintenance"}
+          </h1>
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">
+            {settings.maintenanceMessage ||
+              "We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!"}
+          </p>
+
+          {/* Quick Contact & Socials during maintenance */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {settings.phone && (
+              <a
+                href={`tel:${settings.phone.replace(/[^0-9+]/g, "")}`}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Phone size={14} className="text-primary" /> Call Studio
+              </a>
+            )}
+            {settings.email && (
+              <a
+                href={`mailto:${settings.email}`}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Mail size={14} className="text-primary" /> Email Support
+              </a>
+            )}
+            {settings.instagramUrl && (
+              <a
+                href={settings.instagramUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Instagram size={14} className="text-primary" /> Instagram
+              </a>
+            )}
+          </div>
+        </main>
+
+        <footer className="page-shell flex flex-wrap items-center justify-between gap-4 py-4 border-t border-border/40 text-xs text-muted-foreground">
+          <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
+          <Link href="/admin" className="hover:text-primary transition-colors font-medium">
+            Admin Access →
+          </Link>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -168,7 +268,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               />
             </Link>
             <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-              {settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.
+              {settings.footerDescription || settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.
             </p>
             <div className="mt-5 flex items-center gap-3 text-muted-foreground">
               {settings.youtubeUrl && (

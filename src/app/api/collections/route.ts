@@ -16,13 +16,54 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     if (db) {
       const items = await db.collection(name).find({}).toArray();
-      const sanitized = items.map((doc) => {
+
+      const sanitized: Array<Record<string, unknown>> = items.map((doc) => {
         const { _id, ...rest } = doc;
         return {
           id: rest.id || _id.toString(),
           ...rest,
         };
       });
+
+      if (name === "academy_students") {
+        try {
+          const enrollments = await db.collection("academy_enrollments").find({}).toArray();
+          const existingIds = new Set(
+            sanitized.map((it) => (it.id || it.invoiceNumber || it.name || "").toString())
+          );
+          for (const enr of enrollments) {
+            const enrKey = (enr.id || enr.invoiceNumber || enr.studentName || "").toString();
+            if (!existingIds.has(enrKey)) {
+              sanitized.push({
+                id: enr.id || `STU-${Date.now()}`,
+                name: enr.studentName || enr.name,
+                email: enr.email || "",
+                mobile: enr.mobile || enr.phone || "",
+                age: enr.age || "",
+                dob: enr.dob || "",
+                address: enr.address || "",
+                course: enr.courseName || enr.course || "",
+                teacher: enr.teacherName || "Kryso",
+                fees: enr.fees || 0,
+                level: "Enrolled Student",
+                paymentStatus: enr.paymentStatus || "PAID via Razorpay",
+                invoiceNumber: enr.invoiceNumber || "",
+                paymentId: enr.paymentId || "",
+                joined: enr.createdAt
+                  ? new Date(enr.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "Recent",
+                createdAt: enr.createdAt || new Date().toISOString(),
+              });
+            }
+          }
+        } catch (syncErr) {
+          console.warn("Could not merge academy_enrollments into students:", syncErr);
+        }
+      }
 
       return NextResponse.json({
         success: true,

@@ -11,20 +11,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { saveEnquiry } from "@/lib/kryso-storage";
 
-const DEFAULT_COURSES = [
-  "Guitar",
-  "Piano",
-  "Keyboard",
-  "Drums",
-  "Violin",
-  "Flute",
-  "Harmonium",
-  "Tabla",
-  "Vocal singing",
-];
-
 export function EnquiryClient() {
-  const [courses, setCourses] = useState<string[]>(DEFAULT_COURSES);
+  const [courses, setCourses] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("admin-courses-v3");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((c: { name?: string }) => c.name?.trim())
+              .filter((n: string | undefined): n is string => Boolean(n));
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [selectedCourse, setSelectedCourse] = useState("");
   const [courseError, setCourseError] = useState(false);
   const [sent, setSent] = useState(false);
@@ -39,7 +42,7 @@ export function EnquiryClient() {
             .map((c: { name?: string }) => c.name?.trim())
             .filter((n: string | undefined): n is string => Boolean(n));
           if (names.length > 0) {
-            setCourses(Array.from(new Set([...names, ...DEFAULT_COURSES])));
+            setCourses(Array.from(new Set(names)));
           }
         }
       })

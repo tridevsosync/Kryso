@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,96 +8,110 @@ import {
   ArrowUpRight,
   Award,
   CheckCircle2,
+  Clock,
   Clock3,
-  Disc3,
   Flame,
   GraduationCap,
   Headphones,
+  Lock,
   MapPin,
-  Mic,
+  Music,
   Music2,
+  Pause,
   Phone,
-  Radio,
+  Play,
   Sliders,
   Sparkles,
+  Tag,
+  Unlock,
+  User,
   UsersRound,
-  Volume2,
 } from "lucide-react";
 import heroImage from "@/assets/kryso-hero.jpg";
 import { Button } from "@/components/ui/button";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { EnquiryButton } from "./enquiry-button";
 import { HomeSpotlight } from "@/components/home-spotlight";
+import { CourseEnrollmentModal } from "@/components/enrollment-modal";
 import { useStored } from "@/lib/kryso-storage";
-import { siteSettings } from "@/data/catalog";
-
-const DISCIPLINES = [
-  {
-    id: "dj-production",
-    courseName: "DJing & Music Production",
-    icon: Disc3,
-    badge: "Studio & Electronic",
-    description:
-      "Master Ableton Live, Logic Pro, Pioneer DJ decks, beat construction, EQ mixing, and club-ready transitions.",
-    tags: ["Ableton & Logic", "Pioneer Decks", "Mixing & Drops"],
-  },
-  {
-    id: "guitar",
-    courseName: "Guitar",
-    icon: Volume2,
-    badge: "Electric & Acoustic",
-    description:
-      "From first chords to screaming solos, master acoustic fingerstyle, electric rock riffs, bass, and stage tone.",
-    tags: ["Acoustic & Electric", "Solo Techniques", "Pedalboard Tone"],
-  },
-  {
-    id: "piano",
-    courseName: "Piano",
-    icon: Music2,
-    badge: "Keys & Synths",
-    description:
-      "Build a deep classical foundation, learn modern pop chords, arpeggios, sheet reading, and synthesizer design.",
-    tags: ["88-Key Piano", "Chord Harmony", "Stage Synthesizers"],
-  },
-  {
-    id: "drums",
-    courseName: "Drums",
-    icon: Radio,
-    badge: "Rhythm & Tempo",
-    description:
-      "Develop rock-solid meter, four-limb independence, dynamic groove control, and high-energy kit performance.",
-    tags: ["Acoustic Kits", "Rudiment Speed", "Double Kick Grooves"],
-  },
-  {
-    id: "vocals",
-    courseName: "Vocal singing",
-    icon: Mic,
-    badge: "Voice & Stage",
-    description:
-      "Unlock full vocal range, pitch accuracy, breath stamina, microphone control, and live stage presence.",
-    tags: ["Vocal Warmups", "Pitch Control", "Stage Presence"],
-  },
-  {
-    id: "sound-engineering",
-    courseName: "Sound Engineering",
-    icon: Sliders,
-    badge: "Audio & Acoustics",
-    description:
-      "Learn live PA rigging, multitrack recording, acoustics, microphone placement, compression, and final mastering.",
-    tags: ["Studio Console", "Microphone Lab", "Mastering Stems"],
-  },
-];
+import { siteSettings, type Course, type MusicTrack } from "@/data/catalog";
 
 export function HomeClient() {
   const [settings] = useStored("admin-settings", siteSettings);
-  const [activeTab, setActiveTab] = useState<"all" | "instruments" | "production">("all");
 
-  const filteredDisciplines = DISCIPLINES.filter((d) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "production") return d.id === "dj-production" || d.id === "sound-engineering";
-    if (activeTab === "instruments") return d.id !== "dj-production" && d.id !== "sound-engineering";
-    return true;
-  });
+  // Dynamic Academy Courses state
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [enrollModalCourse, setEnrollModalCourse] = useState<Course | null>(null);
+
+  // Dynamic Music Tracks state
+  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+  const [tracksLoading, setTracksLoading] = useState(true);
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 1. Fetch Academy Courses from MongoDB & localStorage
+  useEffect(() => {
+    fetch("/api/collections?name=academy_courses")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setCourses(data.items);
+        } else {
+          try {
+            const stored = localStorage.getItem("admin-courses-v3");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) setCourses(parsed);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCoursesLoading(false));
+  }, []);
+
+  // 2. Fetch Music Tracks from MongoDB & localStorage
+  useEffect(() => {
+    fetch("/api/collections?name=music_tracks")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setTracks(data.items);
+        } else {
+          try {
+            const stored = localStorage.getItem("admin-music-tracks-v1");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) setTracks(parsed);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTracksLoading(false));
+  }, []);
+
+  // Audio preview playback toggle
+  const handleTogglePlay = (track: MusicTrack) => {
+    if (!track.audioUrl) return;
+
+    if (playingTrackId === track.id) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setPlayingTrackId(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const audio = new Audio(track.audioUrl);
+      audioRef.current = audio;
+      audio.play().catch(() => {});
+      audio.onended = () => setPlayingTrackId(null);
+      setPlayingTrackId(track.id);
+    }
+  };
 
   const primaryPhone = settings.phone || "+91 87678 28945";
   const studioAddress = settings.address || "Pune, Maharashtra, India";
@@ -123,7 +137,7 @@ export function HomeClient() {
           <div className="page-shell mb-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-sm">
               <span className="size-2 rounded-full bg-primary animate-ping" />
-              KRYSO MUSIC ACADEMY · PUNE
+              KRYSO MUSIC ACADEMY & STUDIO · PUNE
             </div>
           </div>
           <HomeSpotlight />
@@ -156,7 +170,7 @@ export function HomeClient() {
               icon: MapPin,
               number: "Pune Campus",
               title: "Acoustic Sanctuary",
-              desc: "Sound-treated studios & high-end gear",
+              desc: "Sound-treated studios & high-end pro gear",
             },
           ].map((item) => {
             const Icon = item.icon;
@@ -185,122 +199,291 @@ export function HomeClient() {
         </div>
       </section>
 
-      {/* 3. CORE DISCIPLINES & ACADEMY SHOWCASE */}
+      {/* 3. ACADEMY COURSES SHOWCASE SECTION */}
       <section className="page-shell section-space">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <SectionHeading
-            label="What You Can Master"
-            title="Explore Disciplines & Coaching"
-            text="Choose your primary instrument or production track. Every class pairs essential theory with live playing."
+            label="Kryso Academy Programs"
+            title="Master Your Instrument & Sound"
+            text="Explore certified courses designed for aspiring artists and stage performers. Learn theory, technique, and live concert performance."
           />
-
-          {/* Discipline Category Switcher */}
-          <div className="flex rounded-full bg-secondary p-1 border border-border shrink-0 self-start md:self-auto">
-            <button
-              onClick={() => setActiveTab("all")}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                activeTab === "all"
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              All Disciplines
-            </button>
-            <button
-              onClick={() => setActiveTab("instruments")}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                activeTab === "instruments"
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Instruments & Voice
-            </button>
-            <button
-              onClick={() => setActiveTab("production")}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                activeTab === "production"
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              DJ & Production
-            </button>
-          </div>
-        </div>
-
-        {/* Disciplines Grid */}
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredDisciplines.map((d) => {
-            const Icon = d.icon;
-            return (
-              <div
-                key={d.id}
-                className="group relative rounded-2xl border border-border bg-card p-7 shadow-sm transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="grid size-12 place-items-center rounded-xl border border-primary/30 bg-primary/10 text-primary transition-transform group-hover:scale-105">
-                      <Icon size={24} />
-                    </div>
-                    <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-bold text-muted-foreground border border-border">
-                      {d.badge}
-                    </span>
-                  </div>
-
-                  <h3 className="mt-5 font-display text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                    {d.courseName}
-                  </h3>
-                  <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-                    {d.description}
-                  </p>
-
-                  <div className="mt-5 flex flex-wrap gap-1.5 pt-2">
-                    {d.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md bg-secondary/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-7 grid grid-cols-2 gap-2.5 pt-4 border-t border-border/60">
-                  <Link href="/academy" className="w-full">
-                    <Button
-                      variant="outline"
-                      className="w-full h-10 rounded-full font-bold border-border hover:bg-secondary hover:border-primary/50 text-foreground transition-all text-xs"
-                    >
-                      Know More
-                    </Button>
-                  </Link>
-                  <EnquiryButton
-                    course={d.courseName}
-                    className="w-full h-10 rounded-full font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-all text-xs"
-                  >
-                    Enroll Now
-                  </EnquiryButton>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-10 flex items-center justify-center">
-          <Link href="/academy">
+          <Link href="/academy" className="shrink-0">
             <Button
               variant="outline"
-              className="rounded-full px-7 h-11 font-bold border-border hover:bg-secondary text-sm"
+              className="rounded-full px-6 h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
             >
-              View Academy Details & Curriculum <ArrowRight size={16} className="ml-2" />
+              View Full Academy Curriculum <ArrowRight size={15} className="ml-2 text-primary" />
             </Button>
           </Link>
         </div>
+
+        {/* Dynamic Courses Grid */}
+        {coursesLoading ? (
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-80 rounded-2xl border border-border bg-card/60 animate-pulse" />
+            ))}
+          </div>
+        ) : courses.length > 0 ? (
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.slice(0, 6).map((course) => {
+              const selling = Number(course.fees || (course as unknown as { price?: number }).price || 0);
+              const actual = Number(course.actualPrice || (course as unknown as { originalPrice?: number }).originalPrice || 0);
+              const discountPercent =
+                actual > selling && selling > 0
+                  ? Math.round(((actual - selling) / actual) * 100)
+                  : 0;
+              const teacher = course.instructor || (course as unknown as { teacherName?: string }).teacherName || "Kryso Faculty";
+
+              return (
+                <div
+                  key={course.id || course.name}
+                  className="group relative rounded-2xl border border-border bg-card overflow-hidden shadow-sm transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
+                >
+                  {/* Course Image & Badges */}
+                  <div className="relative h-48 w-full overflow-hidden bg-secondary">
+                    {course.imageUrl ? (
+                      <Image
+                        src={course.imageUrl}
+                        alt={course.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="size-full grid place-items-center bg-gradient-to-br from-secondary via-background to-secondary text-muted-foreground">
+                        <Music2 size={40} className="text-primary/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90" />
+
+                    {/* Level / Duration Badges */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-extrabold text-foreground border border-border/80">
+                        {course.level || "All Levels"}
+                      </span>
+                      {discountPercent > 0 && (
+                        <span className="rounded-full bg-emerald-500/90 text-white font-extrabold px-2.5 py-1 text-[10px] shadow-sm">
+                          {discountPercent}% OFF
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="absolute top-3 right-3">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold text-muted-foreground border border-border/80">
+                        <Clock size={11} className="text-primary" /> {course.duration || "1 Month"}
+                      </span>
+                    </div>
+
+                    {/* Price on Bottom Overlay */}
+                    <div className="absolute bottom-3 left-3 right-3 flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-display text-xl font-extrabold text-primary drop-shadow-md">
+                          ₹{selling.toLocaleString("en-IN")}
+                        </span>
+                        {actual > selling && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            ₹{actual.toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Course Details Content */}
+                  <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {course.name}
+                      </h3>
+                      <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <User size={13} className="text-primary shrink-0" /> Mentor:{" "}
+                        <strong className="text-foreground">{teacher}</strong>
+                      </p>
+                      <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                        {course.description || "Comprehensive hands-on training with acoustic instruments, theory, and live concert jam sessions."}
+                      </p>
+                    </div>
+
+                    {/* Card Actions: Know More & Enroll Now */}
+                    <div className="mt-5 grid grid-cols-2 gap-2 pt-4 border-t border-border/60">
+                      <Link href="/academy" className="w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full h-10 rounded-full font-bold border-border hover:bg-secondary hover:border-primary/50 text-foreground text-xs"
+                        >
+                          Know More
+                        </Button>
+                      </Link>
+                      <Button
+                        onClick={() => setEnrollModalCourse(course)}
+                        className="w-full h-10 rounded-full font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 text-xs"
+                      >
+                        Enroll Now
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-10 rounded-2xl border border-dashed border-border p-10 text-center bg-card/40">
+            <GraduationCap size={40} className="mx-auto text-primary/60 mb-3" />
+            <h3 className="font-display text-lg font-bold text-foreground">Academy Curriculum Active</h3>
+            <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
+              Our mentors teach Guitar, Piano, Drums, Vocals, DJing, and Sound Production with personalized 1-on-1 coaching.
+            </p>
+            <div className="mt-5 flex justify-center gap-3">
+              <Link href="/academy">
+                <Button className="rounded-full px-6 font-bold text-xs">
+                  Visit Academy Page <ArrowRight size={14} className="ml-1.5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* 4. THE KRYSO METHOD & PHILOSOPHY */}
+      {/* 4. KRYSO MUSIC RELEASES & AUDIO HUB */}
+      <section className="border-t border-border bg-gradient-to-b from-secondary/20 via-background to-secondary/30 relative overflow-hidden">
+        <div className="pointer-events-none absolute right-0 top-1/3 size-96 rounded-full bg-primary/10 blur-[130px]" />
+
+        <div className="page-shell section-space">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <SectionHeading
+              label="Kryso Sound Studio Releases"
+              title="Original Music & Master Audio"
+              text="Stream exclusive singles, live DJ sets, and studio recordings produced by the Kryso artist collective in Pune."
+            />
+            <Link href="/music" className="shrink-0">
+              <Button
+                variant="outline"
+                className="rounded-full px-6 h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
+              >
+                Open Music Library <ArrowRight size={15} className="ml-2 text-primary" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Dynamic Tracks Grid */}
+          {tracksLoading ? (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-64 rounded-2xl border border-border bg-card/60 animate-pulse" />
+              ))}
+            </div>
+          ) : tracks.length > 0 ? (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {tracks.slice(0, 6).map((track) => {
+                const isPlaying = playingTrackId === track.id;
+
+                return (
+                  <div
+                    key={track.id}
+                    className="group relative rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Track Artwork & Play overlay */}
+                      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary mb-4">
+                        {track.imageUrl ? (
+                          <Image
+                            src={track.imageUrl}
+                            alt={track.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="size-full grid place-items-center bg-secondary text-muted-foreground">
+                            <Headphones size={36} className="text-primary/40" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+
+                        {/* Status Badges */}
+                        <div className="absolute top-2.5 left-2.5">
+                          {track.isLocked ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/90 text-black font-extrabold px-2.5 py-0.5 text-[10px] shadow-sm">
+                              <Lock size={10} /> Social Locked
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 text-white font-extrabold px-2.5 py-0.5 text-[10px] shadow-sm">
+                              <Unlock size={10} /> Free Stream
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Play / Pause Floating Trigger */}
+                        {track.audioUrl && (
+                          <button
+                            onClick={() => handleTogglePlay(track)}
+                            className={`absolute bottom-3 right-3 grid size-10 place-items-center rounded-full shadow-lg transition-transform ${
+                              isPlaying
+                                ? "bg-primary text-primary-foreground scale-110 ring-4 ring-primary/30"
+                                : "bg-background/90 text-foreground hover:scale-110 hover:bg-primary hover:text-primary-foreground"
+                            }`}
+                            aria-label={isPlaying ? "Pause audio" : "Play audio preview"}
+                          >
+                            {isPlaying ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Track Title & Artist */}
+                      <h3 className="font-display text-base font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {track.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
+                        <span>By {track.singer || "Kryso Artists"}</span>
+                        {track.genre && (
+                          <>
+                            <span>•</span>
+                            <span className="text-primary">{track.genre}</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between">
+                      <Link
+                        href="/music"
+                        className="text-xs font-bold text-primary hover:text-primary/80 inline-flex items-center gap-1"
+                      >
+                        {track.isLocked ? "Unlock Track" : "Listen Full Audio"} <ArrowRight size={13} />
+                      </Link>
+
+                      {track.downloadCount !== undefined && track.downloadCount > 0 && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {track.downloadCount} downloads
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-10 rounded-2xl border border-dashed border-border p-10 text-center bg-card/40">
+              <Headphones size={40} className="mx-auto text-primary/60 mb-3" />
+              <h3 className="font-display text-lg font-bold text-foreground">Kryso Sound Studio</h3>
+              <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
+                Listen to original productions, DJ stems, and vocal sessions recorded in our Pune studio.
+              </p>
+              <div className="mt-5 flex justify-center gap-3">
+                <Link href="/music">
+                  <Button className="rounded-full px-6 font-bold text-xs">
+                    Explore Music Shop <ArrowRight size={14} className="ml-1.5" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 5. THE KRYSO METHOD & PHILOSOPHY */}
       <section className="border-y border-border bg-secondary/30 relative overflow-hidden">
         <div className="pointer-events-none absolute -right-20 top-1/2 -translate-y-1/2 size-96 rounded-full bg-primary/10 blur-[120px]" />
 
@@ -383,53 +566,6 @@ export function HomeClient() {
                 </div>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. KRYSO MUSIC HUB SHOWCASE */}
-      <section className="page-shell section-space">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <SectionHeading
-            label="Kryso Sound Studio"
-            title="Music Releases & Audio Stems"
-            text="Discover original tracks, master recordings, and live performance sets produced by the Kryso artist collective."
-          />
-          <Link href="/music" className="inline-flex items-center gap-2 pb-1 font-bold text-primary hover:text-primary/80">
-            Explore All Music <ArrowRight size={17} />
-          </Link>
-        </div>
-
-        <div className="mt-10 rounded-3xl border border-border bg-gradient-to-br from-card via-secondary/70 to-card p-8 sm:p-12 relative overflow-hidden shadow-2xl">
-          <div className="pointer-events-none absolute right-0 top-0 size-80 rounded-full bg-primary/15 blur-[100px]" />
-
-          <div className="relative max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 border border-primary/30 px-3.5 py-1 text-xs font-bold text-primary">
-              <Headphones size={14} /> Official Music Library
-            </div>
-
-            <h3 className="mt-5 font-display text-2xl sm:text-4xl font-extrabold text-foreground leading-tight">
-              Stream exclusive singles, mixes and master audio files.
-            </h3>
-
-            <p className="mt-3.5 text-sm sm:text-base leading-relaxed text-muted-foreground">
-              Our artist community creates and publishes original music. Follow Kryso on YouTube, Instagram, or Facebook to unlock protected high-fidelity MP4 tracks and stems directly in your browser.
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link href="/music">
-                <Button className="h-12 rounded-full px-8 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 text-sm">
-                  Listen & Unlock Tracks <ArrowRight size={16} className="ml-2" />
-                </Button>
-              </Link>
-              <EnquiryButton
-                course="DJing & Music Production"
-                variant="outline"
-                className="h-12 rounded-full px-7 font-bold border-border hover:bg-secondary text-sm"
-              >
-                Music Production Enquiry
-              </EnquiryButton>
-            </div>
           </div>
         </div>
       </section>
@@ -526,6 +662,14 @@ export function HomeClient() {
           </div>
         </div>
       </section>
+
+      {/* Course Enrollment & Razorpay Payment Modal */}
+      {enrollModalCourse && (
+        <CourseEnrollmentModal
+          course={enrollModalCourse}
+          onClose={() => setEnrollModalCourse(null)}
+        />
+      )}
     </SiteShell>
   );
 }

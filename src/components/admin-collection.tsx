@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   Check,
+  ChevronDown,
   Cloud,
   Database,
+  Edit2,
   ImageIcon,
+  List,
   Loader2,
   Pencil,
   Plus,
@@ -24,8 +27,12 @@ import { useStored } from "@/lib/kryso-storage";
 export type FieldDef = {
   key: string;
   label: string;
-  type?: "text" | "number" | "textarea" | "image";
+  type?: "text" | "number" | "textarea" | "image" | "select";
   placeholder?: string;
+  options?: string[];
+  dynamicCollection?: string;
+  storageKeyFallback?: string;
+  dynamicLabelKey?: string;
 };
 
 export type Row = Record<string, string | number> & { id: string };
@@ -57,6 +64,46 @@ export function CollectionManager({
   const [mongoConnected, setMongoConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [dynamicOptionsMap, setDynamicOptionsMap] = useState<Record<string, string[]>>({});
+  const [customModeFields, setCustomModeFields] = useState<Record<string, boolean>>({});
+
+  // Fetch dynamic options (e.g. teachers for course instructor dropdown)
+  useEffect(() => {
+    fields.forEach((field) => {
+      if (field.dynamicCollection) {
+        fetch(`/api/collections?name=${field.dynamicCollection}`)
+          .then((res) => res.json())
+          .then((data) => {
+            let names: string[] = [];
+            if (data?.success && Array.isArray(data.items) && data.items.length > 0) {
+              names = data.items
+                .map((it: Record<string, unknown>) => String(it[field.dynamicLabelKey || "name"] || "").trim())
+                .filter(Boolean);
+            }
+            if (names.length === 0 && field.storageKeyFallback) {
+              try {
+                const stored = localStorage.getItem(field.storageKeyFallback);
+                if (stored) {
+                  const parsed = JSON.parse(stored);
+                  if (Array.isArray(parsed)) {
+                    names = parsed
+                      .map((it: Record<string, unknown>) => String(it[field.dynamicLabelKey || "name"] || "").trim())
+                      .filter(Boolean);
+                  }
+                }
+              } catch {}
+            }
+            if (names.length > 0) {
+              setDynamicOptionsMap((prev) => ({
+                ...prev,
+                [field.key]: Array.from(new Set(names)),
+              }));
+            }
+          })
+          .catch(() => {});
+      }
+    });
+  }, [fields]);
 
   // Sync from MongoDB on mount if apiCollection is provided
   useEffect(() => {
@@ -468,12 +515,91 @@ export function CollectionManager({
                       </div>
 
                       <Input
-                        type="url"
-                        placeholder="Or paste direct image URL"
+                        type="text"
+                        placeholder="Or paste direct image URL or /uploads/ path"
                         value={currentImg}
                         className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                         onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
                       />
+                    </div>
+                  );
+                }
+
+                if (field.type === "select" || field.options || field.dynamicCollection) {
+                  const combinedOptions = [
+                    ...(field.options || []),
+                    ...(dynamicOptionsMap[field.key] || []),
+                  ];
+                  const uniqueOptions = Array.from(new Set(combinedOptions.filter(Boolean)));
+                  const currentValue = String(editing[field.key] ?? "");
+                  const isCustom = customModeFields[field.key];
+
+                  return (
+                    <div key={field.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
+                      <div className="flex items-center justify-between">
+                        <span>{field.label}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCustomModeFields((prev) => ({
+                              ...prev,
+                              [field.key]: !prev[field.key],
+                            }))
+                          }
+                          className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          {isCustom ? (
+                            <>
+                              <List size={12} /> Choose from dropdown
+                            </>
+                          ) : (
+                            <>
+                              <Edit2 size={12} /> Type custom
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {isCustom ? (
+                        <Input
+                          type="text"
+                          value={currentValue}
+                          placeholder={field.placeholder || `Enter custom ${field.label.toLowerCase()}`}
+                          className="bg-background border-border text-foreground focus-visible:ring-primary"
+                          onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                        />
+                      ) : (
+                        <div className="relative">
+                          <select
+                            value={currentValue}
+                            className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none cursor-pointer pr-9"
+                            onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                          >
+                            <option value="" disabled className="bg-card text-muted-foreground">
+                              {field.placeholder || `-- Select ${field.label} --`}
+                            </option>
+                            {uniqueOptions.map((opt) => (
+                              <option key={opt} value={opt} className="bg-card text-foreground">
+                                {opt}
+                              </option>
+                            ))}
+                            {currentValue && !uniqueOptions.includes(currentValue) && (
+                              <option value={currentValue} className="bg-card text-foreground">
+                                {currentValue} (Current / Custom)
+                              </option>
+                            )}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground">
+                            <ChevronDown size={15} />
+                          </div>
+                        </div>
+                      )}
+
+                      {uniqueOptions.length === 0 && !isCustom && (
+                        <p className="text-[11px] text-muted-foreground">
+                          No items loaded yet. Click &quot;Type custom&quot; above to type manually.
+                        </p>
+                      )}
                     </div>
                   );
                 }

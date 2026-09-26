@@ -5,21 +5,34 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
+  Check,
   CheckCheck,
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  Facebook,
+  Globe,
   GraduationCap,
   Inbox,
+  Instagram,
   LayoutDashboard,
   LogOut,
   Mail,
   MessageSquare,
   Music,
+  PanelBottom,
   Phone,
   PhoneCall,
+  Power,
   RefreshCw,
   Settings,
+  ShieldAlert,
   Sparkles,
   Trash2,
   Users,
+  Wrench,
+  Youtube,
 } from "lucide-react";
 import heroImage from "@/assets/kryso-hero.jpg";
 import { Button } from "@/components/ui/button";
@@ -36,7 +49,7 @@ import {
   markEnquiryReadRemote,
   type Enquiry,
 } from "@/lib/kryso-storage";
-import { siteSettings, teachers, testimonials } from "@/data/catalog";
+import { siteSettings, teachers } from "@/data/catalog";
 import { SpotlightManager } from "@/components/admin-spotlight";
 import { MusicTrackManager } from "@/components/admin-music-tracks";
 
@@ -53,7 +66,6 @@ export const sections = [
 
 export type Section = (typeof sections)[number];
 
-const seedTestimonials = testimonials.map((item, index) => ({ id: `t${index + 1}`, ...item }));
 const seedCategories = [
   "Guitar",
   "Piano",
@@ -72,6 +84,7 @@ export function AdminDashboardClient() {
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>("Dashboard");
   const [enquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
+  const [settings, setSettings] = useStored("admin-settings", siteSettings);
 
   const unreadCount = enquiries.filter((e) => !e.read).length;
 
@@ -82,6 +95,23 @@ export function AdminDashboardClient() {
     }
     setReady(true);
   }, [router]);
+
+  // Sync settings from MongoDB
+  useEffect(() => {
+    fetch("/api/collections?name=site_settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remote =
+            data.items.find((it: { id?: string }) => it.id === "site_config" || it.id === "contact_info") ||
+            data.items[0];
+          if (remote) {
+            setSettings((prev) => ({ ...prev, ...remote }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [setSettings]);
 
   if (!ready) {
     return (
@@ -183,8 +213,20 @@ export function AdminDashboardClient() {
                 </h1>
                 <p className="mt-1 text-xs text-muted-foreground">Admin dashboard · active management console</p>
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
-                <span className="size-2 rounded-full bg-primary animate-pulse" /> Live Session Active
+              <div className="flex items-center gap-3">
+                {settings.isMaintenanceMode ? (
+                  <button
+                    onClick={() => setSection("Setting")}
+                    className="flex items-center gap-2 rounded-full border border-amber-500/60 bg-amber-500/20 px-4 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors animate-pulse"
+                    title="Click to manage Maintenance Mode"
+                  >
+                    <Wrench size={14} className="text-amber-400" /> Maintenance Mode LIVE
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+                    <span className="size-2 rounded-full bg-primary animate-pulse" /> Live Session Active
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -379,14 +421,12 @@ function MusicSection() {
 }
 
 // ----------------------------------------------------
-// 3. Academy Section (Courses, Students, Testimonials, Gallery)
+// 3. Academy Section (Courses, Students)
 // ----------------------------------------------------
 function AcademySection() {
-  const [tab, setTab] = useState<"courses" | "students" | "testimonials" | "gallery">("courses");
+  const [tab, setTab] = useState<"courses" | "students">("courses");
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
   const [storedStudents] = useStored<unknown[]>("admin-students-v3", []);
-  const [storedTestimonials] = useStored<unknown[]>("admin-testimonials-v3", []);
-  const [storedGallery] = useStored<unknown[]>("admin-gallery-v3", []);
 
   return (
     <div>
@@ -394,7 +434,7 @@ function AcademySection() {
         <div>
           <h1 className="font-display text-2xl font-extrabold text-foreground">Academy Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Clean state active. All courses, students, testimonials, and gallery are stored directly in MongoDB & Cloudinary.
+            Clean state active. All courses and students are stored directly in MongoDB & Cloudinary.
           </p>
         </div>
         <div className="flex flex-wrap rounded-lg bg-secondary p-1 border border-border gap-1">
@@ -418,26 +458,6 @@ function AcademySection() {
           >
             Students ({storedStudents.length})
           </button>
-          <button
-            onClick={() => setTab("testimonials")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
-              tab === "testimonials"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Testimonials ({storedTestimonials.length})
-          </button>
-          <button
-            onClick={() => setTab("gallery")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
-              tab === "gallery"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Gallery ({storedGallery.length})
-          </button>
         </div>
       </div>
 
@@ -450,66 +470,86 @@ function AcademySection() {
           folder="kryso/academy"
           seed={[]}
           fields={[
-            { key: "imageUrl", label: "Image", type: "image", placeholder: "Upload course image to Cloudinary" },
+            { key: "imageUrl", label: "Course Image", type: "image", placeholder: "Upload course image to Cloudinary" },
             { key: "name", label: "Course Name", placeholder: "e.g. Electric Guitar Mastery" },
-            { key: "instructor", label: "Teacher Name", placeholder: "e.g. Aarav Kulkarni" },
-            { key: "fees", label: "Price (₹)", type: "number", placeholder: "e.g. 2500" },
+            {
+              key: "instructor",
+              label: "Teacher Name",
+              type: "select",
+              placeholder: "Select assigned teacher...",
+              dynamicCollection: "academy_teachers",
+              storageKeyFallback: "admin-teachers-v3",
+              dynamicLabelKey: "name",
+            },
+            {
+              key: "fees",
+              label: "Selling Price (₹)",
+              type: "number",
+              placeholder: "e.g. 2000 (Final offer / discounted price)",
+            },
+            {
+              key: "actualPrice",
+              label: "Actual / MRP Price (₹)",
+              type: "number",
+              placeholder: "e.g. 3500 (Original price to show discount %)",
+            },
             { key: "description", label: "Description", type: "textarea", placeholder: "Detailed course overview, curriculum, and skills taught..." },
-            { key: "duration", label: "Duration", placeholder: "e.g. 3 Months" },
-            { key: "level", label: "Level", placeholder: "e.g. All levels, Beginner, Advanced" },
+            {
+              key: "duration",
+              label: "Duration",
+              type: "select",
+              options: ["1 Month", "2 Months", "3 Months", "6 Months", "1 Year", "Weekend Masterclass"],
+              placeholder: "Select duration...",
+            },
+            {
+              key: "level",
+              label: "Level",
+              type: "select",
+              options: ["All levels", "Beginner", "Intermediate", "Advanced", "Concert Masterclass"],
+              placeholder: "Select level...",
+            },
           ]}
         />
       )}
 
       {tab === "students" && (
         <CollectionManager
-          title="Student Roster"
-          description="Enrolled academy students and their progression levels. Saved in MongoDB."
+          title="Student Roster & Enrollments"
+          description="Enrolled students across academy courses with payment records & contact info. Saved in MongoDB."
           storageKey="admin-students-v3"
           apiCollection="academy_students"
           folder="kryso/students"
           seed={[]}
-          filterKey="level"
+          filterKey="course"
           fields={[
-            { key: "name", label: "Student Name" },
-            { key: "avatarUrl", label: "Student Photo", type: "image" },
-            { key: "course", label: "Enrolled Course" },
-            { key: "level", label: "Current Level" },
+            { key: "name", label: "Student Name", placeholder: "e.g. Rahul Sharma" },
+            {
+              key: "course",
+              label: "Enrolled Course",
+              type: "select",
+              dynamicCollection: "academy_courses",
+              storageKeyFallback: "admin-courses-v3",
+              dynamicLabelKey: "name",
+              placeholder: "Select enrolled course...",
+            },
+            { key: "mobile", label: "Mobile / WhatsApp", placeholder: "+91 98765 43210" },
+            { key: "email", label: "Email Address", placeholder: "student@example.com" },
+            { key: "fees", label: "Fee Paid (₹)", type: "number", placeholder: "2000" },
+            { key: "paymentStatus", label: "Payment Status", placeholder: "PAID via Razorpay" },
+            { key: "invoiceNumber", label: "Invoice Number", placeholder: "KRYSO-INV-XXXXXX" },
+            { key: "paymentId", label: "Payment / Txn ID", placeholder: "pay_..." },
+            { key: "age", label: "Age", placeholder: "e.g. 19" },
+            { key: "dob", label: "Date of Birth", placeholder: "YYYY-MM-DD" },
+            { key: "address", label: "Address", type: "textarea", placeholder: "Residential address..." },
+            {
+              key: "level",
+              label: "Level",
+              type: "select",
+              options: ["Enrolled Student", "Beginner", "Intermediate", "Advanced", "Mastery"],
+              placeholder: "Select level...",
+            },
             { key: "joined", label: "Date Joined" },
-          ]}
-        />
-      )}
-
-      {tab === "testimonials" && (
-        <CollectionManager
-          title="Student Reviews"
-          description="Parent and student testimonials displayed on the academy page. Saved in MongoDB."
-          storageKey="admin-testimonials-v3"
-          apiCollection="academy_testimonials"
-          folder="kryso/testimonials"
-          seed={[]}
-          fields={[
-            { key: "name", label: "Reviewer Name" },
-            { key: "avatarUrl", label: "Reviewer Avatar", type: "image" },
-            { key: "course", label: "Course / Instrument" },
-            { key: "text", label: "Review Content", type: "textarea" },
-          ]}
-        />
-      )}
-
-      {tab === "gallery" && (
-        <CollectionManager
-          title="Academy Gallery"
-          description="Photos and memorable moments from concerts and rehearsals. Saved in MongoDB; photos in Cloudinary."
-          storageKey="admin-gallery-v3"
-          apiCollection="academy_gallery"
-          folder="kryso/gallery"
-          seed={[]}
-          filterKey="category"
-          fields={[
-            { key: "imageUrl", label: "Gallery Photo", type: "image" },
-            { key: "caption", label: "Image Caption" },
-            { key: "category", label: "Category (Workshops, Events, Studio)" },
+            { key: "avatarUrl", label: "Student Photo", type: "image" },
           ]}
         />
       )}
@@ -993,106 +1033,643 @@ function EnquirySection() {
 // ----------------------------------------------------
 function SettingSection() {
   const [settings, setSettings] = useStored("admin-settings", siteSettings);
-  const [tab, setTab] = useState<"branding" | "homepage">("branding");
+  const [tab, setTab] = useState<"footer" | "maintenance" | "branding" | "homepage">("footer");
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [syncedMongo, setSyncedMongo] = useState(false);
 
-  const brandingFields = [
-    { key: "businessName" as const, label: "Business / Academy Name" },
-    { key: "tagline" as const, label: "Brand Tagline" },
-    { key: "footerText" as const, label: "Footer Copyright Text" },
-  ];
+  // Sync settings from MongoDB collection on load
+  useEffect(() => {
+    fetch("/api/collections?name=site_settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remote =
+            data.items.find((it: { id?: string }) => it.id === "site_config" || it.id === "contact_info") ||
+            data.items[0];
+          if (remote) {
+            setSettings((prev) => ({ ...prev, ...remote }));
+            setSyncedMongo(true);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [setSettings]);
 
-  const homepageFields = [
-    { key: "heroTitle" as const, label: "Hero Title Headline" },
-    { key: "heroSubtitle" as const, label: "Hero Subtitle Description" },
-  ];
+  const handleSave = async (customSettings?: typeof settings) => {
+    const dataToSave = customSettings || settings;
+    setSaving(true);
+    setSaved(false);
+
+    setSettings(dataToSave);
+
+    try {
+      await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "site_settings",
+          item: {
+            id: "site_config",
+            ...dataToSave,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      // Also persist to contact_info for backward compatibility
+      await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "site_settings",
+          item: {
+            id: "contact_info",
+            ...dataToSave,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      setSyncedMongo(true);
+    } catch {
+      // Local storage saved safely
+    }
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 4000);
+  };
+
+  const toggleMaintenanceMode = async () => {
+    const nextState = !settings.isMaintenanceMode;
+    const updated = { ...settings, isMaintenanceMode: nextState };
+    setSettings(updated);
+    await handleSave(updated);
+  };
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
+      {/* Header and navigation tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-6">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">Website Settings</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-extrabold text-foreground">Website Settings</h1>
+            {syncedMongo && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-400" /> MongoDB Synced
+              </span>
+            )}
+            {settings.isMaintenanceMode && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-0.5 text-xs font-bold text-amber-400 animate-pulse">
+                <Wrench size={12} /> Maintenance Active
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage business identity, brand tagline, and homepage hero texts.
+            Manage footer settings, maintenance mode switch, branding, and homepage hero texts.
           </p>
         </div>
-        <div className="flex rounded-lg bg-secondary p-1 border border-border">
+
+        <div className="flex flex-wrap rounded-lg bg-secondary p-1 border border-border gap-1">
+          <button
+            onClick={() => setTab("footer")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+              tab === "footer"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <PanelBottom size={14} /> Footer Settings
+          </button>
+          <button
+            onClick={() => setTab("maintenance")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+              tab === "maintenance"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Wrench size={14} /> Maintenance Button
+            {settings.isMaintenanceMode && <span className="size-2 rounded-full bg-amber-400" />}
+          </button>
           <button
             onClick={() => setTab("branding")}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
               tab === "branding"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Branding
+            <Settings size={14} /> Branding
           </button>
           <button
             onClick={() => setTab("homepage")}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
               tab === "homepage"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Homepage Content
+            <Sparkles size={14} /> Homepage Content
           </button>
         </div>
       </div>
 
-      <form
-        className="grid gap-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSettings(settings);
-          setSaved(true);
-        }}
-      >
-        {tab === "branding" ? (
-          <div className="grid gap-4">
-            {brandingFields.map((f) => (
-              <label key={f.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
-                {f.label}
-                <Input
-                  value={settings[f.key] || ""}
-                  className="bg-card border-border text-foreground focus-visible:ring-primary"
-                  onChange={(e) => {
-                    setSaved(false);
-                    setSettings({ ...settings, [f.key]: e.target.value });
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {homepageFields.map((f) => (
-              <label key={f.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
-                {f.label}
-                <Textarea
-                  value={settings[f.key] || ""}
-                  rows={3}
-                  className="bg-card border-border text-foreground focus-visible:ring-primary"
-                  onChange={(e) => {
-                    setSaved(false);
-                    setSettings({ ...settings, [f.key]: e.target.value });
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-4">
-          <Button
-            type="submit"
-            className="h-11 rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+      {/* 1. FOOTER SETTINGS TAB */}
+      {tab === "footer" && (
+        <div className="grid gap-6">
+          <form
+            className="grid gap-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }}
           >
-            Save Settings
-          </Button>
-          {saved && <span className="text-sm font-semibold text-primary">Saved to this browser!</span>}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                <PanelBottom size={16} className="text-primary" /> Footer Branding & Copyright
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground sm:col-span-2">
+                  Footer Description / About Paragraph
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Short introduction displayed below the Kryso logo in the footer.
+                  </span>
+                  <Textarea
+                    rows={2}
+                    value={settings.footerDescription || ""}
+                    placeholder="A concert-grade music academy in Pune where passion meets world-class mentorship."
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, footerDescription: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Footer Copyright Notice
+                  <Input
+                    value={settings.footerText || ""}
+                    placeholder="© 2026 Kryso Music Academy. All music, all heart."
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, footerText: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Brand Tagline
+                  <Input
+                    value={settings.tagline || ""}
+                    placeholder="Learn Music and Enjoy Music"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, tagline: e.target.value });
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                <Globe size={16} className="text-primary" /> Footer Social Media Links
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="flex items-center gap-1.5 text-red-400">
+                    <Youtube size={14} /> YouTube Channel URL
+                  </span>
+                  <Input
+                    value={settings.youtubeUrl || ""}
+                    placeholder="https://www.youtube.com/@krysomusic"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary text-xs"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, youtubeUrl: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="flex items-center gap-1.5 text-pink-400">
+                    <Instagram size={14} /> Instagram Profile URL
+                  </span>
+                  <Input
+                    value={settings.instagramUrl || ""}
+                    placeholder="https://www.instagram.com/krysomusic"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary text-xs"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, instagramUrl: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="flex items-center gap-1.5 text-blue-400">
+                    <Facebook size={14} /> Facebook Page URL
+                  </span>
+                  <Input
+                    value={settings.facebookUrl || ""}
+                    placeholder="https://www.facebook.com/krysomusic"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary text-xs"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, facebookUrl: e.target.value });
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                <PhoneCall size={16} className="text-primary" /> Footer Contact & Studio Info
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Primary Phone
+                  <Input
+                    value={settings.phone || ""}
+                    placeholder="+91 87678 28945"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, phone: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Alternate / WhatsApp Phone
+                  <Input
+                    value={settings.altPhone || ""}
+                    placeholder="+91 97673 78750"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, altPhone: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Official Email
+                  <Input
+                    value={settings.email || ""}
+                    placeholder="krysomusicacademy@gmail.com"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, email: e.target.value });
+                    }}
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  Studio Physical Address
+                  <Input
+                    value={settings.address || ""}
+                    placeholder="Pune, Maharashtra, India"
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, address: e.target.value });
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+              >
+                {saving ? "Saving to MongoDB..." : "Save Footer Settings"}
+              </Button>
+              {saved && (
+                <span className="text-sm font-semibold text-emerald-400">
+                  ✓ Footer settings saved to MongoDB & live website!
+                </span>
+              )}
+            </div>
+          </form>
+
+          {/* Live Footer Preview Component */}
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="font-display text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <Eye size={15} className="text-primary" /> Live Footer Preview
+            </h3>
+            <div className="rounded-xl border border-border/80 bg-background/90 p-6 text-foreground text-xs space-y-6">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="lg:col-span-2 space-y-2">
+                  <Image src="/kryso-logo.png" alt="KRYSO" width={110} height={38} className="h-6 w-auto object-contain" />
+                  <p className="text-muted-foreground leading-relaxed text-xs max-w-sm">
+                    {settings.footerDescription || `${settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.`}
+                  </p>
+                  <div className="flex items-center gap-2 pt-2 text-muted-foreground">
+                    {settings.youtubeUrl && <span className="rounded-full border border-border p-1.5"><Youtube size={13} className="text-red-400" /></span>}
+                    {settings.instagramUrl && <span className="rounded-full border border-border p-1.5"><Instagram size={13} className="text-pink-400" /></span>}
+                    {settings.facebookUrl && <span className="rounded-full border border-border p-1.5"><Facebook size={13} className="text-blue-400" /></span>}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground mb-2">Explore</p>
+                  <ul className="space-y-1.5 text-muted-foreground">
+                    <li>Music tracks & releases</li>
+                    <li>Music classes & academy</li>
+                    <li>Contact & studio visits</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground mb-2">Say hello</p>
+                  <ul className="space-y-1.5 text-muted-foreground">
+                    {settings.phone && <li className="text-foreground">{settings.phone}</li>}
+                    {settings.altPhone && <li className="text-foreground">{settings.altPhone}</li>}
+                    {settings.email && <li>{settings.email}</li>}
+                    <li>{settings.address || "Pune, Maharashtra, India"}</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="border-t border-border/50 pt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
+                <span>Admin login</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </form>
+      )}
+
+      {/* 2. MAINTENANCE MODE TAB */}
+      {tab === "maintenance" && (
+        <div className="grid gap-6">
+          {/* Master Maintenance Mode Switch Card */}
+          <div
+            className={`rounded-2xl border p-6 transition-all shadow-xl ${
+              settings.isMaintenanceMode
+                ? "border-amber-500/50 bg-amber-500/10 shadow-amber-500/10"
+                : "border-border bg-card"
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-3 rounded-full ${
+                      settings.isMaintenanceMode ? "bg-amber-400 animate-ping" : "bg-emerald-400"
+                    }`}
+                  />
+                  <h2 className="font-display text-lg font-bold text-foreground">
+                    {settings.isMaintenanceMode
+                      ? "Maintenance Mode is ACTIVE"
+                      : "Website is LIVE & Accessible"}
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-lg leading-relaxed">
+                  {settings.isMaintenanceMode
+                    ? "Visitors to any public page are currently redirected to the Under Maintenance screen. The admin panel remains accessible to manage settings."
+                    : "Your website is online and serving music, academy courses, and enquiry forms to visitors normally."}
+                </p>
+              </div>
+
+              {/* Maintenance Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleMaintenanceMode}
+                disabled={saving}
+                className={`shrink-0 flex items-center gap-2.5 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-lg transition-all ${
+                  settings.isMaintenanceMode
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/25"
+                    : "bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:brightness-110 shadow-amber-500/25"
+                }`}
+              >
+                <Power size={16} />
+                {settings.isMaintenanceMode
+                  ? "Turn Off Maintenance (Go Live)"
+                  : "Activate Maintenance Mode"}
+              </button>
+            </div>
+          </div>
+
+          {/* Maintenance Screen Customization */}
+          <form
+            className="grid gap-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }}
+          >
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                <Wrench size={16} className="text-primary" /> Maintenance Screen Notice & Message
+              </h2>
+
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Maintenance Headline
+                <Input
+                  value={settings.maintenanceTitle || ""}
+                  placeholder="Under Scheduled Maintenance"
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary font-bold"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, maintenanceTitle: e.target.value });
+                  }}
+                />
+              </label>
+
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Maintenance Explanation / Description
+                <Textarea
+                  rows={3}
+                  value={settings.maintenanceMessage || ""}
+                  placeholder="We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!"
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, maintenanceMessage: e.target.value });
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+              >
+                {saving ? "Saving to MongoDB..." : "Save Maintenance Configuration"}
+              </Button>
+              {saved && (
+                <span className="text-sm font-semibold text-emerald-400">
+                  ✓ Maintenance settings saved to MongoDB!
+                </span>
+              )}
+            </div>
+          </form>
+
+          {/* Live Maintenance Screen Preview */}
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="font-display text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <Eye size={15} className="text-primary" /> Visitor Maintenance View Preview
+            </h3>
+            <div className="rounded-xl border border-amber-500/30 bg-background p-8 text-center relative overflow-hidden">
+              <div className="size-16 rounded-2xl bg-secondary/80 border border-border flex items-center justify-center text-primary mx-auto mb-4">
+                <Wrench size={26} className="animate-spin text-primary" style={{ animationDuration: "6s" }} />
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-0.5 text-[11px] font-bold text-amber-400 mb-2">
+                <span className="size-1.5 rounded-full bg-amber-400 animate-ping" /> System Tune-up
+              </span>
+              <h4 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">
+                {settings.maintenanceTitle || "Under Scheduled Maintenance"}
+              </h4>
+              <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                {settings.maintenanceMessage ||
+                  "We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!"}
+              </p>
+              <div className="mt-5 flex items-center justify-center gap-2 text-xs">
+                {settings.phone && (
+                  <span className="rounded-full border border-border bg-card px-3.5 py-1.5 font-bold text-foreground">
+                    Call: {settings.phone}
+                  </span>
+                )}
+                {settings.email && (
+                  <span className="rounded-full border border-border bg-card px-3.5 py-1.5 font-bold text-foreground">
+                    Email: {settings.email}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. BRANDING TAB */}
+      {tab === "branding" && (
+        <form
+          className="grid gap-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+        >
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+              <Settings size={16} className="text-primary" /> Business & Academy Identity
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Business / Academy Name
+                <Input
+                  value={settings.businessName || ""}
+                  placeholder="Kryso Music Academy"
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, businessName: e.target.value });
+                  }}
+                />
+              </label>
+
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Brand Tagline
+                <Input
+                  value={settings.tagline || ""}
+                  placeholder="Learn Music and Enjoy Music"
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, tagline: e.target.value });
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              type="submit"
+              disabled={saving}
+              className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+            >
+              {saving ? "Saving to MongoDB..." : "Save Branding"}
+            </Button>
+            {saved && (
+              <span className="text-sm font-semibold text-emerald-400">
+                ✓ Saved to MongoDB & live website!
+              </span>
+            )}
+          </div>
+        </form>
+      )}
+
+      {/* 4. HOMEPAGE CONTENT TAB */}
+      {tab === "homepage" && (
+        <form
+          className="grid gap-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+        >
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+              <Sparkles size={16} className="text-primary" /> Homepage Hero Headlines
+            </h2>
+            <div className="grid gap-4">
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Hero Title Headline
+                <Input
+                  value={settings.heroTitle || ""}
+                  placeholder="Learn music. Enjoy music."
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary font-bold"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, heroTitle: e.target.value });
+                  }}
+                />
+              </label>
+
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Hero Subtitle Description
+                <Textarea
+                  rows={3}
+                  value={settings.heroSubtitle || ""}
+                  placeholder="Find your rhythm at Kryso Music Academy."
+                  className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, heroSubtitle: e.target.value });
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              type="submit"
+              disabled={saving}
+              className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+            >
+              {saving ? "Saving to MongoDB..." : "Save Homepage Content"}
+            </Button>
+            {saved && (
+              <span className="text-sm font-semibold text-emerald-400">
+                ✓ Saved to MongoDB & live website!
+              </span>
+            )}
+          </div>
+        </form>
+      )}
     </div>
   );
 }

@@ -435,11 +435,10 @@ export function MusicTrackManager() {
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     {track.audioUrl && (
                       <a
-                        href={track.audioUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                        href={`/api/download?url=${encodeURIComponent(track.audioUrl)}&filename=${encodeURIComponent(`${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`)}`}
+                        download={`${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`}
                         className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="Open/Download audio"
+                        title="Download audio file directly"
                       >
                         <Download size={15} />
                       </a>
@@ -599,8 +598,8 @@ export function MusicTrackManager() {
                   </label>
                 </div>
                 <Input
-                  type="url"
-                  placeholder="Or paste direct image URL"
+                  type="text"
+                  placeholder="Or paste direct image URL or /uploads/ path"
                   value={editing.imageUrl}
                   className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                   onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
@@ -658,8 +657,8 @@ export function MusicTrackManager() {
                 <label className="grid gap-1 text-xs text-muted-foreground">
                   Direct Music Download Link (Cloudinary URL, MP3, MP4, Dropbox, Google Drive):
                   <Input
-                    type="url"
-                    placeholder="https://res.cloudinary.com/... or https://domain.com/track.mp4"
+                    type="text"
+                    placeholder="https://res.cloudinary.com/... or /uploads/... or direct link"
                     value={editing.audioUrl}
                     className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                     onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}

@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { type Course } from "@/data/catalog";
 import { EnquiryButton } from "../enquiry-button";
+import { CourseEnrollmentModal } from "@/components/enrollment-modal";
 
 const perks = [
   { icon: Award, title: "Experienced teachers", text: "Learn with working concert musicians who love to teach." },
@@ -38,6 +39,7 @@ const perks = [
 export function AcademyClient() {
   const [courseList, setCourseList] = useState<Course[]>([]);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
+  const [enrollModalCourse, setEnrollModalCourse] = useState<Course | null>(null);
   const [testimonialList, setTestimonialList] = useState<{ name: string; course: string; text: string }[]>([]);
   const [galleryList, setGalleryList] = useState<{ id: string; imageUrl?: string; caption?: string }[]>([]);
   const [review, setReview] = useState(0);
@@ -375,14 +377,35 @@ export function AcademyClient() {
                         </span>
                       </div>
                     )}
-                    {(Boolean(course.fees) || Boolean((course as unknown as { price?: number }).price)) && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground font-medium">Price:</span>
-                        <span className="font-extrabold text-primary text-sm">
-                          ₹{Number(course.fees || (course as unknown as { price?: number }).price || 0).toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const sellingPrice = Number(course.fees || (course as unknown as { price?: number }).price || 0);
+                      const actualPrice = Number(course.actualPrice || (course as unknown as { originalPrice?: number }).originalPrice || 0);
+                      const hasDiscount = actualPrice > sellingPrice && sellingPrice > 0;
+                      const discountPercent = hasDiscount ? Math.round(((actualPrice - sellingPrice) / actualPrice) * 100) : 0;
+
+                      if (!sellingPrice && !actualPrice) return null;
+
+                      return (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground font-medium">Price:</span>
+                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            <span className="font-extrabold text-primary text-sm">
+                              ₹{sellingPrice.toLocaleString("en-IN")}
+                            </span>
+                            {hasDiscount && (
+                              <>
+                                <span className="text-[11px] text-muted-foreground line-through">
+                                  ₹{actualPrice.toLocaleString("en-IN")}
+                                </span>
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-400">
+                                  {discountPercent}% OFF
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {course.duration && (
                       <div className="flex items-center justify-between text-muted-foreground">
                         <span className="font-medium">Duration:</span>
@@ -402,12 +425,13 @@ export function AcademyClient() {
                   >
                     Know More <Info size={13} className="ml-1 text-primary" />
                   </Button>
-                  <EnquiryButton
-                    course={course.name}
+                  <Button
+                    type="button"
+                    onClick={() => setEnrollModalCourse(course)}
                     className="h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all"
                   >
                     Enroll Now <ArrowRight size={13} className="ml-1" />
-                  </EnquiryButton>
+                  </Button>
                 </div>
               </article>
             ))}
@@ -575,9 +599,21 @@ export function AcademyClient() {
 
                 <div className="rounded-xl border border-border bg-secondary/60 p-3.5">
                   <span className="text-muted-foreground font-medium block">Price / Fees</span>
-                  <span className="mt-1 block font-extrabold text-primary text-sm">
-                    ₹{Number(detailCourse.fees || (detailCourse as unknown as { price?: number }).price || 0).toLocaleString("en-IN")}
-                  </span>
+                  <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+                    <span className="font-extrabold text-primary text-sm">
+                      ₹{Number(detailCourse.fees || (detailCourse as unknown as { price?: number }).price || 0).toLocaleString("en-IN")}
+                    </span>
+                    {Number(detailCourse.actualPrice || (detailCourse as unknown as { originalPrice?: number }).originalPrice || 0) > Number(detailCourse.fees || (detailCourse as unknown as { price?: number }).price || 0) && (
+                      <>
+                        <span className="text-xs text-muted-foreground line-through">
+                          ₹{Number(detailCourse.actualPrice || (detailCourse as unknown as { originalPrice?: number }).originalPrice || 0).toLocaleString("en-IN")}
+                        </span>
+                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-extrabold text-emerald-400">
+                          {Math.round(((Number(detailCourse.actualPrice || (detailCourse as unknown as { originalPrice?: number }).originalPrice || 0) - Number(detailCourse.fees || (detailCourse as unknown as { price?: number }).price || 0)) / Number(detailCourse.actualPrice || (detailCourse as unknown as { originalPrice?: number }).originalPrice || 0)) * 100)}% OFF
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {detailCourse.duration && (
@@ -616,18 +652,30 @@ export function AcademyClient() {
                 >
                   Close
                 </Button>
-                <EnquiryButton
-                  course={detailCourse.name}
-                  onClick={() => setDetailCourse(null)}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const selected = detailCourse;
+                    setDetailCourse(null);
+                    setEnrollModalCourse(selected);
+                  }}
                   className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-lg shadow-primary/20 px-6"
                 >
                   Enroll Now in {detailCourse.name} <ArrowRight size={14} className="ml-1" />
-                </EnquiryButton>
+                </Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Course Enrollment & Razorpay Payment Modal */}
+      {enrollModalCourse && (
+        <CourseEnrollmentModal
+          course={enrollModalCourse}
+          onClose={() => setEnrollModalCourse(null)}
+        />
+      )}
     </SiteShell>
   );
 }

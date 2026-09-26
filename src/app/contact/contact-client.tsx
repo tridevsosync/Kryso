@@ -24,17 +24,22 @@ export function ContactClient() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [inquiryType, setInquiryType] = useState("General Inquiry");
-  const [courses, setCourses] = useState<string[]>([
-    "Guitar",
-    "Piano",
-    "Keyboard",
-    "Drums",
-    "Violin",
-    "Flute",
-    "Harmonium",
-    "Tabla",
-    "Vocal singing",
-  ]);
+  const [courses, setCourses] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("admin-courses-v3");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((c: { name?: string }) => c.name?.trim())
+              .filter((n: string | undefined): n is string => Boolean(n));
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [selectedCourse, setSelectedCourse] = useState("");
 
   // Sync latest site_settings & courses from MongoDB
@@ -59,7 +64,7 @@ export function ContactClient() {
             .map((c: { name?: string }) => c.name?.trim())
             .filter((n: string | undefined): n is string => Boolean(n));
           if (names.length > 0) {
-            setCourses((prev) => Array.from(new Set([...names, ...prev])));
+            setCourses(Array.from(new Set(names)));
           }
         }
       })

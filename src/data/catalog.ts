@@ -1,5 +1,5 @@
 export type Product = { id: string; name: string; category: string; price: number; rating: number; description: string; tag: string; imageUrl?: string };
-export type Course = { id: string; name: string; duration: string; fees: number; level: string; instructor: string; description: string; icon?: string; imageUrl?: string };
+export type Course = { id: string; name: string; duration: string; fees: number; actualPrice?: number; originalPrice?: number; level: string; instructor: string; description: string; icon?: string; imageUrl?: string };
 
 export const categories = ["All instruments", "Guitar", "Piano", "Keyboard", "Drum", "Violin", "Flute", "Harmonium", "Tabla", "Ukulele", "Accessories"];
 export const products: Product[] = [
@@ -30,12 +30,18 @@ export const siteSettings = {
   email: "krysomusicacademy@gmail.com",
   address: "Pune, Maharashtra, India",
   footerText: "© 2026 Kryso Music Academy. All music, all heart.",
+  footerDescription: "A concert-grade music academy in Pune where passion meets world-class mentorship.",
   heroTitle: "Learn music. Enjoy music.",
   heroSubtitle: "Find your rhythm at Kryso Music Academy.",
-  youtubeUrl: "https://www.youtube.com/@krysomusicacademy",
-  instagramUrl: "https://www.instagram.com/kryso_music_academy",
-  facebookUrl: "https://www.facebook.com/krysomusicacademy",
+  youtubeUrl: "https://www.youtube.com/@krysomusic",
+  instagramUrl: "https://www.instagram.com/krysomusic",
+  facebookUrl: "https://www.facebook.com/krysomusic",
+  isMaintenanceMode: false,
+  maintenanceTitle: "Under Scheduled Maintenance",
+  maintenanceMessage: "We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!",
 };
+
+export type SiteSettings = typeof siteSettings;
 
 export type MusicTrack = {
   id: string;

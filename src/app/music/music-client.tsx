@@ -11,6 +11,7 @@ import {
   Facebook,
   Headphones,
   Instagram,
+  Loader2,
   Lock,
   Music,
   Pause,
@@ -42,6 +43,7 @@ export function MusicShopClient() {
 
   // Audio player state
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [downloadingTrackId, setDownloadingTrackId] = useState<string | null>(null);
 
   // Social follow-to-unlock modal state
   const [lockModalTrack, setLockModalTrack] = useState<MusicTrack | null>(null);
@@ -160,13 +162,39 @@ export function MusicShopClient() {
       alert("No audio file download link configured for this track yet.");
       return;
     }
-    const link = document.createElement("a");
-    link.href = track.audioUrl;
-    link.download = `${track.name} - ${track.singer}.mp3`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    setDownloadingTrackId(track.id);
+
+    try {
+      const isMp4 = track.audioUrl.toLowerCase().includes(".mp4");
+      const isWav = track.audioUrl.toLowerCase().includes(".wav");
+      const isM4a = track.audioUrl.toLowerCase().includes(".m4a");
+      const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
+      const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
+      const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
+      const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
+
+      const downloadEndpoint = `/api/download?url=${encodeURIComponent(track.audioUrl)}&filename=${encodeURIComponent(filename)}`;
+
+      // Create an invisible anchor tag to trigger instant native browser download
+      const link = document.createElement("a");
+      link.href = downloadEndpoint;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        setDownloadingTrackId(null);
+      }, 1200);
+    } catch (err) {
+      console.error("Direct download error:", err);
+      window.open(track.audioUrl, "_blank");
+      setDownloadingTrackId(null);
+    }
   };
 
   const markStepDone = (key: "yt" | "ig" | "fb", url: string) => {
@@ -176,12 +204,13 @@ export function MusicShopClient() {
 
   const completeUnlock = () => {
     if (!lockModalTrack) return;
+    const currentTrack = lockModalTrack;
     // Unlock in temporary component state only for this view session
-    const nextList = [...unlockedTrackIds, lockModalTrack.id];
+    const nextList = [...unlockedTrackIds, currentTrack.id];
     setUnlockedTrackIds(nextList);
 
-    triggerDownload(lockModalTrack);
     setLockModalTrack(null);
+    triggerDownload(currentTrack);
   };
 
   const allStepsDone = steps.yt && steps.ig && steps.fb;
@@ -458,13 +487,18 @@ export function MusicShopClient() {
                   <div className="mt-6 border-t border-border/70 pt-4">
                     <Button
                       onClick={() => handleDownloadClick(track)}
+                      disabled={downloadingTrackId === track.id}
                       className={`w-full h-11 rounded-full font-bold shadow-md transition-all text-sm ${
                         isUnlocked
                           ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
                           : "bg-gradient-to-r from-amber-500 to-primary text-primary-foreground hover:brightness-110"
                       }`}
                     >
-                      {isUnlocked ? (
+                      {downloadingTrackId === track.id ? (
+                        <>
+                          <Loader2 size={16} className="mr-2 animate-spin" /> Downloading...
+                        </>
+                      ) : isUnlocked ? (
                         <>
                           <Download size={16} className="mr-2" /> Download Track
                         </>
@@ -718,17 +752,33 @@ export function MusicShopClient() {
               {allStepsDone ? (
                 <Button
                   onClick={completeUnlock}
+                  disabled={downloadingTrackId === lockModalTrack.id}
                   className="w-full h-12 rounded-full font-bold bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25 animate-pulse text-sm"
                 >
-                  <Download size={17} className="mr-2" /> Download Unlocked Track Now!
+                  {downloadingTrackId === lockModalTrack.id ? (
+                    <>
+                      <Loader2 size={17} className="mr-2 animate-spin" /> Starting Download...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={17} className="mr-2" /> Download Unlocked Track Now!
+                    </>
+                  )}
                 </Button>
               ) : (
                 <Button
                   onClick={completeUnlock}
+                  disabled={downloadingTrackId === lockModalTrack.id}
                   variant="outline"
                   className="w-full h-11 rounded-full text-xs font-semibold border-border hover:bg-secondary text-muted-foreground"
                 >
-                  I have subscribed — Unlock and download
+                  {downloadingTrackId === lockModalTrack.id ? (
+                    <>
+                      <Loader2 size={14} className="mr-2 animate-spin" /> Starting Download...
+                    </>
+                  ) : (
+                    "I have subscribed — Unlock and download"
+                  )}
                 </Button>
               )}
             </div>
