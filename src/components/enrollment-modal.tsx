@@ -404,7 +404,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
               </label>
 
               {/* Age and DOB */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="grid gap-1 text-xs font-bold text-foreground">
                   <span>Age (Years) *</span>
                   <Input
@@ -499,19 +499,19 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
-                  className="rounded-full border-border hover:bg-secondary text-xs"
+                  className="h-11 sm:h-10 rounded-full border-border hover:bg-secondary text-xs"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="h-12 rounded-full px-8 font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 text-sm"
+                  className="h-12 rounded-full px-6 sm:px-8 font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 text-xs sm:text-sm"
                 >
                   Pay ₹{sellingPrice.toLocaleString("en-IN")} via Razorpay <ArrowRight size={15} className="ml-1.5" />
                 </Button>
@@ -579,7 +579,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
               <div className="size-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
                 <CheckCircle2 size={30} />
               </div>
-              <h2 className="font-display text-2xl font-extrabold text-foreground">
+              <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">
                 Enrollment Confirmed & Paid!
               </h2>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
@@ -596,10 +596,10 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
             {/* Printable Tax Invoice Box */}
             <div
               id="printable-kryso-invoice"
-              className="rounded-2xl border border-border bg-background p-5 sm:p-6 text-foreground text-xs space-y-4 shadow-sm"
+              className="rounded-2xl border border-border bg-background p-4 sm:p-6 text-foreground text-xs space-y-4 shadow-sm"
             >
               {/* Invoice Header */}
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-border pb-4">
                 <div>
                   <Image
                     src="/kryso-logo.png"
@@ -612,7 +612,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
                   <p className="text-muted-foreground text-[11px]">Pune, Maharashtra, India</p>
                   <p className="text-muted-foreground text-[11px]">Email: krysomusicacademy@gmail.com</p>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <span className="inline-block rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-400 mb-1">
                     TAX INVOICE / RECEIPT
                   </span>
@@ -623,7 +623,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
               </div>
 
               {/* Student Details Grid */}
-              <div className="grid grid-cols-2 gap-3 border-b border-border pb-4 text-[11px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b border-border pb-4 text-[11px]">
                 <div>
                   <p className="text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">Billed To (Student):</p>
                   <p className="font-bold text-foreground text-xs mt-0.5">{formData.name}</p>
@@ -640,7 +640,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
 
               {/* Course Item Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[340px]">
                   <thead className="border-b border-border text-[10px] uppercase text-muted-foreground">
                     <tr>
                       <th className="py-1.5">Course / Program</th>
@@ -678,12 +678,12 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
             </div>
 
             {/* Invoice Action Buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handlePrint}
-                className="rounded-full border-border hover:bg-secondary text-xs font-bold gap-1.5"
+                className="h-11 sm:h-10 rounded-full border-border hover:bg-secondary text-xs font-bold gap-1.5 justify-center"
               >
                 <Printer size={14} /> Print / Save PDF Invoice
               </Button>
@@ -691,7 +691,7 @@ export function CourseEnrollmentModal({ course, onClose }: EnrollmentModalProps)
               <Button
                 type="button"
                 onClick={onClose}
-                className="rounded-full px-7 font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
+                className="h-11 sm:h-10 rounded-full px-7 font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs justify-center"
               >
                 Done & Return to Courses
               </Button>

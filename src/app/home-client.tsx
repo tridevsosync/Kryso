@@ -35,6 +35,7 @@ import { HomeSpotlight } from "@/components/home-spotlight";
 import { CourseEnrollmentModal } from "@/components/enrollment-modal";
 import { useStored } from "@/lib/kryso-storage";
 import { siteSettings, type Course, type MusicTrack } from "@/data/catalog";
+import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
 
 export function HomeClient() {
   const [settings] = useStored("admin-settings", siteSettings);
@@ -105,7 +106,8 @@ export function HomeClient() {
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      const audio = new Audio(track.audioUrl);
+      const resolvedAudioUrl = formatAudioUrl(track.audioUrl);
+      const audio = new Audio(resolvedAudioUrl);
       audioRef.current = audio;
       audio.play().catch(() => {});
       audio.onended = () => setPlayingTrackId(null);
@@ -119,7 +121,7 @@ export function HomeClient() {
   return (
     <SiteShell>
       {/* 1. HERO SPOTLIGHT CAROUSEL */}
-      <section className="relative isolate min-h-[620px] overflow-hidden bg-background text-foreground md:min-h-[680px] flex items-center py-6 sm:py-10 border-b border-border/80">
+      <section className="relative isolate min-h-[500px] sm:min-h-[600px] md:min-h-[660px] overflow-hidden bg-background text-foreground flex items-center py-4 sm:py-8 md:py-10 border-b border-border/80">
         <Image
           src={heroImage}
           alt="Concert stage background atmosphere"
@@ -134,10 +136,10 @@ export function HomeClient() {
         <div className="pointer-events-none absolute left-1/2 top-10 -z-10 h-72 w-[600px] -translate-x-1/2 rounded-full bg-primary/20 blur-[130px]" />
 
         <div className="w-full">
-          <div className="page-shell mb-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-sm">
+          <div className="page-shell mb-2 sm:mb-3">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-primary shadow-sm">
               <span className="size-2 rounded-full bg-primary animate-ping" />
-              KRYSO MUSIC ACADEMY & STUDIO · PUNE
+              <span className="truncate">KRYSO MUSIC ACADEMY & STUDIO · PUNE</span>
             </div>
           </div>
           <HomeSpotlight />
@@ -145,7 +147,7 @@ export function HomeClient() {
       </section>
 
       {/* 2. STATS & LIVE HIGHLIGHTS BAR */}
-      <section className="relative -mt-6 z-20 page-shell">
+      <section className="relative -mt-4 sm:-mt-6 z-20 page-shell">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-border/80 bg-border shadow-2xl backdrop-blur-xl">
           {[
             {
@@ -177,21 +179,21 @@ export function HomeClient() {
             return (
               <div
                 key={item.title}
-                className="bg-card/95 p-6 sm:p-7 flex flex-col justify-between transition-colors hover:bg-secondary/70 group"
+                className="bg-card/95 p-4 sm:p-6 lg:p-7 flex flex-col justify-between transition-colors hover:bg-secondary/70 group"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-2xl sm:text-3xl font-extrabold text-primary">
+                  <span className="font-display text-xl sm:text-2xl lg:text-3xl font-extrabold text-primary">
                     {item.number}
                   </span>
-                  <div className="grid size-9 place-items-center rounded-full bg-primary/10 text-primary group-hover:scale-110 transition-transform">
-                    <Icon size={17} />
+                  <div className="grid size-8 sm:size-9 place-items-center rounded-full bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                    <Icon size={16} />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <p className="font-display text-sm sm:text-base font-bold text-foreground">
+                <div className="mt-2.5 sm:mt-3">
+                  <p className="font-display text-xs sm:text-sm lg:text-base font-bold text-foreground">
                     {item.title}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.desc}</p>
                 </div>
               </div>
             );
@@ -201,7 +203,7 @@ export function HomeClient() {
 
       {/* 3. ACADEMY COURSES SHOWCASE SECTION */}
       <section className="page-shell section-space">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <SectionHeading
             label="Kryso Academy Programs"
             title="Master Your Instrument & Sound"
@@ -210,7 +212,7 @@ export function HomeClient() {
           <Link href="/academy" className="shrink-0">
             <Button
               variant="outline"
-              className="rounded-full px-6 h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
+              className="w-full sm:w-auto rounded-full px-5 sm:px-6 h-10 sm:h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
             >
               View Full Academy Curriculum <ArrowRight size={15} className="ml-2 text-primary" />
             </Button>
@@ -307,7 +309,7 @@ export function HomeClient() {
 
                     {/* Card Actions: Know More & Enroll Now */}
                     <div className="mt-5 grid grid-cols-2 gap-2 pt-4 border-t border-border/60">
-                      <Link href="/academy" className="w-full">
+                      <Link href={`/academy/${encodeURIComponent(course.id || course.name)}`} className="w-full">
                         <Button
                           variant="outline"
                           className="w-full h-10 rounded-full font-bold border-border hover:bg-secondary hover:border-primary/50 text-foreground text-xs"
@@ -350,7 +352,7 @@ export function HomeClient() {
         <div className="pointer-events-none absolute right-0 top-1/3 size-96 rounded-full bg-primary/10 blur-[130px]" />
 
         <div className="page-shell section-space">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
             <SectionHeading
               label="Kryso Sound Studio Releases"
               title="Original Music & Master Audio"
@@ -359,7 +361,7 @@ export function HomeClient() {
             <Link href="/music" className="shrink-0">
               <Button
                 variant="outline"
-                className="rounded-full px-6 h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
+                className="w-full sm:w-auto rounded-full px-5 sm:px-6 h-10 sm:h-11 font-bold border-border hover:bg-secondary text-foreground text-xs sm:text-sm"
               >
                 Open Music Library <ArrowRight size={15} className="ml-2 text-primary" />
               </Button>
@@ -368,27 +370,27 @@ export function HomeClient() {
 
           {/* Dynamic Tracks Grid */}
           {tracksLoading ? (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-64 rounded-2xl border border-border bg-card/60 animate-pulse" />
               ))}
             </div>
           ) : tracks.length > 0 ? (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {tracks.slice(0, 6).map((track) => {
                 const isPlaying = playingTrackId === track.id;
 
                 return (
                   <div
                     key={track.id}
-                    className="group relative rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
+                    className="group relative rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
                   >
                     <div>
                       {/* Track Artwork & Play overlay */}
-                      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary mb-4">
+                      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-secondary mb-3.5 sm:mb-4">
                         {track.imageUrl ? (
                           <Image
-                            src={track.imageUrl}
+                            src={formatImageUrl(track.imageUrl)}
                             alt={track.name}
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -446,7 +448,7 @@ export function HomeClient() {
                     </div>
 
                     {/* Card Actions */}
-                    <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between">
+                    <div className="mt-4 sm:mt-5 pt-3 border-t border-border/60 flex items-center justify-between">
                       <Link
                         href="/music"
                         className="text-xs font-bold text-primary hover:text-primary/80 inline-flex items-center gap-1"
@@ -465,9 +467,9 @@ export function HomeClient() {
               })}
             </div>
           ) : (
-            <div className="mt-10 rounded-2xl border border-dashed border-border p-10 text-center bg-card/40">
-              <Headphones size={40} className="mx-auto text-primary/60 mb-3" />
-              <h3 className="font-display text-lg font-bold text-foreground">Kryso Sound Studio</h3>
+            <div className="mt-8 sm:mt-10 rounded-2xl border border-dashed border-border p-6 sm:p-10 text-center bg-card/40">
+              <Headphones size={36} className="mx-auto text-primary/60 mb-3" />
+              <h3 className="font-display text-base sm:text-lg font-bold text-foreground">Kryso Sound Studio</h3>
               <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
                 Listen to original productions, DJ stems, and vocal sessions recorded in our Pune studio.
               </p>
@@ -487,7 +489,7 @@ export function HomeClient() {
       <section className="border-y border-border bg-secondary/30 relative overflow-hidden">
         <div className="pointer-events-none absolute -right-20 top-1/2 -translate-y-1/2 size-96 rounded-full bg-primary/10 blur-[120px]" />
 
-        <div className="page-shell section-space grid gap-12 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
+        <div className="page-shell section-space grid gap-8 sm:gap-12 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
           <div>
             <SectionHeading
               label="Why Choose Kryso"
@@ -495,29 +497,29 @@ export function HomeClient() {
               text="We believe music belongs to everyone. From your very first chord, we guide you to play with expression, confidence, and stage readiness."
             />
 
-            <div className="mt-8 space-y-4 text-sm text-foreground">
+            <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 text-xs sm:text-sm text-foreground">
               {[
                 "1-on-1 personalized attention tailored to your exact learning style.",
                 "High-end instruments & acoustic-treated practice rooms available for rehearsal.",
                 "Recitals, ensemble rehearsals, and jam nights with fellow musicians.",
                 "Flexible class timings fitting around your school or work schedule.",
               ].map((point) => (
-                <div key={point} className="flex items-start gap-3">
+                <div key={point} className="flex items-start gap-2.5 sm:gap-3">
                   <div className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/20 text-primary mt-0.5">
-                    <CheckCircle2 size={14} />
+                    <CheckCircle2 size={13} />
                   </div>
-                  <span className="leading-6">{point}</span>
+                  <span className="leading-relaxed">{point}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <EnquiryButton className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90">
-                Book Free Trial Class <ArrowUpRight size={16} />
+            <div className="mt-6 sm:mt-9 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <EnquiryButton className="h-11 rounded-full px-6 sm:px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 text-xs sm:text-sm">
+                Book Free Trial Class <ArrowUpRight size={15} />
               </EnquiryButton>
               <Link
                 href="/contact"
-                className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                className="text-xs sm:text-sm font-bold text-muted-foreground hover:text-primary transition-colors inline-flex items-center justify-center gap-1.5 py-2"
               >
                 Visit our Pune studio <ArrowRight size={14} />
               </Link>
@@ -525,7 +527,7 @@ export function HomeClient() {
           </div>
 
           {/* Pillars Cards */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             {[
               {
                 icon: Award,
@@ -552,15 +554,15 @@ export function HomeClient() {
               return (
                 <div
                   key={pillar.title}
-                  className="rounded-2xl border border-border bg-card/80 p-6 shadow-md transition-all hover:border-primary/40 hover:-translate-y-1"
+                  className="rounded-2xl border border-border bg-card/80 p-5 sm:p-6 shadow-md transition-all hover:border-primary/40 hover:-translate-y-1"
                 >
-                  <div className="grid size-11 place-items-center rounded-full bg-primary/10 text-primary">
-                    <Icon size={20} />
+                  <div className="grid size-10 sm:size-11 place-items-center rounded-full bg-primary/10 text-primary">
+                    <Icon size={18} />
                   </div>
-                  <h4 className="mt-4 font-display text-base font-bold text-foreground">
+                  <h4 className="mt-3 sm:mt-4 font-display text-sm sm:text-base font-bold text-foreground">
                     {pillar.title}
                   </h4>
-                  <p className="mt-1.5 text-xs sm:text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">
                     {pillar.desc}
                   </p>
                 </div>
@@ -572,7 +574,7 @@ export function HomeClient() {
 
       {/* 6. STUDIO VISIT & LOCATION ZONE */}
       <section className="border-t border-border bg-secondary/40">
-        <div className="page-shell section-space grid gap-10 lg:grid-cols-2 lg:items-center">
+        <div className="page-shell section-space grid gap-8 sm:gap-10 lg:grid-cols-2 lg:items-center">
           <div>
             <SectionHeading
               label="Visit Us In Pune"
@@ -580,54 +582,54 @@ export function HomeClient() {
               text="Drop by our Pune academy for an instrument walkthrough, trial consultation, or to check out the rehearsal facilities."
             />
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-                  <MapPin size={15} /> Location
+                  <MapPin size={14} /> Location
                 </div>
-                <p className="mt-2 font-semibold text-foreground text-sm">{studioAddress}</p>
+                <p className="mt-1.5 font-semibold text-foreground text-sm">{studioAddress}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Maharashtra, India</p>
               </div>
 
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-                  <Clock3 size={15} /> Studio Timings
+                  <Clock3 size={14} /> Studio Timings
                 </div>
-                <p className="mt-2 font-semibold text-foreground text-sm">Mon – Sat: 10:00 AM – 8:30 PM</p>
+                <p className="mt-1.5 font-semibold text-foreground text-sm">Mon – Sat: 10:00 AM – 8:30 PM</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Sunday masterclasses & gigs</p>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-4">
+            <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <a
                 href={`tel:${primaryPhone.replace(/[^0-9+]/g, "")}`}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:border-primary hover:text-primary transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 sm:px-5 py-2.5 text-xs font-bold text-foreground hover:border-primary hover:text-primary transition-colors text-center"
               >
                 <Phone size={14} className="text-primary" /> Call Ahead: {primaryPhone}
               </a>
               <Link
                 href="/contact"
-                className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                className="text-xs font-bold text-primary hover:underline inline-flex items-center justify-center gap-1 py-1"
               >
                 Contact & Studio Directions <ArrowRight size={13} />
               </Link>
             </div>
           </div>
 
-          <div className="relative isolate min-h-[300px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl p-8 flex flex-col justify-between">
+          <div className="relative isolate min-h-[260px] sm:min-h-[300px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl p-5 sm:p-8 flex flex-col justify-between">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">Walkthroughs & Auditions</span>
-              <h4 className="font-display text-2xl font-bold text-foreground">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-primary">Walkthroughs & Auditions</span>
+              <h4 className="font-display text-xl sm:text-2xl font-bold text-foreground">
                 Experience the studio sound before you enroll.
               </h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 Meet our instructors, test the acoustic instruments, and discuss which curriculum best matches your schedule and goals.
               </p>
             </div>
 
-            <div className="pt-6">
-              <EnquiryButton className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 w-full sm:w-auto">
-                Schedule a Studio Walkthrough <ArrowUpRight size={16} />
+            <div className="pt-5 sm:pt-6">
+              <EnquiryButton className="h-11 rounded-full px-6 sm:px-7 font-bold shadow-lg shadow-primary/20 w-full sm:w-auto text-xs sm:text-sm">
+                Schedule a Studio Walkthrough <ArrowUpRight size={15} />
               </EnquiryButton>
             </div>
           </div>
@@ -635,26 +637,26 @@ export function HomeClient() {
       </section>
 
       {/* 7. PRE-FOOTER INSPIRATIONAL CTA */}
-      <section className="relative isolate overflow-hidden border-t border-border bg-gradient-to-r from-background via-secondary to-background py-16 sm:py-20 text-foreground">
-        <div className="page-shell flex flex-col md:flex-row md:items-center justify-between gap-8">
+      <section className="relative isolate overflow-hidden border-t border-border bg-gradient-to-r from-background via-secondary to-background py-12 sm:py-16 md:py-20 text-foreground">
+        <div className="page-shell flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-8">
           <div className="max-w-xl">
             <p className="eyebrow">Your First Chord Awaits</p>
-            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
+            <h2 className="mt-2 sm:mt-3 font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground leading-tight">
               Come as you are. Leave ready for the <span className="text-primary">stage.</span>
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground">
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm md:text-base text-muted-foreground">
               Book a consultation with our faculty coordinator today. Let&apos;s talk rhythm, timing, and making great music together.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <EnquiryButton className="h-12 rounded-full px-8 font-bold shadow-xl shadow-primary/25 hover:bg-primary/90 text-sm">
-              Book Audition / Enquiry <ArrowUpRight size={17} />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 shrink-0">
+            <EnquiryButton className="h-11 sm:h-12 rounded-full px-6 sm:px-8 font-bold shadow-xl shadow-primary/25 hover:bg-primary/90 text-xs sm:text-sm text-center justify-center">
+              Book Audition / Enquiry <ArrowUpRight size={16} />
             </EnquiryButton>
-            <Link href="/academy">
+            <Link href="/academy" className="w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="h-12 rounded-full px-7 font-bold border-border hover:bg-secondary text-sm"
+                className="w-full sm:w-auto h-11 sm:h-12 rounded-full px-6 sm:px-7 font-bold border-border hover:bg-secondary text-xs sm:text-sm"
               >
                 Browse Academy
               </Button>

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useStored } from "@/lib/kryso-storage";
+import { formatImageUrl } from "@/lib/media-utils";
 
 export type FieldDef = {
   key: string;
@@ -157,9 +158,17 @@ export function CollectionManager({
 
   // Save row: update local state & sync to MongoDB
   const save = async (row: Row) => {
-    const updated = rows.some((item) => item.id === row.id)
-      ? rows.map((item) => (item.id === row.id ? row : item))
-      : [row, ...rows];
+    // Normalize any image fields that might be Google Drive links
+    const cleanRow = { ...row };
+    fields.forEach((field) => {
+      if (field.type === "image" && typeof cleanRow[field.key] === "string") {
+        cleanRow[field.key] = formatImageUrl(String(cleanRow[field.key]));
+      }
+    });
+
+    const updated = rows.some((item) => item.id === cleanRow.id)
+      ? rows.map((item) => (item.id === cleanRow.id ? cleanRow : item))
+      : [cleanRow, ...rows];
 
     setRows(updated);
     setEditing(null);
@@ -170,7 +179,7 @@ export function CollectionManager({
         const res = await fetch("/api/collections", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: apiCollection, item: row }),
+          body: JSON.stringify({ name: apiCollection, item: cleanRow }),
         });
         const data = await res.json();
         if (data.savedTo === "mongodb") {
@@ -345,7 +354,7 @@ export function CollectionManager({
       {/* Table view */}
       {visible.length ? (
         <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full min-w-150 text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="border-b border-border bg-secondary/80 text-xs uppercase text-muted-foreground">
               <tr>
                 {fields.map((field) => (
@@ -370,7 +379,7 @@ export function CollectionManager({
                           {val ? (
                             <div className="relative size-12 overflow-hidden rounded-lg border border-border bg-secondary">
                               <Image
-                                src={String(val)}
+                                src={formatImageUrl(String(val))}
                                 alt={String(row.name || "Preview")}
                                 fill
                                 sizes="48px"
@@ -433,9 +442,9 @@ export function CollectionManager({
 
       {/* Edit / Add Modal */}
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
           <form
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card border border-border p-6 shadow-2xl text-card-foreground"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card border border-border p-4 sm:p-6 shadow-2xl text-card-foreground"
             onSubmit={(event) => {
               event.preventDefault();
               save(editing);
@@ -468,7 +477,7 @@ export function CollectionManager({
                       {currentImg && (
                         <div className="relative h-36 w-full overflow-hidden rounded-xl border border-border bg-secondary">
                           <Image
-                            src={currentImg}
+                            src={formatImageUrl(currentImg)}
                             alt="Preview"
                             fill
                             sizes="(max-width: 768px) 100vw, 450px"
@@ -516,7 +525,7 @@ export function CollectionManager({
 
                       <Input
                         type="text"
-                        placeholder="Or paste direct image URL or /uploads/ path"
+                        placeholder="Or paste direct image URL, Cloudinary, or Google Drive link"
                         value={currentImg}
                         className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                         onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}

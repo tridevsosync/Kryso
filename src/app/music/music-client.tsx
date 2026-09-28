@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
+import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -254,9 +255,9 @@ export function MusicShopClient() {
       </section>
 
       {/* Main Music Tracks Catalog Section */}
-      <section id="tracks-catalog-section" className="page-shell py-12 scroll-mt-24">
+      <section id="tracks-catalog-section" className="page-shell py-8 sm:py-12 scroll-mt-24">
         {/* Section Heading & Search Form */}
-        <div className="flex flex-wrap items-end justify-between gap-6 pb-6 border-b border-border">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 pb-6 border-b border-border">
           <SectionHeading
             label="Original Sound Catalog"
             title="Music Tracks & Audio Downloads"
@@ -264,15 +265,15 @@ export function MusicShopClient() {
           />
 
           {/* Search Input with Dedicated Search Button */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-80">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-80">
               <span className="sr-only">Search music tracks</span>
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by track, singer, genre..."
-                className="h-11 rounded-full pl-10 pr-9 bg-card border-border text-foreground focus-visible:ring-primary text-sm shadow-sm"
+                className="h-11 rounded-full pl-10 pr-9 bg-card border-border text-foreground focus-visible:ring-primary text-sm shadow-sm w-full"
               />
               {searchQuery && (
                 <button
@@ -289,9 +290,9 @@ export function MusicShopClient() {
             </div>
             <Button
               type="submit"
-              className="h-11 rounded-full px-5 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 shrink-0"
+              className="h-11 rounded-full px-6 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 shrink-0 text-xs sm:text-sm"
             >
-              <Search size={16} className="mr-1.5" /> Search
+              <Search size={15} className="mr-1.5" /> Search
             </Button>
           </form>
         </div>
@@ -404,7 +405,7 @@ export function MusicShopClient() {
                     <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border bg-secondary shadow-inner">
                       {track.imageUrl ? (
                         <Image
-                          src={track.imageUrl}
+                          src={formatImageUrl(track.imageUrl)}
                           alt={track.name}
                           fill
                           sizes="(max-width: 768px) 100vw, 380px"
@@ -475,7 +476,9 @@ export function MusicShopClient() {
                         <audio
                           autoPlay
                           controls
-                          src={track.audioUrl}
+                          controlsList="nodownload noplaybackrate"
+                          onContextMenu={(e) => e.preventDefault()}
+                          src={formatAudioUrl(track.audioUrl)}
                           className="w-full h-8"
                           onEnded={() => setPlayingTrackId(null)}
                         />
@@ -549,7 +552,7 @@ export function MusicShopClient() {
         {/* Pagination Controls                                  */}
         {/* ---------------------------------------------------- */}
         {filteredTracks.length > ITEMS_PER_PAGE && (
-          <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+          <div className="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6 text-center sm:text-left">
             <p className="text-xs text-muted-foreground">
               Showing{" "}
               <strong className="text-foreground">
@@ -559,7 +562,7 @@ export function MusicShopClient() {
               of <strong className="text-foreground">{filteredTracks.length}</strong> tracks
             </p>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
               {/* Previous Page Button */}
               <Button
                 variant="outline"
@@ -568,7 +571,7 @@ export function MusicShopClient() {
                 onClick={() => handlePageChange(validPage - 1)}
                 className="h-9 rounded-full px-3 text-xs font-semibold border-border hover:bg-secondary disabled:opacity-40"
               >
-                <ChevronLeft size={15} className="mr-1" /> Previous
+                <ChevronLeft size={15} className="mr-1" /> Prev
               </Button>
 
               {/* Page Number Buttons */}
@@ -576,7 +579,7 @@ export function MusicShopClient() {
                 <button
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
-                  className={`size-9 rounded-full text-xs font-bold transition-all ${
+                  className={`size-8 sm:size-9 rounded-full text-xs font-bold transition-all ${
                     validPage === pageNum
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                       : "bg-card border border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -605,8 +608,8 @@ export function MusicShopClient() {
       {/* Social Follow-to-Unlock Modal                        */}
       {/* ---------------------------------------------------- */}
       {lockModalTrack && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl text-card-foreground">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-2xl text-card-foreground">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-border pb-4">
               <div className="flex items-center gap-2.5">
@@ -631,7 +634,7 @@ export function MusicShopClient() {
               {lockModalTrack.imageUrl ? (
                 <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
                   <Image
-                    src={lockModalTrack.imageUrl}
+                    src={formatImageUrl(lockModalTrack.imageUrl)}
                     alt={lockModalTrack.name}
                     fill
                     sizes="56px"

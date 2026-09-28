@@ -176,7 +176,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-md">
-        <div className="page-shell flex h-[76px] items-center justify-between gap-4 lg:gap-8">
+        <div className="page-shell flex h-16 sm:h-[76px] items-center justify-between gap-2 sm:gap-4 lg:gap-8">
           <Link href="/" className="flex items-center shrink-0 py-1 group" aria-label="KRYSO home">
             <Image
               src="/kryso-logo.png"
@@ -184,10 +184,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               width={140}
               height={49}
               priority
-              className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+              className="h-7 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
             />
           </Link>
-          <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
+          <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
             {links.map((link) => {
               const isActive = link.to === "/" ? pathname === "/" : pathname.startsWith(link.to);
               return (
@@ -209,23 +209,23 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 setCourseError(false);
                 setEnquiryOpen(true);
               }}
-              className="hidden h-10 rounded-full px-5 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 sm:inline-flex"
+              className="hidden h-9 sm:h-10 rounded-full px-4 sm:px-5 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 sm:inline-flex text-xs sm:text-sm"
             >
-              Enquiry now <ArrowUpRight size={16} />
+              Enquiry now <ArrowUpRight size={15} />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-foreground hover:bg-secondary"
+              className="md:hidden text-foreground hover:bg-secondary size-9"
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               onClick={() => setMobileOpen((v) => !v)}
             >
-              {mobileOpen ? <X /> : <Menu />}
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </Button>
           </div>
         </div>
         {mobileOpen && (
-          <nav className="page-shell grid gap-1 border-t border-border bg-background py-3 md:hidden">
+          <nav className="page-shell grid gap-1 border-t border-border bg-background/98 backdrop-blur-xl py-3 md:hidden animate-in fade-in-50 slide-in-from-top-2 duration-200">
             {links.map((link) => {
               const isActive = link.to === "/" ? pathname === "/" : pathname.startsWith(link.to);
               return (
@@ -233,8 +233,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setMobileOpen(false)}
                   key={link.to}
                   href={link.to}
-                  className={`rounded-md px-3 py-3 font-semibold transition-colors ${
-                    isActive ? "bg-secondary text-primary font-bold" : "text-foreground hover:bg-secondary hover:text-primary"
+                  className={`rounded-xl px-4 py-2.5 font-semibold text-sm transition-colors ${
+                    isActive ? "bg-secondary text-primary font-bold" : "text-foreground hover:bg-secondary/70 hover:text-primary"
                   }`}
                 >
                   {link.label}
@@ -247,17 +247,17 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 setEnquiryOpen(true);
                 setMobileOpen(false);
               }}
-              className="mt-2 rounded-full font-bold shadow-md shadow-primary/20"
+              className="mt-2 h-11 rounded-full font-bold shadow-md shadow-primary/20 text-sm"
             >
-              Enquiry now
+              Enquiry now <ArrowUpRight size={15} className="ml-1" />
             </Button>
           </nav>
         )}
       </header>
       <main>{children}</main>
       <footer className="border-t border-border bg-card text-card-foreground">
-        <div className="page-shell section-space grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <div className="page-shell section-space grid gap-8 sm:gap-12 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="sm:col-span-2">
             <Link href="/" className="inline-block py-1 group" aria-label="KRYSO home">
               <Image
                 src="/kryso-logo.png"
@@ -365,11 +365,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border text-card-foreground shadow-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border text-card-foreground shadow-2xl p-5 sm:p-7 w-[calc(100%-2rem)] sm:w-full max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-foreground">Course Enquiry & Audition</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Select your desired course below. Our mentors will reach out with batches, timing, and fee details.
+            <DialogTitle className="font-display text-xl sm:text-2xl text-foreground">Course Enquiry & Audition</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs sm:text-sm">
+              Select your desired course below. Our mentors will reach out with schedule, timing, and fee details.
             </DialogDescription>
           </DialogHeader>
 

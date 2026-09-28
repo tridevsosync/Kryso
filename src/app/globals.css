@@ -161,6 +161,34 @@
   h1, h2, h3, h4 { font-family: var(--font-display); }
 }
 
-@utility page-shell { width: min(100% - 3rem, 80rem); margin-inline: auto; }
-@utility section-space { padding-block: 6rem; }
-@utility eyebrow { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--color-primary); }
+@utility page-shell { 
+  width: min(calc(100% - 1.5rem), 80rem); 
+  margin-inline: auto; 
+}
+
+@media (min-width: 640px) {
+  .page-shell {
+    width: min(calc(100% - 3rem), 80rem);
+  }
+}
+
+@utility section-space { 
+  padding-block: clamp(3rem, 5vw + 1rem, 6rem); 
+}
+
+@utility eyebrow { 
+  font-size: clamp(0.65rem, 0.5vw + 0.5rem, 0.75rem); 
+  font-weight: 800; 
+  letter-spacing: 0.14em; 
+  text-transform: uppercase; 
+  color: var(--color-primary); 
+}
+
+/* Prevent native audio download button in browser controls */
+audio::-internal-media-controls-download-button {
+  display: none !important;
+}
+
+audio::-webkit-media-controls-enclosure {
+  overflow: hidden;
+}

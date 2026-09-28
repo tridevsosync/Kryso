@@ -15,7 +15,7 @@ export const products: Product[] = [
 
 export const courses: Course[] = [];
 export const testimonials: { name: string; course: string; text: string }[] = [];
-export type Teacher = { id: string; name: string; experience: string; specialization: string; bio: string };
+export type Teacher = { id: string; name: string; experience: string; specialization: string; bio: string; avatarUrl?: string };
 export const teachers: Teacher[] = [];
 export type Student = { id: string; name: string; course: string; level: string; joined: string };
 export const students: Student[] = [];

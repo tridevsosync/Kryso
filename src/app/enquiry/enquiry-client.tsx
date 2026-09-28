@@ -61,68 +61,68 @@ export function EnquiryClient() {
           className="absolute inset-0 -z-20 object-cover object-[center_25%] opacity-35 brightness-75 contrast-125"
         />
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/90 to-background/60" />
-        <div className="page-shell py-16 sm:py-20">
+        <div className="page-shell py-10 sm:py-16 md:py-20">
           <p className="eyebrow">Admissions & Auditions</p>
-          <h1 className="mt-3 font-display text-4xl font-extrabold sm:text-5xl text-foreground">
+          <h1 className="mt-2 sm:mt-3 font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground">
             Course <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">Enquiry</span>
           </h1>
-          <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
+          <p className="mt-3 sm:mt-4 max-w-xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground">
             Select your discipline of interest and take your first step toward musical mastery with Kryso Academy Pune.
           </p>
         </div>
       </section>
 
-      <section className="page-shell section-space grid gap-12 lg:grid-cols-[.9fr_1.1fr]">
+      <section className="page-shell section-space grid gap-8 lg:gap-12 lg:grid-cols-[.9fr_1.1fr]">
         <div>
           <SectionHeading
             label="Why Learn With Us"
             title="Concert-grade training for beginners and performers."
           />
 
-          <div className="mt-8 space-y-4">
-            <div className="flex gap-4 rounded-xl border border-border bg-card/60 p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <GraduationCap size={20} />
+          <div className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+            <div className="flex gap-3 sm:gap-4 rounded-xl border border-border bg-card/60 p-3.5 sm:p-4">
+              <span className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                <GraduationCap size={18} />
               </span>
               <div>
-                <p className="font-bold text-foreground">1-on-1 & Small Group Coaching</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="font-bold text-foreground text-sm sm:text-base">1-on-1 & Small Group Coaching</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                   Individual attention from active stage artists and conservatory educators.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-4 rounded-xl border border-border bg-card/60 p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <Sparkles size={20} />
+            <div className="flex gap-3 sm:gap-4 rounded-xl border border-border bg-card/60 p-3.5 sm:p-4">
+              <span className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                <Sparkles size={18} />
               </span>
               <div>
-                <p className="font-bold text-foreground">Live Stage & Jam Experience</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="font-bold text-foreground text-sm sm:text-base">Live Stage & Jam Experience</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
                   Regular recitals, studio recording sessions, and masterclasses at our Pune studio.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-4 rounded-xl border border-border bg-card/60 p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <BookOpen size={20} />
+            <div className="flex gap-3 sm:gap-4 rounded-xl border border-border bg-card/60 p-3.5 sm:p-4">
+              <span className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                <BookOpen size={18} />
               </span>
               <div>
-                <p className="font-bold text-foreground">Flexible Batches & Certification</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Weekend and weekday morning/evening batches tailored to school and working professionals.
+                <p className="font-bold text-foreground text-sm sm:text-base">Flexible Schedules & Certification</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+                  Weekend and weekday morning/evening schedules tailored to school and working professionals.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 p-5 rounded-xl border border-primary/20 bg-primary/5">
+          <div className="mt-6 sm:mt-8 p-4 sm:p-5 rounded-xl border border-primary/20 bg-primary/5">
             <p className="text-xs font-bold uppercase tracking-wider text-primary">Explore All Classes</p>
-            <p className="mt-1 text-sm text-foreground">Want to browse the detailed syllabus and fee breakdown?</p>
+            <p className="mt-1 text-xs sm:text-sm text-foreground">Want to browse the detailed syllabus and fee breakdown?</p>
             <Link
               href="/academy"
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+              className="mt-2.5 sm:mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
             >
               View Academy Curriculum <ArrowRight size={14} />
             </Link>
@@ -130,10 +130,10 @@ export function EnquiryClient() {
         </div>
 
         {/* Course Enquiry Form */}
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-9 shadow-xl">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 lg:p-9 shadow-xl">
           <p className="eyebrow">Student Registration</p>
-          <h2 className="mt-2 font-display text-2xl font-extrabold text-foreground">Book Your Free Trial / Audition</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="mt-1.5 sm:mt-2 font-display text-xl sm:text-2xl font-extrabold text-foreground">Book Your Free Trial / Audition</h2>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             Please select the course you are interested in. A course selection is mandatory.
           </p>
 
@@ -268,7 +268,7 @@ export function EnquiryClient() {
                 <Textarea
                   name="message"
                   rows={3}
-                  placeholder="Are you a beginner or have some experience? Which batch timing suits you?"
+                  placeholder="Are you a beginner or have some experience? Which class timing suits you?"
                   className="bg-background border-border text-foreground focus-visible:ring-primary"
                 />
               </label>

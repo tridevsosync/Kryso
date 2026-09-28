@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStored } from "@/lib/kryso-storage";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
+import { formatImageUrl, formatAudioUrl, formatDownloadUrl } from "@/lib/media-utils";
 
 const STORAGE_KEY = "admin-music-tracks-v1";
 const COLLECTION_NAME = "music_tracks";
@@ -103,9 +104,15 @@ export function MusicTrackManager() {
       return;
     }
 
-    const updated = tracks.some((item) => item.id === track.id)
-      ? tracks.map((item) => (item.id === track.id ? track : item))
-      : [track, ...tracks];
+    const cleanTrack: MusicTrack = {
+      ...track,
+      imageUrl: formatImageUrl(track.imageUrl),
+      audioUrl: formatAudioUrl(track.audioUrl),
+    };
+
+    const updated = tracks.some((item) => item.id === cleanTrack.id)
+      ? tracks.map((item) => (item.id === cleanTrack.id ? cleanTrack : item))
+      : [cleanTrack, ...tracks];
 
     setTracks(updated);
     setEditing(null);
@@ -115,7 +122,7 @@ export function MusicTrackManager() {
       const res = await fetch("/api/collections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: COLLECTION_NAME, item: track }),
+        body: JSON.stringify({ name: COLLECTION_NAME, item: cleanTrack }),
       });
       const data = await res.json();
       if (data.savedTo === "mongodb") {
@@ -363,7 +370,7 @@ export function MusicTrackManager() {
                     {track.imageUrl ? (
                       <div className="relative size-12 overflow-hidden rounded-lg border border-border bg-secondary">
                         <Image
-                          src={track.imageUrl}
+                          src={formatImageUrl(track.imageUrl)}
                           alt={track.name}
                           fill
                           sizes="48px"
@@ -396,8 +403,9 @@ export function MusicTrackManager() {
                       <div className="flex items-center gap-2">
                         <audio
                           controls
-                          controlsList="nodownload"
-                          src={track.audioUrl}
+                          controlsList="nodownload noplaybackrate"
+                          onContextMenu={(e) => e.preventDefault()}
+                          src={formatAudioUrl(track.audioUrl)}
                           className="h-8 w-44"
                         />
                       </div>
@@ -435,7 +443,7 @@ export function MusicTrackManager() {
                   <td className="whitespace-nowrap px-4 py-3 text-right">
                     {track.audioUrl && (
                       <a
-                        href={`/api/download?url=${encodeURIComponent(track.audioUrl)}&filename=${encodeURIComponent(`${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`)}`}
+                        href={formatDownloadUrl(track.audioUrl, `${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`)}
                         download={`${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`}
                         className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
                         title="Download audio file directly"
@@ -552,7 +560,7 @@ export function MusicTrackManager() {
                 {editing.imageUrl && (
                   <div className="relative h-32 w-full overflow-hidden rounded-xl border border-border bg-secondary">
                     <Image
-                      src={editing.imageUrl}
+                      src={formatImageUrl(editing.imageUrl)}
                       alt="Artwork Preview"
                       fill
                       sizes="400px"
@@ -599,7 +607,7 @@ export function MusicTrackManager() {
                 </div>
                 <Input
                   type="text"
-                  placeholder="Or paste direct image URL or /uploads/ path"
+                  placeholder="Or paste direct image URL, Cloudinary, or Google Drive link"
                   value={editing.imageUrl}
                   className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                   onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
@@ -621,7 +629,13 @@ export function MusicTrackManager() {
                 {editing.audioUrl && (
                   <div className="rounded-lg bg-background p-3 border border-border">
                     <p className="text-xs font-semibold text-muted-foreground mb-1.5">Audio Player Preview:</p>
-                    <audio controls src={editing.audioUrl} className="w-full h-9" />
+                    <audio
+                      controls
+                      controlsList="nodownload noplaybackrate"
+                      onContextMenu={(e) => e.preventDefault()}
+                      src={formatAudioUrl(editing.audioUrl)}
+                      className="w-full h-9"
+                    />
                   </div>
                 )}
 
@@ -655,10 +669,10 @@ export function MusicTrackManager() {
                 </div>
 
                 <label className="grid gap-1 text-xs text-muted-foreground">
-                  Direct Music Download Link (Cloudinary URL, MP3, MP4, Dropbox, Google Drive):
+                  Direct Music Link (Cloudinary URL, MP3, MP4, Google Drive share link, Dropbox):
                   <Input
                     type="text"
-                    placeholder="https://res.cloudinary.com/... or /uploads/... or direct link"
+                    placeholder="https://drive.google.com/file/d/... or Cloudinary URL or direct link"
                     value={editing.audioUrl}
                     className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                     onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}

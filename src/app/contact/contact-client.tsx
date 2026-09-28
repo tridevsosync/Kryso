@@ -115,37 +115,37 @@ export function ContactClient() {
           className="absolute inset-0 -z-20 object-cover object-[center_25%] opacity-35 brightness-75 contrast-125"
         />
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/90 to-background/60" />
-        <div className="page-shell py-16 sm:py-20">
+        <div className="page-shell py-10 sm:py-16 md:py-20">
           <p className="eyebrow">We&apos;d love to hear from you</p>
-          <h1 className="mt-3 font-display text-4xl font-extrabold sm:text-5xl text-foreground">
+          <h1 className="mt-2 sm:mt-3 font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground">
             Let&apos;s talk <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">music.</span>
           </h1>
-          <p className="mt-4 max-w-lg leading-7 text-muted-foreground">
+          <p className="mt-3 sm:mt-4 max-w-lg text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground">
             Questions about concert coaching, classes or studio visits? Drop us a note or call our Pune academy directly.
           </p>
         </div>
       </section>
 
-      <section className="page-shell section-space grid gap-14 lg:grid-cols-[.85fr_1.15fr]">
+      <section className="page-shell section-space grid gap-8 lg:gap-14 lg:grid-cols-[.85fr_1.15fr]">
         {/* Left column: Live Contact details */}
         <div>
           <SectionHeading label="Find us in Pune" title="Say hello, or come visit the studio." />
-          <div className="mt-8 grid gap-4">
+          <div className="mt-6 sm:mt-8 grid gap-3 sm:gap-4">
             {contactCards.map(({ Icon, name, info, href }) => (
               <div
                 key={name}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card/60 p-4 transition-colors hover:border-primary/50"
+                className="flex items-center gap-3.5 sm:gap-4 rounded-xl border border-border bg-card/60 p-3.5 sm:p-4 transition-colors hover:border-primary/50"
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/10 text-primary">
-                  <Icon size={19} />
+                <span className="grid size-10 sm:size-11 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/10 text-primary">
+                  <Icon size={18} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{name}</p>
+                  <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{name}</p>
                   <a
                     href={href}
                     target={href.startsWith("http") ? "_blank" : undefined}
                     rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-                    className="mt-0.5 block truncate font-semibold text-foreground hover:text-primary transition-colors"
+                    className="mt-0.5 block truncate text-xs sm:text-sm font-semibold text-foreground hover:text-primary transition-colors"
                   >
                     {info}
                   </a>
@@ -154,28 +154,28 @@ export function ContactClient() {
             ))}
           </div>
 
-          <div className="mt-6 flex min-h-40 flex-col justify-between bg-secondary/80 border border-border rounded-xl p-5">
+          <div className="mt-6 flex min-h-36 sm:min-h-40 flex-col justify-between bg-secondary/80 border border-border rounded-xl p-4 sm:p-5">
             <span className="flex items-center gap-2 text-xs font-bold uppercase text-primary">
-              <MapPin size={15} /> Pune, Maharashtra
+              <MapPin size={14} /> Pune, Maharashtra
             </span>
             <div>
-              <p className="font-display text-xl font-bold text-foreground">A place for live music, near you.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="font-display text-lg sm:text-xl font-bold text-foreground">A place for live music, near you.</p>
+              <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                 Get in touch for sound studio walkthroughs, auditions, and instrument trials.
               </p>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
-              <Clock3 size={15} className="text-primary shrink-0" />
+            <div className="mt-3 flex items-center gap-2 text-[11px] sm:text-xs text-muted-foreground border-t border-border/60 pt-3">
+              <Clock3 size={14} className="text-primary shrink-0" />
               <span>Mon – Sat: 10:00 AM – 8:30 PM · Sundays for masterclasses</span>
             </div>
           </div>
         </div>
 
         {/* Right column: Workable Contact Form */}
-        <div className="border border-border bg-card p-6 sm:p-9 rounded-2xl shadow-xl">
+        <div className="border border-border bg-card p-5 sm:p-8 lg:p-9 rounded-2xl shadow-xl">
           <p className="eyebrow">Direct Contact Form</p>
-          <h2 className="mt-2 font-display text-2xl font-extrabold text-foreground">Send us a Message</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="mt-1.5 sm:mt-2 font-display text-xl sm:text-2xl font-extrabold text-foreground">Send us a Message</h2>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             Fill in your details below and our team will get back to you within 24 hours.
           </p>
 

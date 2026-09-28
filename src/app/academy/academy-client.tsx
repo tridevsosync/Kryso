@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -24,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { type Course } from "@/data/catalog";
+import { formatImageUrl } from "@/lib/media-utils";
 import { EnquiryButton } from "../enquiry-button";
 import { CourseEnrollmentModal } from "@/components/enrollment-modal";
 
@@ -138,21 +140,21 @@ export function AcademyClient() {
           className="absolute inset-0 -z-20 object-cover object-[center_35%] opacity-35 brightness-75 contrast-125"
         />
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/95 to-background/60" />
-        <div className="page-shell grid gap-12 py-16 md:grid-cols-[1.1fr_.9fr] md:items-center md:py-20">
+        <div className="page-shell grid gap-8 sm:gap-12 py-10 sm:py-16 md:grid-cols-[1.1fr_.9fr] md:items-center md:py-20">
           <div>
             <p className="eyebrow">Kryso Music Academy · Pune</p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold leading-tight sm:text-5xl text-foreground">
+            <h1 className="mt-3 sm:mt-4 font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-foreground">
               A little music can change <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">a lot.</span>
             </h1>
-            <p className="mt-5 max-w-xl leading-7 text-muted-foreground">
+            <p className="mt-3 sm:mt-5 max-w-xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground">
               We make learning music welcoming, practical and full of those small moments that make you want to keep
               playing.
             </p>
-            <EnquiryButton className="mt-8 h-12 rounded-full px-6 font-bold shadow-lg shadow-primary/20">
-              Find your class <ArrowUpRight size={17} />
+            <EnquiryButton className="mt-6 sm:mt-8 h-11 sm:h-12 rounded-full px-6 font-bold shadow-lg shadow-primary/20 text-xs sm:text-sm w-full sm:w-auto">
+              Find your class <ArrowUpRight size={16} />
             </EnquiryButton>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
             {[
               { word: "Start", line: "with the basics" },
               { word: "Explore", line: "your own sound" },
@@ -161,14 +163,14 @@ export function AcademyClient() {
             ].map((item, i) => (
               <div
                 key={item.word}
-                className={`min-h-32 p-5 rounded-xl transition-all ${
+                className={`min-h-24 sm:min-h-32 p-3.5 sm:p-5 rounded-xl transition-all flex flex-col justify-between ${
                   i === 1 || i === 2
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20"
                     : "bg-card border border-border text-foreground"
                 }`}
               >
-                <span className="font-display text-2xl font-extrabold">{item.word}</span>
-                <p className="mt-2 text-sm opacity-80">{item.line}</p>
+                <span className="font-display text-lg sm:text-2xl font-extrabold">{item.word}</span>
+                <p className="mt-1 sm:mt-2 text-xs sm:text-sm opacity-85 leading-tight">{item.line}</p>
               </div>
             ))}
           </div>
@@ -344,7 +346,7 @@ export function AcademyClient() {
                     {course.imageUrl ? (
                       <div className="relative size-12 overflow-hidden rounded-full border border-primary/30">
                         <Image
-                          src={course.imageUrl}
+                          src={formatImageUrl(course.imageUrl)}
                           alt={course.name}
                           fill
                           sizes="48px"
@@ -417,14 +419,18 @@ export function AcademyClient() {
 
                 {/* Two buttons: Know More and Enroll Now */}
                 <div className="mt-6 grid grid-cols-2 gap-2.5 pt-3 border-t border-border/60">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDetailCourse(course)}
-                    className="h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all"
+                  <Link
+                    href={`/academy/${encodeURIComponent(course.id || course.name)}`}
+                    className="w-full"
                   >
-                    Know More <Info size={13} className="ml-1 text-primary" />
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all"
+                    >
+                      Know More <Info size={13} className="ml-1 text-primary" />
+                    </Button>
+                  </Link>
                   <Button
                     type="button"
                     onClick={() => setEnrollModalCourse(course)}
@@ -556,16 +562,16 @@ export function AcademyClient() {
 
       {/* Course Detail Modal ("Know More") */}
       <Dialog open={Boolean(detailCourse)} onOpenChange={(open) => !open && setDetailCourse(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border text-foreground shadow-2xl p-6 sm:p-7">
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border text-foreground shadow-2xl p-4 sm:p-7">
           {detailCourse && (
             <div>
               <DialogHeader className="text-left">
                 <div className="flex items-center justify-between gap-3">
-                  <DialogTitle className="font-display text-2xl font-extrabold text-foreground">
+                  <DialogTitle className="font-display text-xl sm:text-2xl font-extrabold text-foreground">
                     {detailCourse.name}
                   </DialogTitle>
                   {detailCourse.level && (
-                    <span className="rounded-full bg-primary/10 border border-primary/30 px-3 py-1 text-xs font-bold text-primary shrink-0">
+                    <span className="rounded-full bg-primary/10 border border-primary/30 px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold text-primary shrink-0">
                       {detailCourse.level}
                     </span>
                   )}
@@ -579,7 +585,7 @@ export function AcademyClient() {
               {detailCourse.imageUrl ? (
                 <div className="relative mt-4 aspect-video w-full overflow-hidden rounded-xl border border-border bg-secondary">
                   <Image
-                    src={detailCourse.imageUrl}
+                    src={formatImageUrl(detailCourse.imageUrl)}
                     alt={detailCourse.name}
                     fill
                     sizes="(max-width: 768px) 100vw, 500px"
@@ -589,15 +595,15 @@ export function AcademyClient() {
               ) : null}
 
               {/* Key Details Grid */}
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-xl border border-border bg-secondary/60 p-3.5">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-xs">
+                <div className="rounded-xl border border-border bg-secondary/60 p-3 sm:p-3.5">
                   <span className="text-muted-foreground font-medium block">Teacher Name</span>
                   <span className="mt-1 block font-bold text-foreground text-sm">
                     {detailCourse.instructor || (detailCourse as unknown as { teacherName?: string }).teacherName || "Academy Artist Faculty"}
                   </span>
                 </div>
 
-                <div className="rounded-xl border border-border bg-secondary/60 p-3.5">
+                <div className="rounded-xl border border-border bg-secondary/60 p-3 sm:p-3.5">
                   <span className="text-muted-foreground font-medium block">Price / Fees</span>
                   <div className="mt-1 flex items-baseline gap-2 flex-wrap">
                     <span className="font-extrabold text-primary text-sm">
@@ -617,7 +623,7 @@ export function AcademyClient() {
                 </div>
 
                 {detailCourse.duration && (
-                  <div className="rounded-xl border border-border bg-secondary/60 p-3.5">
+                  <div className="rounded-xl border border-border bg-secondary/60 p-3 sm:p-3.5">
                     <span className="text-muted-foreground font-medium block">Duration</span>
                     <span className="mt-1 block font-bold text-foreground text-sm">
                       {detailCourse.duration}
@@ -625,7 +631,7 @@ export function AcademyClient() {
                   </div>
                 )}
 
-                <div className="rounded-xl border border-border bg-secondary/60 p-3.5">
+                <div className="rounded-xl border border-border bg-secondary/60 p-3 sm:p-3.5">
                   <span className="text-muted-foreground font-medium block">Format</span>
                   <span className="mt-1 block font-bold text-foreground text-sm">
                     1-on-1 & Live Stage Jams
@@ -634,21 +640,21 @@ export function AcademyClient() {
               </div>
 
               {/* Description */}
-              <div className="mt-5">
+              <div className="mt-4 sm:mt-5">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Description & Syllabus
                 </h4>
-                <p className="mt-2 text-sm leading-relaxed text-foreground whitespace-pre-wrap bg-secondary/40 p-4 rounded-xl border border-border/50">
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed text-foreground whitespace-pre-wrap bg-secondary/40 p-3.5 sm:p-4 rounded-xl border border-border/50">
                   {detailCourse.description || "Comprehensive practical coaching with professional instruments, rehearsal hall walkthroughs, and concert performances."}
                 </p>
               </div>
 
               {/* Actions */}
-              <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-border">
+              <div className="mt-5 sm:mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-border">
                 <Button
                   variant="outline"
                   onClick={() => setDetailCourse(null)}
-                  className="rounded-full border-border text-xs font-bold hover:bg-secondary"
+                  className="rounded-full border-border text-xs font-bold hover:bg-secondary h-10"
                 >
                   Close
                 </Button>
@@ -659,7 +665,7 @@ export function AcademyClient() {
                     setDetailCourse(null);
                     setEnrollModalCourse(selected);
                   }}
-                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-lg shadow-primary/20 px-6"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-lg shadow-primary/20 px-6 h-10"
                 >
                   Enroll Now in {detailCourse.name} <ArrowRight size={14} className="ml-1" />
                 </Button>

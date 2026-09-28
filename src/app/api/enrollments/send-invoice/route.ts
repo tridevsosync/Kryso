@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
                 </table>
 
                 <p style="font-size: 13px; color: #9ca3af; line-height: 1.5;">
-                  Our academy administration will reach out via WhatsApp/Call at <strong>${mobile}</strong> with your class schedule, batch timing, and studio orientation details.
+                  Our academy administration will reach out via WhatsApp/Call at <strong>${mobile}</strong> with your class schedule, timing, and studio orientation details.
                 </p>
               </div>
               <div class="footer">

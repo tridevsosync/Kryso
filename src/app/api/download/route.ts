@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractGoogleDriveId } from "@/lib/media-utils";
 import fs from "fs/promises";
 import path from "path";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const fileUrl = searchParams.get("url");
+    const rawFileUrl = searchParams.get("url");
     const rawFilename = searchParams.get("filename") || "audio-track.mp3";
 
-    if (!fileUrl) {
+    if (!rawFileUrl) {
       return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
     }
 
@@ -19,8 +20,8 @@ export async function GET(req: NextRequest) {
     const asciiFilename = safeFilename.replace(/[^\x20-\x7E]/g, "_");
 
     // 1. Handle local files (e.g. /uploads/...)
-    if (fileUrl.startsWith("/uploads/") || fileUrl.startsWith("uploads/")) {
-      const cleanPath = fileUrl.replace(/^\/?uploads\//, "");
+    if (rawFileUrl.startsWith("/uploads/") || rawFileUrl.startsWith("uploads/")) {
+      const cleanPath = rawFileUrl.replace(/^\/?uploads\//, "");
       const fullPath = path.join(process.cwd(), "public", "uploads", cleanPath);
 
       try {
@@ -51,14 +52,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Handle remote URLs (Cloudinary, external audio CDNs, S3, etc.)
-    if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+    // 2. Handle Google Drive & remote URLs
+    const driveId = extractGoogleDriveId(rawFileUrl);
+    let targetUrl = rawFileUrl;
+    if (driveId) {
+      targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+    }
+
+    if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
       try {
-        const remoteRes = await fetch(fileUrl, {
+        let remoteRes = await fetch(targetUrl, {
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           },
+          redirect: "follow",
         });
+
+        // Fallback for Google Drive if drive.usercontent fails
+        if (!remoteRes.ok && driveId) {
+          const fallbackUrl = `https://docs.google.com/uc?export=download&id=${driveId}`;
+          remoteRes = await fetch(fallbackUrl, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+            redirect: "follow",
+          });
+        }
 
         if (remoteRes.ok && remoteRes.body) {
           const contentType =
@@ -84,10 +105,10 @@ export async function GET(req: NextRequest) {
         }
 
         // Fallback redirect if fetch failed
-        return NextResponse.redirect(fileUrl, { status: 302 });
+        return NextResponse.redirect(targetUrl, { status: 302 });
       } catch (fetchErr) {
-        console.warn("Proxy fetch error, redirecting directly to URL:", fetchErr);
-        return NextResponse.redirect(fileUrl, { status: 302 });
+        console.warn("Proxy download fetch error, redirecting directly:", fetchErr);
+        return NextResponse.redirect(targetUrl, { status: 302 });
       }
     }
 
