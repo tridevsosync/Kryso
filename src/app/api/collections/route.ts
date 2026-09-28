@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ObjectId, type Filter, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const name = searchParams.get("name");
+    const name = searchParams.get("name") || searchParams.get("collectionName");
 
     if (!name) {
       return NextResponse.json(
@@ -28,15 +29,22 @@ export async function GET(req: NextRequest) {
       if (name === "academy_students") {
         try {
           const enrollments = await db.collection("academy_enrollments").find({}).toArray();
-          const existingIds = new Set(
-            sanitized.map((it) => (it.id || it.invoiceNumber || it.name || "").toString())
+          const existingKeys = new Set(
+            sanitized.flatMap((it) => [
+              it.id ? String(it.id) : "",
+              it.invoiceNumber ? String(it.invoiceNumber) : "",
+              it.paymentId ? String(it.paymentId) : "",
+            ]).filter(Boolean)
           );
           for (const enr of enrollments) {
-            const enrKey = (enr.id || enr.invoiceNumber || enr.studentName || "").toString();
-            if (!existingIds.has(enrKey)) {
+            const enrId = enr.id ? String(enr.id) : enr._id ? enr._id.toString() : "";
+            const inv = enr.invoiceNumber ? String(enr.invoiceNumber) : "";
+            const pay = enr.paymentId ? String(enr.paymentId) : "";
+
+            if (!existingKeys.has(enrId) && (!inv || !existingKeys.has(inv)) && (!pay || !existingKeys.has(pay))) {
               sanitized.push({
-                id: enr.id || `STU-${Date.now()}`,
-                name: enr.studentName || enr.name,
+                id: enrId || `STU-${inv || Date.now()}`,
+                name: enr.studentName || enr.name || "Student",
                 email: enr.email || "",
                 mobile: enr.mobile || enr.phone || "",
                 age: enr.age || "",
@@ -47,8 +55,8 @@ export async function GET(req: NextRequest) {
                 fees: enr.fees || 0,
                 level: "Enrolled Student",
                 paymentStatus: enr.paymentStatus || "PAID via Razorpay",
-                invoiceNumber: enr.invoiceNumber || "",
-                paymentId: enr.paymentId || "",
+                invoiceNumber: inv,
+                paymentId: pay,
                 joined: enr.createdAt
                   ? new Date(enr.createdAt).toLocaleDateString("en-IN", {
                       day: "numeric",
@@ -92,7 +100,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, item, items } = body;
+    const name = body.name || body.collectionName;
+    const { item, items } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -125,9 +134,15 @@ export async function POST(req: NextRequest) {
 
       // If single item upsert
       if (item && item.id) {
+        const itemId = String(item.id);
+        const query: Filter<Document> =
+          ObjectId.isValid(itemId) && itemId.length === 24
+            ? { $or: [{ id: itemId }, { _id: new ObjectId(itemId) }] }
+            : { id: itemId };
+
         await col.updateOne(
-          { id: item.id },
-          { $set: { ...item, updatedAt: new Date() } },
+          query,
+          { $set: { ...item, id: itemId, updatedAt: new Date() } },
           { upsert: true }
         );
         return NextResponse.json({
@@ -155,7 +170,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const name = searchParams.get("name");
+    const name = searchParams.get("name") || searchParams.get("collectionName");
     const id = searchParams.get("id");
 
     if (!name) {
@@ -170,15 +185,41 @@ export async function DELETE(req: NextRequest) {
       const col = db.collection(name);
       if (id === "ALL") {
         await col.deleteMany({});
+        if (name === "academy_students") {
+          try {
+            await db.collection("academy_enrollments").deleteMany({});
+          } catch {}
+        }
         return NextResponse.json({
           success: true,
           cleared: true,
           collection: name,
         });
       } else if (id) {
-        await col.deleteOne({ id });
+        const itemId = String(id);
+        const query: Filter<Document> =
+          ObjectId.isValid(itemId) && itemId.length === 24
+            ? { $or: [{ id: itemId }, { _id: new ObjectId(itemId) }] }
+            : { $or: [{ id: itemId }, { invoiceNumber: itemId }, { paymentId: itemId }] };
+
+        const result = await col.deleteMany(query);
+
+        // If deleting a student, also remove corresponding record from academy_enrollments collection
+        if (name === "academy_students") {
+          try {
+            const enrollmentQuery: Filter<Document> =
+              ObjectId.isValid(itemId) && itemId.length === 24
+                ? { $or: [{ id: itemId }, { _id: new ObjectId(itemId) }, { invoiceNumber: itemId }, { paymentId: itemId }] }
+                : { $or: [{ id: itemId }, { invoiceNumber: itemId }, { paymentId: itemId }] };
+            await db.collection("academy_enrollments").deleteMany(enrollmentQuery);
+          } catch (enrErr) {
+            console.warn("Failed to delete from academy_enrollments:", enrErr);
+          }
+        }
+
         return NextResponse.json({
           success: true,
+          deletedCount: result.deletedCount,
           deletedId: id,
           collection: name,
         });

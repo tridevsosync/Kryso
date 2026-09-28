@@ -80,14 +80,14 @@ export function AcademySpotlight() {
     setCurrentImageIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
   }, [activeImages.length]);
 
-  // Auto-advance images every 5.5 seconds (paused on hover)
+  // Auto-advance images automatically every 5 seconds (5000ms)
   useEffect(() => {
-    if (activeImages.length <= 1 || isPaused) return;
+    if (activeImages.length <= 1) return;
     const timer = setInterval(() => {
       handleNext();
-    }, 5500);
+    }, 5000);
     return () => clearInterval(timer);
-  }, [activeImages.length, isPaused, handleNext]);
+  }, [activeImages.length, handleNext]);
 
   const handleScrollToCourses = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -208,6 +208,21 @@ export function AcademySpotlight() {
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="absolute inset-0 size-full object-cover object-center transition-all duration-700 brightness-95 contrast-110"
                 />
+              )}
+
+              {/* 5-second animated progress bar at top of card */}
+              {activeImages.length > 1 && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-black/40 z-20 overflow-hidden">
+                  <div
+                    key={`bar-${safeIndex}`}
+                    className="h-full bg-primary animate-[grow_5s_linear_infinite]"
+                    style={{
+                      animation: "grow 5s linear",
+                      width: "100%",
+                      transformOrigin: "left",
+                    }}
+                  />
+                </div>
               )}
 
               {/* Gradient overlay for aesthetic depth */}

@@ -175,26 +175,74 @@ export function SpotlightManager() {
       alt: "Pro DJ Music Producer",
       caption: "New Studio & Academy Photo",
     };
-    setAcademyImages((prev) => [...prev, newImg]);
+    const nextList = [...academyImages, newImg];
+    setAcademyImages(nextList);
     setActiveAcademyImgIndex(academyImages.length);
+
+    // Sync to MongoDB
+    fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "academy_spotlight_images",
+        items: nextList,
+      }),
+    }).catch(() => {});
   };
 
-  const handleDeleteAcademyImage = (indexToDelete: number) => {
+  const handleDeleteAcademyImage = async (indexToDelete: number) => {
     if (academyImages.length <= 1) {
-      alert("At least one image must remain.");
+      alert("At least one image must remain in the carousel.");
       return;
     }
+    if (!confirm("Are you sure you want to remove this academy spotlight image?")) {
+      return;
+    }
+
     setSaved(false);
-    setAcademyImages((prev) => prev.filter((_, i) => i !== indexToDelete));
+    const updatedImages = academyImages.filter((_, i) => i !== indexToDelete);
+    setAcademyImages(updatedImages);
     setActiveAcademyImgIndex((prev) => Math.max(0, prev - 1));
+
+    try {
+      const res = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "academy_spotlight_images",
+          items: updatedImages,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSaveTarget("Image removed and synced to MongoDB!");
+      } else {
+        setSaveTarget("Image removed locally.");
+      }
+    } catch {
+      setSaveTarget("Image removed locally.");
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
-  const handleResetAcademyDefaults = () => {
+  const handleResetAcademyDefaults = async () => {
     if (confirm("Reset Academy section spotlight images to default?")) {
       setAcademyImages(defaultAcademySpotlightImages);
       setActiveAcademyImgIndex(0);
       setSaved(true);
       setSaveTarget("Academy defaults restored");
+
+      try {
+        await fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "academy_spotlight_images",
+            items: defaultAcademySpotlightImages,
+          }),
+        });
+      } catch {}
     }
   };
 
@@ -264,13 +312,13 @@ export function SpotlightManager() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          collectionName: "academy_spotlight_images",
+          name: "academy_spotlight_images",
           items: academyImages,
         }),
       });
       const data = await res.json();
       if (data?.success) {
-        setSaveTarget("Academy spotlight images synced to MongoDB & Browser Cache");
+        setSaveTarget("Academy spotlight images synced to MongoDB & live website!");
       } else {
         setSaveTarget("Saved to Browser Cache");
       }

@@ -83,6 +83,7 @@ export function AdminDashboardClient() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>("Dashboard");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [enquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
   const [settings, setSettings] = useStored("admin-settings", siteSettings);
 
@@ -134,9 +135,127 @@ export function AdminDashboardClient() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
-        {/* Sidebar Navigation */}
-        <aside className="border-b border-border bg-secondary p-5 text-secondary-foreground lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
+      {/* Mobile Top Navbar (visible below lg) */}
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-secondary/95 px-4 py-3 backdrop-blur-md lg:hidden">
+        <Link href="/" className="flex items-center gap-2" aria-label="KRYSO home">
+          <Image
+            src="/kryso-logo.png"
+            alt="KRYSO"
+            width={100}
+            height={35}
+            priority
+            className="h-6 w-auto object-contain"
+          />
+        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground"
+          >
+            <span>{section}</span>
+            <span className="text-primary font-bold">▼</span>
+          </button>
+          <button
+            onClick={() => {
+              writeStored(ADMIN_SESSION_KEY, null);
+              router.push("/admin");
+            }}
+            className="rounded-lg p-2 text-muted-foreground hover:bg-card hover:text-destructive"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Drawer Menu */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm lg:hidden animate-in fade-in-50">
+          <div className="absolute top-0 right-0 left-0 bg-card border-b border-border p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <span className="font-display font-bold text-foreground">Admin Console Menu</span>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = section === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSection(item.id);
+                      setMobileNavOpen(false);
+                    }}
+                    className={`flex items-center justify-between rounded-xl p-3 text-left text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                        : "bg-secondary text-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon size={16} />
+                      {item.label}
+                    </span>
+                    {Boolean(item.badge && item.badge > 0) && (
+                      <span className="rounded-full bg-primary-foreground text-primary px-1.5 py-0.5 text-[10px] font-extrabold">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => {
+                writeStored(ADMIN_SESSION_KEY, null);
+                router.push("/admin");
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <LogOut size={15} /> Logout Admin Session
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Mobile Horizontal Scroll Tab Bar */}
+      <div className="sticky top-[53px] z-30 flex items-center gap-1.5 overflow-x-auto border-b border-border bg-background/95 px-3 py-2 lg:hidden scrollbar-none">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = section === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setSection(item.id)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon size={13} />
+              <span>{item.label}</span>
+              {Boolean(item.badge && item.badge > 0) && (
+                <span className="rounded-full bg-primary-foreground text-primary px-1 text-[9px] font-extrabold">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mx-auto flex max-w-[1440px] flex-col lg:flex-row">
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden border-r border-border bg-secondary p-5 text-secondary-foreground lg:block lg:min-h-screen lg:w-64 shrink-0">
           <Link href="/" className="inline-block py-1 group" aria-label="KRYSO home">
             <Image
               src="/kryso-logo.png"
@@ -148,7 +267,7 @@ export function AdminDashboardClient() {
             />
           </Link>
 
-          <nav className="mt-6 flex flex-wrap gap-1 lg:grid">
+          <nav className="mt-6 grid gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = section === item.id;
@@ -156,7 +275,7 @@ export function AdminDashboardClient() {
                 <button
                   key={item.id}
                   onClick={() => setSection(item.id)}
-                  className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+                  className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-all cursor-pointer ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 font-bold"
                       : "text-muted-foreground hover:bg-secondary-foreground/10 hover:text-foreground"
@@ -186,7 +305,7 @@ export function AdminDashboardClient() {
                 writeStored(ADMIN_SESSION_KEY, null);
                 router.push("/admin");
               }}
-              className="mt-4 flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-secondary-foreground/10 hover:text-destructive transition-colors"
+              className="mt-4 flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-secondary-foreground/10 hover:text-destructive transition-colors cursor-pointer"
             >
               <LogOut size={16} /> Logout
             </button>
@@ -194,8 +313,8 @@ export function AdminDashboardClient() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-5 sm:p-8">
-          <div className="relative isolate overflow-hidden rounded-2xl border border-border bg-background p-6 sm:p-8 mb-8 shadow-xl">
+        <main className="flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8">
+          <div className="relative isolate overflow-hidden rounded-xl sm:rounded-2xl border border-border bg-background p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 shadow-xl">
             <Image
               src={heroImage}
               alt="Concert stage control room"
@@ -205,25 +324,25 @@ export function AdminDashboardClient() {
               className="absolute inset-0 -z-20 object-cover object-[center_35%] opacity-25 brightness-75 contrast-125"
             />
             <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/90 to-background/70" />
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="eyebrow">Control Room · Live Console</p>
-                <h1 className="mt-1 font-display text-2xl sm:text-3xl font-extrabold text-foreground">
+                <h1 className="mt-1 font-display text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground">
                   Kryso Stage & Content Management
                 </h1>
-                <p className="mt-1 text-xs text-muted-foreground">Admin dashboard · active management console</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Admin dashboard · active management console</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 {settings.isMaintenanceMode ? (
                   <button
                     onClick={() => setSection("Setting")}
-                    className="flex items-center gap-2 rounded-full border border-amber-500/60 bg-amber-500/20 px-4 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors animate-pulse"
+                    className="flex items-center gap-2 rounded-full border border-amber-500/60 bg-amber-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/30 transition-colors animate-pulse cursor-pointer"
                     title="Click to manage Maintenance Mode"
                   >
                     <Wrench size={14} className="text-amber-400" /> Maintenance Mode LIVE
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+                  <div className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary">
                     <span className="size-2 rounded-full bg-primary animate-pulse" /> Live Session Active
                   </div>
                 )}
@@ -231,14 +350,16 @@ export function AdminDashboardClient() {
             </div>
           </div>
 
-          {section === "Dashboard" && <Overview onOpen={setSection} />}
-          {section === "Hero spotlight" && <SpotlightManager />}
-          {section === "Music" && <MusicSection />}
-          {section === "Academy" && <AcademySection />}
-          {section === "Teacher" && <TeacherSection />}
-          {section === "Contact" && <ContactSection />}
-          {section === "Enquiry" && <EnquirySection />}
-          {section === "Setting" && <SettingSection />}
+          <div className="w-full min-w-0">
+            {section === "Dashboard" && <Overview onOpen={setSection} />}
+            {section === "Hero spotlight" && <SpotlightManager />}
+            {section === "Music" && <MusicSection />}
+            {section === "Academy" && <AcademySection />}
+            {section === "Teacher" && <TeacherSection />}
+            {section === "Contact" && <ContactSection />}
+            {section === "Enquiry" && <EnquirySection />}
+            {section === "Setting" && <SettingSection />}
+          </div>
         </main>
       </div>
     </div>
@@ -338,17 +459,17 @@ function MusicSection() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">Music Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Music Management</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
             Manage music tracks, MP4/audio uploads, social lock gating, and instruments in MongoDB & Cloudinary.
           </p>
         </div>
-        <div className="flex flex-wrap rounded-lg bg-secondary p-1 border border-border gap-1">
+        <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto max-w-full shrink-0">
           <button
             onClick={() => setTab("tracks")}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "tracks"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -358,7 +479,7 @@ function MusicSection() {
           </button>
           <button
             onClick={() => setTab("products")}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "products"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -368,7 +489,7 @@ function MusicSection() {
           </button>
           <button
             onClick={() => setTab("categories")}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-bold transition-all ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "categories"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -432,17 +553,17 @@ function AcademySection() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">Academy Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Academy Management</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
             Manage courses, curriculum/syllabus, studio gear, and student enrollments directly synced with MongoDB.
           </p>
         </div>
-        <div className="flex flex-wrap rounded-lg bg-secondary p-1 border border-border gap-1">
+        <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto max-w-full shrink-0">
           <button
             onClick={() => setTab("courses")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "courses"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -452,7 +573,7 @@ function AcademySection() {
           </button>
           <button
             onClick={() => setTab("curriculum")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "curriculum"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -462,7 +583,7 @@ function AcademySection() {
           </button>
           <button
             onClick={() => setTab("studiogear")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "studiogear"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -472,7 +593,7 @@ function AcademySection() {
           </button>
           <button
             onClick={() => setTab("students")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               tab === "students"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"

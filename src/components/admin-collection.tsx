@@ -158,11 +158,16 @@ export function CollectionManager({
 
   // Save row: update local state & sync to MongoDB
   const save = async (row: Row) => {
-    // Normalize any image fields that might be Google Drive links
+    // Normalize any image fields that might be Google Drive links or empty strings
     const cleanRow = { ...row };
     fields.forEach((field) => {
-      if (field.type === "image" && typeof cleanRow[field.key] === "string") {
-        cleanRow[field.key] = formatImageUrl(String(cleanRow[field.key]));
+      if (field.type === "image") {
+        const val = cleanRow[field.key];
+        if (typeof val === "string" && val.trim()) {
+          cleanRow[field.key] = formatImageUrl(val.trim());
+        } else {
+          cleanRow[field.key] = "";
+        }
       }
     });
 
@@ -172,7 +177,7 @@ export function CollectionManager({
 
     setRows(updated);
     setEditing(null);
-    setSaveStatus("Saving...");
+    setSaveStatus("Saving to MongoDB...");
 
     if (apiCollection) {
       try {
@@ -184,9 +189,9 @@ export function CollectionManager({
         const data = await res.json();
         if (data.savedTo === "mongodb") {
           setMongoConnected(true);
-          setSaveStatus("Saved to MongoDB!");
+          setSaveStatus("Saved to MongoDB & live site!");
         } else {
-          setSaveStatus("Saved locally");
+          setSaveStatus("Saved locally in cache");
         }
       } catch (err) {
         console.warn("Failed to persist to MongoDB:", err);
@@ -196,44 +201,63 @@ export function CollectionManager({
       setSaveStatus("Saved locally");
     }
 
-    setTimeout(() => setSaveStatus(null), 3000);
+    setTimeout(() => setSaveStatus(null), 3500);
   };
 
   // Delete row: update local state & sync delete to MongoDB
   const removeRow = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this item?")) {
+      return;
+    }
+
+    // Optimistic local state update
     setRows((current) => current.filter((item) => item.id !== id));
+    setSaveStatus("Deleting entry...");
 
     if (apiCollection) {
       try {
-        await fetch(`/api/collections?name=${apiCollection}&id=${id}`, {
+        const res = await fetch(`/api/collections?name=${apiCollection}&id=${encodeURIComponent(id)}`, {
           method: "DELETE",
         });
+        const data = await res.json();
+        if (data?.success) {
+          setSaveStatus("Deleted from MongoDB & live site!");
+        } else {
+          setSaveStatus("Deleted locally.");
+        }
       } catch (err) {
         console.warn("Failed to delete from MongoDB:", err);
+        setSaveStatus("Deleted locally.");
       }
+    } else {
+      setSaveStatus("Deleted locally.");
     }
+
+    setTimeout(() => setSaveStatus(null), 3500);
   };
 
   // Clear all items from both local state and MongoDB
   const clearAll = async () => {
-    if (!confirm(`Are you sure you want to completely clear everything from ${title}? This cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to completely clear ALL items from ${title}? This cannot be undone.`)) {
       return;
     }
 
     setRows([]);
+    setSaveStatus("Clearing all items...");
 
     if (apiCollection) {
       try {
         await fetch(`/api/collections?name=${apiCollection}&id=ALL`, {
           method: "DELETE",
         });
-        setSaveStatus("All cleared from MongoDB!");
+        setSaveStatus("All entries cleared from MongoDB!");
       } catch (err) {
         console.warn("Failed to clear MongoDB:", err);
+        setSaveStatus("Cleared locally.");
       }
     }
 
-    setTimeout(() => setSaveStatus(null), 3000);
+    setTimeout(() => setSaveStatus(null), 3500);
   };
 
   // Handle Cloudinary image upload
@@ -256,10 +280,14 @@ export function CollectionManager({
       const data = await res.json();
 
       if (res.ok && data.url) {
-        setEditing({
-          ...editing,
-          [fieldKey]: data.url,
-        });
+        setEditing((prev) =>
+          prev
+            ? {
+                ...prev,
+                [fieldKey]: data.url,
+              }
+            : null
+        );
       } else {
         alert(data.error || "Failed to upload image.");
       }
@@ -272,12 +300,12 @@ export function CollectionManager({
   };
 
   return (
-    <div>
+    <div className="w-full">
       {/* Header and status indicators */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h2 className="font-display text-2xl font-extrabold text-foreground">{title}</h2>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">{title}</h2>
             {mongoConnected === true && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
                 <Database size={11} /> MongoDB Active
@@ -293,10 +321,10 @@ export function CollectionManager({
             </span>
             {syncing && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{description}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {rows.length > 0 && (
             <Button
               variant="outline"
@@ -309,60 +337,65 @@ export function CollectionManager({
           )}
 
           <Button
-            className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90"
+            className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90 text-xs sm:text-sm"
             onClick={() => setEditing(blank())}
           >
-            <Plus size={16} /> Add new
+            <Plus size={15} /> Add new
           </Button>
         </div>
       </div>
 
       {saveStatus && (
-        <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-400 animate-fade-in">
+        <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-400 animate-fade-in bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg w-fit">
           <Check size={14} /> {saveStatus}
         </div>
       )}
 
       {/* Search and Filters */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="relative w-full max-w-xs">
+      <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <label className="relative w-full sm:max-w-xs">
           <span className="sr-only">Search {title}</span>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search in ${title}...`}
-            className="h-10 rounded-full pl-9 bg-card border-border text-foreground focus-visible:ring-primary"
+            className="h-10 rounded-full pl-9 bg-card border-border text-foreground text-xs sm:text-sm focus-visible:ring-primary w-full"
           />
         </label>
-        {filterValues.map((value) => (
-          <Button
-            key={value}
-            variant={filter === value ? "default" : "outline"}
-            className={`h-9 rounded-full px-4 text-xs font-semibold transition-all ${
-              filter === value
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-            }`}
-            onClick={() => setFilter(value)}
-          >
-            {value}
-          </Button>
-        ))}
+        {filterValues.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+            {filterValues.map((value) => (
+              <Button
+                key={value}
+                variant={filter === value ? "default" : "outline"}
+                size="sm"
+                className={`h-8 sm:h-9 rounded-full px-3 sm:px-4 text-xs font-semibold transition-all shrink-0 ${
+                  filter === value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+                onClick={() => setFilter(value)}
+              >
+                {value}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table view */}
       {visible.length ? (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full min-w-[600px] text-left text-sm">
-            <thead className="border-b border-border bg-secondary/80 text-xs uppercase text-muted-foreground">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-border bg-card shadow-sm -mx-1 sm:mx-0">
+          <table className="w-full min-w-[580px] text-left text-xs sm:text-sm">
+            <thead className="border-b border-border bg-secondary/80 text-[11px] uppercase text-muted-foreground">
               <tr>
                 {fields.map((field) => (
-                  <th key={field.key} className="px-4 py-3 font-semibold text-foreground">
+                  <th key={field.key} className="px-3 sm:px-4 py-3 font-semibold text-foreground">
                     {field.label}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
+                <th className="px-3 sm:px-4 py-3 text-right font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -374,12 +407,13 @@ export function CollectionManager({
                   {fields.map((field) => {
                     const val = row[field.key];
                     if (field.type === "image") {
+                      const imgStr = typeof val === "string" ? val.trim() : "";
                       return (
-                        <td key={field.key} className="px-4 py-3">
-                          {val ? (
-                            <div className="relative size-12 overflow-hidden rounded-lg border border-border bg-secondary">
+                        <td key={field.key} className="px-3 sm:px-4 py-3">
+                          {imgStr ? (
+                            <div className="relative size-12 overflow-hidden rounded-lg border border-border bg-secondary shrink-0">
                               <Image
-                                src={formatImageUrl(String(val))}
+                                src={formatImageUrl(imgStr)}
                                 alt={String(row.name || "Preview")}
                                 fill
                                 sizes="48px"
@@ -387,38 +421,40 @@ export function CollectionManager({
                               />
                             </div>
                           ) : (
-                            <span className="flex size-12 items-center justify-center rounded-lg border border-dashed border-border bg-secondary/40 text-muted-foreground">
-                              <ImageIcon size={16} />
+                            <span className="flex size-12 items-center justify-center rounded-lg border border-dashed border-border bg-secondary/40 text-muted-foreground shrink-0 text-[10px]">
+                              No img
                             </span>
                           )}
                         </td>
                       );
                     }
                     return (
-                      <td key={field.key} className="max-w-64 truncate px-4 py-3 text-foreground">
+                      <td key={field.key} className="max-w-48 sm:max-w-64 truncate px-3 sm:px-4 py-3 text-foreground">
                         {String(val ?? "")}
                       </td>
                     );
                   })}
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="hover:bg-secondary text-muted-foreground hover:text-primary"
-                      aria-label="Edit entry"
-                      onClick={() => setEditing(row)}
-                    >
-                      <Pencil size={15} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="hover:bg-secondary text-muted-foreground hover:text-destructive"
-                      aria-label="Delete entry"
-                      onClick={() => removeRow(row.id)}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
+                  <td className="whitespace-nowrap px-3 sm:px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-secondary text-muted-foreground hover:text-primary size-8 sm:size-9"
+                        aria-label="Edit entry"
+                        onClick={() => setEditing(row)}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hover:bg-destructive/20 text-muted-foreground hover:text-destructive size-8 sm:size-9"
+                        aria-label="Delete entry"
+                        onClick={() => removeRow(row.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -426,16 +462,16 @@ export function CollectionManager({
           </table>
         </div>
       ) : (
-        <div className="mt-6 rounded-xl border border-dashed border-border py-16 text-center bg-card/40">
-          <p className="font-display text-lg font-bold text-foreground">No entries yet in {title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {query ? "No items matched your search." : "Add your first item using the button above. Everything stores in MongoDB and Cloudinary."}
+        <div className="mt-6 rounded-xl border border-dashed border-border py-12 px-4 text-center bg-card/40">
+          <p className="font-display text-base sm:text-lg font-bold text-foreground">No entries found in {title}</p>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+            {query ? "No items matched your search query." : "Add your first item using the button above. Changes sync directly to MongoDB and Cloudinary."}
           </p>
           <Button
-            className="mt-4 rounded-full font-bold shadow-md shadow-primary/20"
+            className="mt-4 rounded-full font-bold shadow-md shadow-primary/20 text-xs sm:text-sm"
             onClick={() => setEditing(blank())}
           >
-            <Plus size={16} className="mr-1" /> Add entry
+            <Plus size={15} className="mr-1" /> Add entry
           </Button>
         </div>
       )}
@@ -451,10 +487,17 @@ export function CollectionManager({
             }}
           >
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-display text-xl font-bold text-foreground">
+              <h3 className="font-display text-lg sm:text-xl font-bold text-foreground">
                 {editing.id.startsWith("new-") ? `Add to ${title}` : "Edit entry"}
               </h3>
-              <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={() => setEditing(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close"
+                className="size-8"
+                onClick={() => setEditing(null)}
+              >
                 <X size={17} />
               </Button>
             </div>
@@ -462,35 +505,58 @@ export function CollectionManager({
             <div className="mt-5 grid gap-4">
               {fields.map((field) => {
                 if (field.type === "image") {
-                  const currentImg = String(editing[field.key] || "");
+                  const currentImg = String(editing[field.key] || "").trim();
                   const isUploading = uploadingField === field.key;
 
                   return (
                     <div key={field.key} className="grid gap-2">
-                      <label className="text-sm font-semibold text-foreground flex items-center justify-between">
+                      <div className="text-xs sm:text-sm font-semibold text-foreground flex items-center justify-between">
                         <span>{field.label}</span>
                         <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1">
                           <Cloud size={12} /> Stored in Cloudinary
                         </span>
-                      </label>
+                      </div>
 
-                      {currentImg && (
-                        <div className="relative h-36 w-full overflow-hidden rounded-xl border border-border bg-secondary">
-                          <Image
-                            src={formatImageUrl(currentImg)}
-                            alt="Preview"
-                            fill
-                            sizes="(max-width: 768px) 100vw, 450px"
-                            className="object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEditing({ ...editing, [field.key]: "" })}
-                            className="absolute top-2 right-2 rounded-full bg-black/70 p-1.5 text-white hover:bg-destructive"
-                            title="Remove image"
-                          >
-                            <X size={14} />
-                          </button>
+                      {currentImg ? (
+                        <div className="space-y-2">
+                          <div className="relative h-36 sm:h-44 w-full overflow-hidden rounded-xl border border-border bg-secondary">
+                            <Image
+                              src={formatImageUrl(currentImg)}
+                              alt="Preview"
+                              fill
+                              sizes="(max-width: 768px) 100vw, 450px"
+                              className="object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditing((prev) => (prev ? { ...prev, [field.key]: "" } : null));
+                              }}
+                              className="absolute top-2.5 right-2.5 rounded-full bg-black/80 p-2 text-white hover:bg-destructive hover:text-white transition-all shadow-md cursor-pointer z-10"
+                              title="Remove image"
+                              aria-label="Remove image"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[11px] text-muted-foreground truncate max-w-[240px]">
+                              {currentImg}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditing((prev) => (prev ? { ...prev, [field.key]: "" } : null));
+                              }}
+                              className="text-xs font-bold text-destructive hover:underline cursor-pointer flex items-center gap-1 shrink-0"
+                            >
+                              <Trash2 size={12} /> Remove image
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-border/80 bg-secondary/30 p-3 text-center">
+                          <p className="text-xs text-muted-foreground">No image attached (default placeholder will be used)</p>
                         </div>
                       )}
 
@@ -516,7 +582,7 @@ export function CollectionManager({
                             ) : (
                               <>
                                 <Upload size={14} />
-                                <span>{currentImg ? "Change image via Cloudinary" : "Upload image to Cloudinary"}</span>
+                                <span>{currentImg ? "Replace image via Cloudinary" : "Upload image to Cloudinary"}</span>
                               </>
                             )}
                           </div>
@@ -528,7 +594,7 @@ export function CollectionManager({
                         placeholder="Or paste direct image URL, Cloudinary, or Google Drive link"
                         value={currentImg}
                         className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
-                        onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, [field.key]: e.target.value } : null))}
                       />
                     </div>
                   );
@@ -544,7 +610,7 @@ export function CollectionManager({
                   const isCustom = customModeFields[field.key];
 
                   return (
-                    <div key={field.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
+                    <div key={field.key} className="grid gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
                       <div className="flex items-center justify-between">
                         <span>{field.label}</span>
                         <button
@@ -574,15 +640,15 @@ export function CollectionManager({
                           type="text"
                           value={currentValue}
                           placeholder={field.placeholder || `Enter custom ${field.label.toLowerCase()}`}
-                          className="bg-background border-border text-foreground focus-visible:ring-primary"
-                          onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                          className="bg-background border-border text-foreground text-xs sm:text-sm focus-visible:ring-primary"
+                          onChange={(e) => setEditing((prev) => (prev ? { ...prev, [field.key]: e.target.value } : null))}
                         />
                       ) : (
                         <div className="relative">
                           <select
                             value={currentValue}
-                            className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none cursor-pointer pr-9"
-                            onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                            className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-xs sm:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary appearance-none cursor-pointer pr-9"
+                            onChange={(e) => setEditing((prev) => (prev ? { ...prev, [field.key]: e.target.value } : null))}
                           >
                             <option value="" disabled className="bg-card text-muted-foreground">
                               {field.placeholder || `-- Select ${field.label} --`}
@@ -615,32 +681,36 @@ export function CollectionManager({
 
                 if (field.type === "textarea") {
                   return (
-                    <label key={field.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
+                    <label key={field.key} className="grid gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
                       {field.label}
                       <Textarea
                         rows={3}
                         value={String(editing[field.key] ?? "")}
                         placeholder={field.placeholder}
-                        className="bg-background border-border text-foreground focus-visible:ring-primary"
-                        onChange={(e) => setEditing({ ...editing, [field.key]: e.target.value })}
+                        className="bg-background border-border text-foreground text-xs sm:text-sm focus-visible:ring-primary"
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, [field.key]: e.target.value } : null))}
                       />
                     </label>
                   );
                 }
 
                 return (
-                  <label key={field.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  <label key={field.key} className="grid gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
                     {field.label}
                     <Input
                       type={field.type === "number" ? "number" : "text"}
                       value={String(editing[field.key] ?? "")}
                       placeholder={field.placeholder}
-                      className="bg-background border-border text-foreground focus-visible:ring-primary"
+                      className="bg-background border-border text-foreground text-xs sm:text-sm focus-visible:ring-primary"
                       onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          [field.key]: field.type === "number" ? Number(e.target.value) : e.target.value,
-                        })
+                        setEditing((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                [field.key]: field.type === "number" ? Number(e.target.value) : e.target.value,
+                              }
+                            : null
+                        )
                       }
                     />
                   </label>
@@ -648,18 +718,18 @@ export function CollectionManager({
               })}
             </div>
 
-            <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full border-border hover:bg-secondary"
+                className="rounded-full border-border hover:bg-secondary text-xs sm:text-sm"
                 onClick={() => setEditing(null)}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90"
+                className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90 text-xs sm:text-sm"
               >
                 Save to MongoDB
               </Button>
