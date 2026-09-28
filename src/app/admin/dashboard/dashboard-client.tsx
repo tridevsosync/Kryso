@@ -49,7 +49,7 @@ import {
   markEnquiryReadRemote,
   type Enquiry,
 } from "@/lib/kryso-storage";
-import { siteSettings, teachers } from "@/data/catalog";
+import { siteSettings, teachers, defaultSyllabusModules, defaultStudioGearItems } from "@/data/catalog";
 import { SpotlightManager } from "@/components/admin-spotlight";
 import { MusicTrackManager } from "@/components/admin-music-tracks";
 
@@ -424,9 +424,11 @@ function MusicSection() {
 // 3. Academy Section (Courses, Students)
 // ----------------------------------------------------
 function AcademySection() {
-  const [tab, setTab] = useState<"courses" | "students">("courses");
+  const [tab, setTab] = useState<"courses" | "curriculum" | "studiogear" | "students">("courses");
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
   const [storedStudents] = useStored<unknown[]>("admin-students-v3", []);
+  const [storedCurriculum] = useStored<unknown[]>("admin-curriculum-v3", defaultSyllabusModules);
+  const [storedStudioGear] = useStored<unknown[]>("admin-studio-gear-v3", defaultStudioGearItems);
 
   return (
     <div>
@@ -434,13 +436,13 @@ function AcademySection() {
         <div>
           <h1 className="font-display text-2xl font-extrabold text-foreground">Academy Management</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Clean state active. All courses and students are stored directly in MongoDB & Cloudinary.
+            Manage courses, curriculum/syllabus, studio gear, and student enrollments directly synced with MongoDB.
           </p>
         </div>
         <div className="flex flex-wrap rounded-lg bg-secondary p-1 border border-border gap-1">
           <button
             onClick={() => setTab("courses")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               tab === "courses"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -449,8 +451,28 @@ function AcademySection() {
             Courses ({storedCourses.length})
           </button>
           <button
+            onClick={() => setTab("curriculum")}
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              tab === "curriculum"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Curriculum & Syllabus ({storedCurriculum.length})
+          </button>
+          <button
+            onClick={() => setTab("studiogear")}
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              tab === "studiogear"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Studio Gear & Campus ({storedStudioGear.length})
+          </button>
+          <button
             onClick={() => setTab("students")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
               tab === "students"
                 ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:text-foreground"
@@ -507,6 +529,117 @@ function AcademySection() {
               type: "select",
               options: ["All levels", "Beginner", "Intermediate", "Advanced", "Concert Masterclass"],
               placeholder: "Select level...",
+            },
+            {
+              key: "syllabusOverview",
+              label: "Course Syllabus Overview Note (Optional)",
+              type: "textarea",
+              placeholder: "Custom highlights or specific methodology for this course...",
+            },
+          ]}
+        />
+      )}
+
+      {tab === "curriculum" && (
+        <CollectionManager
+          title="Course Curriculum & Syllabus Modules"
+          description="Manage learning steps, milestone topics, and syllabus modules displayed on the Course 'Know More' page. Saved in MongoDB."
+          storageKey="admin-curriculum-v3"
+          apiCollection="academy_curriculum"
+          folder="kryso/curriculum"
+          seed={defaultSyllabusModules}
+          filterKey="courseName"
+          fields={[
+            {
+              key: "step",
+              label: "Step / Week / Module Number",
+              placeholder: "e.g. 01, 02, Week 1, or Module A",
+            },
+            {
+              key: "title",
+              label: "Module Title",
+              placeholder: "e.g. Posture & Instrument Geometry",
+            },
+            {
+              key: "courseName",
+              label: "Assign to Course (Optional)",
+              type: "select",
+              dynamicCollection: "academy_courses",
+              storageKeyFallback: "admin-courses-v3",
+              dynamicLabelKey: "name",
+              placeholder: "All Courses (or select specific course)",
+            },
+            {
+              key: "desc",
+              label: "Module Description",
+              type: "textarea",
+              placeholder: "Overview of technique and learning milestones covered in this module...",
+            },
+            {
+              key: "topics",
+              label: "Key Topics (Comma Separated)",
+              type: "textarea",
+              placeholder: "e.g. Hand placement & tuning, Finger gymnastics & agility, Basic tone articulation",
+            },
+          ]}
+        />
+      )}
+
+      {tab === "studiogear" && (
+        <CollectionManager
+          title="Studio Gear & Campus Infrastructure"
+          description="Manage rehearsal rooms, pro audio gear, recital stage, and amenities shown in the 'Studio Gear & Campus' tab on course pages. Saved in MongoDB."
+          storageKey="admin-studio-gear-v3"
+          apiCollection="academy_studio_gear"
+          folder="kryso/studio"
+          seed={defaultStudioGearItems}
+          fields={[
+            {
+              key: "title",
+              label: "Feature / Equipment Name",
+              placeholder: "e.g. Sound-Treated Isolation Rooms",
+            },
+            {
+              key: "category",
+              label: "Category / Badge",
+              type: "select",
+              options: [
+                "Acoustics",
+                "Pro Audio",
+                "Concert Stage",
+                "Instruments",
+                "Rehearsal",
+                "Campus",
+                "Studio Recording",
+                "Certification",
+              ],
+              placeholder: "Select category...",
+            },
+            {
+              key: "icon",
+              label: "Icon Style",
+              type: "select",
+              options: [
+                "Mic2",
+                "Volume2",
+                "Tv",
+                "Music2",
+                "Calendar",
+                "ShieldCheck",
+                "Radio",
+                "Headphones",
+                "Sparkles",
+                "Layers",
+                "Award",
+                "UsersRound",
+              ],
+              placeholder: "Select icon...",
+            },
+            {
+              key: "desc",
+              label: "Description",
+              type: "textarea",
+              placeholder: "Details about acoustic specs, brands, room isolation, or student access benefits...",
             },
           ]}
         />

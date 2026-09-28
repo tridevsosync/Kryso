@@ -28,6 +28,7 @@ import { type Course } from "@/data/catalog";
 import { formatImageUrl } from "@/lib/media-utils";
 import { EnquiryButton } from "../enquiry-button";
 import { CourseEnrollmentModal } from "@/components/enrollment-modal";
+import { AcademySpotlight } from "@/components/academy-spotlight";
 
 const perks = [
   { icon: Award, title: "Experienced teachers", text: "Learn with working concert musicians who love to teach." },
@@ -129,8 +130,9 @@ export function AcademyClient() {
 
   return (
     <SiteShell>
-      {/* Hero section */}
-      <section className="relative isolate overflow-hidden bg-background text-foreground border-b border-border">
+      {/* 1. HERO SPOTLIGHT CAROUSEL SECTION */}
+      <section className="relative isolate overflow-hidden bg-background text-foreground border-b border-border py-4 sm:py-6 lg:py-8">
+        {/* Stage background textures */}
         <Image
           src={heroImage}
           alt="Academy concert rehearsal hall"
@@ -139,97 +141,51 @@ export function AcademyClient() {
           sizes="100vw"
           className="absolute inset-0 -z-20 object-cover object-[center_35%] opacity-35 brightness-75 contrast-125"
         />
-        <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/95 to-background/60" />
-        <div className="page-shell grid gap-8 sm:gap-12 py-10 sm:py-16 md:grid-cols-[1.1fr_.9fr] md:items-center md:py-20">
-          <div>
-            <p className="eyebrow">Kryso Music Academy · Pune</p>
-            <h1 className="mt-3 sm:mt-4 font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-foreground">
-              A little music can change <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">a lot.</span>
-            </h1>
-            <p className="mt-3 sm:mt-5 max-w-xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground">
-              We make learning music welcoming, practical and full of those small moments that make you want to keep
-              playing.
-            </p>
-            <EnquiryButton className="mt-6 sm:mt-8 h-11 sm:h-12 rounded-full px-6 font-bold shadow-lg shadow-primary/20 text-xs sm:text-sm w-full sm:w-auto">
-              Find your class <ArrowUpRight size={16} />
-            </EnquiryButton>
+        <div className="absolute inset-0 -z-10 bg-radial-[at_center] from-background/55 via-background/85 to-background" />
+
+        {/* Ambient Stage Glow */}
+        <div className="pointer-events-none absolute left-1/2 top-10 -z-10 h-72 w-[600px] -translate-x-1/2 rounded-full bg-primary/20 blur-[130px]" />
+
+        <div className="w-full">
+          <div className="page-shell mb-2 sm:mb-3">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-primary shadow-sm">
+              <span className="size-2 rounded-full bg-primary animate-ping" />
+              <span className="truncate">KRYSO MUSIC ACADEMY & STUDIO · PUNE</span>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-            {[
-              { word: "Start", line: "with the basics" },
-              { word: "Explore", line: "your own sound" },
-              { word: "Practice", line: "with good people" },
-              { word: "Perform", line: "on live stage" },
-            ].map((item, i) => (
-              <div
-                key={item.word}
-                className={`min-h-24 sm:min-h-32 p-3.5 sm:p-5 rounded-xl transition-all flex flex-col justify-between ${
-                  i === 1 || i === 2
-                    ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20"
-                    : "bg-card border border-border text-foreground"
-                }`}
-              >
-                <span className="font-display text-lg sm:text-2xl font-extrabold">{item.word}</span>
-                <p className="mt-1 sm:mt-2 text-xs sm:text-sm opacity-85 leading-tight">{item.line}</p>
+          <AcademySpotlight />
+        </div>
+      </section>
+
+      {/* 2. STATS & HIGHLIGHTS BANNER */}
+      <section className="relative -mt-4 sm:-mt-6 z-20 page-shell">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-border/80 bg-border shadow-2xl backdrop-blur-xl">
+          {[
+            { word: "Start", line: "with the basics", desc: "No prior experience needed" },
+            { word: "Explore", line: "your own sound", desc: "1-on-1 personalized path" },
+            { word: "Practice", line: "with good people", desc: "Acoustic-treated studio" },
+            { word: "Perform", line: "on live stage", desc: "Real concert recitals" },
+          ].map((item, i) => (
+            <div
+              key={item.word}
+              className={`p-4 sm:p-6 lg:p-7 flex flex-col justify-between transition-colors ${
+                i === 1 || i === 2
+                  ? "bg-primary/95 text-primary-foreground font-bold shadow-inner"
+                  : "bg-card/95 text-foreground"
+              }`}
+            >
+              <div>
+                <span className="font-display text-xl sm:text-2xl font-extrabold">{item.word}</span>
+                <p className="mt-1 text-xs sm:text-sm font-semibold opacity-90 leading-tight">{item.line}</p>
               </div>
-            ))}
-          </div>
+              <p className="mt-2 text-[11px] opacity-75">{item.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Approach & Mission */}
-      <section className="page-shell section-space grid gap-12 lg:grid-cols-2">
-        <div>
-          <SectionHeading label="Our approach" title="Good teaching. Great music. No pressure." />
-          <p className="mt-5 leading-7 text-muted-foreground">
-            Kryso is a place for curious people of all ages to slow down, listen, and learn. Our teachers meet you where
-            you are—whether you have never touched an instrument or you&apos;re ready to take your playing further.
-          </p>
-          <p className="mt-4 leading-7 text-muted-foreground">
-            We believe music belongs to everyone. Every lesson pairs a thoughtful foundation with time to play songs you
-            actually love.
-          </p>
-        </div>
-        <div className="grid content-start gap-6 border-l-2 border-primary pl-6">
-          <div>
-            <p className="eyebrow">Our mission</p>
-            <p className="mt-2 font-display text-xl font-bold text-foreground">Make music education joyful, accessible and personal.</p>
-          </div>
-          <div>
-            <p className="eyebrow">Our vision</p>
-            <p className="mt-2 font-display text-xl font-bold text-foreground">A community where everyone feels at home with music.</p>
-          </div>
-          <div>
-            <p className="eyebrow">In the studio</p>
-            <p className="mt-2 leading-7 text-muted-foreground">
-              A bright, welcoming practice space, instruments to explore, and friendly guidance whenever you need it.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Perks */}
-      <section className="border-y border-border bg-secondary/40">
-        <div className="page-shell section-space">
-          <SectionHeading
-            label="A good place to learn"
-            title="The right kind of support."
-            text="Music lessons built around people—not just pages in a book."
-          />
-          <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-            {perks.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="border-t border-border pt-5">
-                <Icon size={20} className="text-primary" />
-                <h2 className="mt-4 font-display text-lg font-bold text-foreground">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Dynamic Courses Section */}
-      <section className="page-shell section-space">
+      {/* 3. DYNAMIC COURSES SHOWCASE SECTION (ABOVE OUR APPROACH) */}
+      <section id="courses" className="page-shell section-space">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <SectionHeading
             label="Curriculums & Classes"
@@ -266,7 +222,7 @@ export function AcademyClient() {
                     setSelectedLevel("all");
                     setCurrentPage(1);
                   }}
-                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     selectedLevel === "all"
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                       : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -281,7 +237,7 @@ export function AcademyClient() {
                       setSelectedLevel(lvl);
                       setCurrentPage(1);
                     }}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                       selectedLevel === lvl
                         ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                         : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -329,118 +285,137 @@ export function AcademyClient() {
                 setSearchQuery("");
                 setSelectedLevel("all");
               }}
-              className="mt-4 rounded-full text-xs"
+              className="mt-4 rounded-full text-xs cursor-pointer"
             >
               Reset Filters
             </Button>
           </div>
         ) : (
-          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {paginatedCourses.map((course) => (
-              <article
-                key={course.id}
-                className="group border border-border bg-card p-6 rounded-xl transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
+          <div className="mt-9 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedCourses.map((course) => {
+              const sellingPrice = Number(course.fees || (course as unknown as { price?: number }).price || 0);
+              const actualPrice = Number(course.actualPrice || (course as unknown as { originalPrice?: number }).originalPrice || 0);
+              const hasDiscount = actualPrice > sellingPrice && sellingPrice > 0;
+              const discountPercent = hasDiscount ? Math.round(((actualPrice - sellingPrice) / actualPrice) * 100) : 0;
+              const teacher = course.instructor || (course as unknown as { teacherName?: string }).teacherName;
+
+              return (
+                <article
+                  key={course.id || course.name}
+                  className="group relative rounded-2xl border border-border bg-card overflow-hidden shadow-sm transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
+                >
+                  {/* Full-width Card Cover Image */}
+                  <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-secondary">
                     {course.imageUrl ? (
-                      <div className="relative size-12 overflow-hidden rounded-full border border-primary/30">
-                        <Image
-                          src={formatImageUrl(course.imageUrl)}
-                          alt={course.name}
-                          fill
-                          sizes="48px"
-                          className="object-cover"
-                        />
-                      </div>
+                      <Image
+                        src={formatImageUrl(course.imageUrl)}
+                        alt={course.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
                     ) : (
-                      <div className="grid size-12 place-items-center rounded-full border border-primary/30 bg-secondary text-primary font-display text-xl">
-                        {course.icon || "🎵"}
+                      <div className="size-full grid place-items-center bg-gradient-to-br from-secondary via-background to-secondary text-muted-foreground">
+                        <Music2 size={40} className="text-primary/40" />
                       </div>
                     )}
-                    {course.level && (
-                      <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border">
-                        {course.level}
-                      </span>
-                    )}
-                  </div>
-                  <h2 className="mt-5 font-display text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                    {course.name}
-                  </h2>
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground line-clamp-3">
-                    {course.description || "Comprehensive music coaching and practical performance technique."}
-                  </p>
-                  <div className="mt-5 space-y-2 border-t border-border pt-4 text-xs">
-                    {(course.instructor || (course as unknown as { teacherName?: string }).teacherName) && (
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="font-medium">Teacher Name:</span>
-                        <span className="font-bold text-foreground">
-                          {course.instructor || (course as unknown as { teacherName?: string }).teacherName}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90" />
+
+                    {/* Level Badge & Discount Pill on top of cover image */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                      {course.level && (
+                        <span className="rounded-full bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-extrabold text-foreground border border-border/80">
+                          {course.level}
+                        </span>
+                      )}
+                      {discountPercent > 0 && (
+                        <span className="rounded-full bg-emerald-500/90 text-white font-extrabold px-2.5 py-1 text-[10px] shadow-sm">
+                          {discountPercent}% OFF
+                        </span>
+                      )}
+                    </div>
+
+                    {course.duration && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-background/85 backdrop-blur-md px-2.5 py-1 text-[10px] font-semibold text-muted-foreground border border-border/80">
+                          <Clock3 size={11} className="text-primary" /> {course.duration}
                         </span>
                       </div>
                     )}
-                    {(() => {
-                      const sellingPrice = Number(course.fees || (course as unknown as { price?: number }).price || 0);
-                      const actualPrice = Number(course.actualPrice || (course as unknown as { originalPrice?: number }).originalPrice || 0);
-                      const hasDiscount = actualPrice > sellingPrice && sellingPrice > 0;
-                      const discountPercent = hasDiscount ? Math.round(((actualPrice - sellingPrice) / actualPrice) * 100) : 0;
+                  </div>
 
-                      if (!sellingPrice && !actualPrice) return null;
+                  {/* Course Body Content */}
+                  <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h2 className="font-display text-xl font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {course.name}
+                      </h2>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground line-clamp-2">
+                        {course.description || "Comprehensive music coaching and practical performance technique."}
+                      </p>
 
-                      return (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground font-medium">Price:</span>
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            <span className="font-extrabold text-primary text-sm">
-                              ₹{sellingPrice.toLocaleString("en-IN")}
-                            </span>
-                            {hasDiscount && (
-                              <>
-                                <span className="text-[11px] text-muted-foreground line-through">
+                      <div className="mt-4 space-y-2 border-t border-border/80 pt-3.5 text-xs">
+                        {teacher && (
+                          <div className="flex items-center justify-between text-muted-foreground">
+                            <span className="font-medium">Teacher Name:</span>
+                            <strong className="font-bold text-foreground">{teacher}</strong>
+                          </div>
+                        )}
+                        {(sellingPrice > 0 || actualPrice > 0) && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground font-medium">Price:</span>
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              <span className="font-extrabold text-primary text-base">
+                                ₹{sellingPrice.toLocaleString("en-IN")}
+                              </span>
+                              {hasDiscount && (
+                                <span className="text-xs text-muted-foreground line-through">
                                   ₹{actualPrice.toLocaleString("en-IN")}
                                 </span>
+                              )}
+                              {hasDiscount && (
                                 <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-400">
                                   {discountPercent}% OFF
                                 </span>
-                              </>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-                    {course.duration && (
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="font-medium">Duration:</span>
-                        <span className="font-semibold text-foreground">{course.duration}</span>
+                        )}
+                        {course.duration && (
+                          <div className="flex items-center justify-between text-muted-foreground">
+                            <span className="font-medium">Duration:</span>
+                            <span className="font-semibold text-foreground">{course.duration}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Two buttons: Know More and Enroll Now */}
-                <div className="mt-6 grid grid-cols-2 gap-2.5 pt-3 border-t border-border/60">
-                  <Link
-                    href={`/academy/${encodeURIComponent(course.id || course.name)}`}
-                    className="w-full"
-                  >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all"
-                    >
-                      Know More <Info size={13} className="ml-1 text-primary" />
-                    </Button>
-                  </Link>
-                  <Button
-                    type="button"
-                    onClick={() => setEnrollModalCourse(course)}
-                    className="h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all"
-                  >
-                    Enroll Now <ArrowRight size={13} className="ml-1" />
-                  </Button>
-                </div>
-              </article>
-            ))}
+                    {/* Action Buttons: Know More & Enroll Now */}
+                    <div className="mt-5 grid grid-cols-2 gap-2.5 pt-3 border-t border-border/60">
+                      <Link
+                        href={`/academy/${encodeURIComponent(course.id || course.name)}`}
+                        className="w-full"
+                      >
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all cursor-pointer"
+                        >
+                          Know More <Info size={13} className="ml-1 text-primary" />
+                        </Button>
+                      </Link>
+                      <Button
+                        type="button"
+                        onClick={() => setEnrollModalCourse(course)}
+                        className="h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all cursor-pointer"
+                      >
+                        Enroll Now <ArrowRight size={13} className="ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
 
@@ -452,7 +427,7 @@ export function AcademyClient() {
               size="sm"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="h-9 rounded-full px-3 text-xs"
+              className="h-9 rounded-full px-3 text-xs cursor-pointer"
             >
               <ChevronLeft size={14} className="mr-1" /> Previous
             </Button>
@@ -464,12 +439,63 @@ export function AcademyClient() {
               size="sm"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="h-9 rounded-full px-3 text-xs"
+              className="h-9 rounded-full px-3 text-xs cursor-pointer"
             >
               Next <ChevronRight size={14} className="ml-1" />
             </Button>
           </div>
         )}
+      </section>
+
+      {/* 4. APPROACH & MISSION SECTION */}
+      <section className="page-shell section-space grid gap-12 lg:grid-cols-2 border-t border-border/80">
+        <div>
+          <SectionHeading label="Our approach" title="Good teaching. Great music. No pressure." />
+          <p className="mt-5 leading-7 text-muted-foreground">
+            Kryso is a place for curious people of all ages to slow down, listen, and learn. Our teachers meet you where
+            you are—whether you have never touched an instrument or you&apos;re ready to take your playing further.
+          </p>
+          <p className="mt-4 leading-7 text-muted-foreground">
+            We believe music belongs to everyone. Every lesson pairs a thoughtful foundation with time to play songs you
+            actually love.
+          </p>
+        </div>
+        <div className="grid content-start gap-6 border-l-2 border-primary pl-6">
+          <div>
+            <p className="eyebrow">Our mission</p>
+            <p className="mt-2 font-display text-xl font-bold text-foreground">Make music education joyful, accessible and personal.</p>
+          </div>
+          <div>
+            <p className="eyebrow">Our vision</p>
+            <p className="mt-2 font-display text-xl font-bold text-foreground">A community where everyone feels at home with music.</p>
+          </div>
+          <div>
+            <p className="eyebrow">In the studio</p>
+            <p className="mt-2 leading-7 text-muted-foreground">
+              A bright, welcoming practice space, instruments to explore, and friendly guidance whenever you need it.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. PERKS & SUPPORT SECTION */}
+      <section className="border-y border-border bg-secondary/40">
+        <div className="page-shell section-space">
+          <SectionHeading
+            label="A good place to learn"
+            title="The right kind of support."
+            text="Music lessons built around people—not just pages in a book."
+          />
+          <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            {perks.map(({ icon: Icon, title, text }) => (
+              <div key={title} className="border-t border-border pt-5">
+                <Icon size={20} className="text-primary" />
+                <h2 className="mt-4 font-display text-lg font-bold text-foreground">{title}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Testimonials (rendered only when actual testimonials exist) */}

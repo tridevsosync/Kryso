@@ -17,6 +17,7 @@ import {
   Check,
   Flame,
   GraduationCap,
+  Headphones,
   Heart,
   HelpCircle,
   Layers,
@@ -35,7 +36,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
-import { type Course, type Teacher } from "@/data/catalog";
+import {
+  type Course,
+  type Teacher,
+  type SyllabusModule,
+  type StudioGearItem,
+  defaultSyllabusModules,
+  defaultStudioGearItems,
+} from "@/data/catalog";
 import { formatImageUrl } from "@/lib/media-utils";
 import { CourseEnrollmentModal } from "@/components/enrollment-modal";
 import { EnquiryButton } from "@/app/enquiry-button";
@@ -44,9 +52,29 @@ interface CourseDetailClientProps {
   courseId: string;
 }
 
+const studioIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  Mic2,
+  Volume2,
+  Tv,
+  Music2,
+  Calendar,
+  ShieldCheck,
+  Radio,
+  Headphones,
+  Sparkles,
+  Layers,
+  Award,
+  GraduationCap,
+  Heart,
+  Star,
+  UsersRound,
+};
+
 export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [curriculumList, setCurriculumList] = useState<SyllabusModule[]>([]);
+  const [studioGearList, setStudioGearList] = useState<StudioGearItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollModalCourse, setEnrollModalCourse] = useState<Course | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -96,7 +124,43 @@ export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
       })
       .catch(() => {});
 
-    Promise.all([loadCourses, loadTeachers]).finally(() => {
+    // 3. Fetch curriculum / syllabus
+    const loadCurriculum = fetch("/api/collections?name=academy_curriculum")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setCurriculumList(data.items);
+        } else {
+          try {
+            const stored = localStorage.getItem("admin-curriculum-v3");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) setCurriculumList(parsed);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    // 4. Fetch studio gear & campus
+    const loadStudioGear = fetch("/api/collections?name=academy_studio_gear")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setStudioGearList(data.items);
+        } else {
+          try {
+            const stored = localStorage.getItem("admin-studio-gear-v3");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) setStudioGearList(parsed);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
+    Promise.all([loadCourses, loadTeachers, loadCurriculum, loadStudioGear]).finally(() => {
       setLoading(false);
     });
   }, []);
@@ -535,65 +599,77 @@ export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
                     title="Course Curriculum & Milestones"
                     text="From your first notes to confident concert stage jamming—here is how you will progress step by step."
                   />
+                  {currentCourse.syllabusOverview && (
+                    <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs sm:text-sm text-foreground leading-relaxed">
+                      <strong className="text-primary font-bold">Course Syllabus Focus: </strong>
+                      {currentCourse.syllabusOverview}
+                    </div>
+                  )}
                 </div>
 
-                {/* 4-Module Timeline */}
+                {/* Dynamic Modules Timeline / Grid */}
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {[
-                    {
-                      step: "01",
-                      title: "Posture & Instrument Geometry",
-                      desc: "Fretboard/key/drum geography, ergonomic posture, finger muscle memory, and pure tone production.",
-                      topics: ["Hand placement & tuning", "Finger gymnastics & agility", "Basic tone articulation"],
-                    },
-                    {
-                      step: "02",
-                      title: "Applied Theory & Harmony",
-                      desc: "Scales, chords, rhythm counting, chord transitions, and intuitive ear training.",
-                      topics: ["Major & Minor scales", "Chord inversions & rhythm strum", "Time signatures & groove"],
-                    },
-                    {
-                      step: "03",
-                      title: "Song Repertoire & Phrasing",
-                      desc: "Learn to play iconic songs across Pop, Rock, Classical, Jazz, and Bollywood genres.",
-                      topics: ["Playing by ear", "Dynamic expression & bends", "Multi-genre song catalog"],
-                    },
-                    {
-                      step: "04",
-                      title: "Concert Recital & Studio Prep",
-                      desc: "Perform over live backing tracks, learn amp & mic dynamics, and record your showcase.",
-                      topics: ["Live stage jamming", "Audio recording techniques", "Recital certification showcase"],
-                    },
-                  ].map((module) => (
-                    <div
-                      key={module.step}
-                      className="rounded-3xl border border-border bg-card p-6 flex flex-col justify-between transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
-                    >
-                      <div>
-                        <span className="font-display text-3xl font-extrabold text-primary/30">
-                          {module.step}
-                        </span>
-                        <h3 className="mt-3 font-display text-base sm:text-lg font-bold text-foreground">
-                          {module.title}
-                        </h3>
-                        <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                          {module.desc}
-                        </p>
-                      </div>
+                  {(() => {
+                    const rawList = curriculumList.length > 0 ? curriculumList : defaultSyllabusModules;
+                    // Check for course-specific syllabus modules first
+                    const courseSpecific = rawList.filter(
+                      (m) =>
+                        m.courseName &&
+                        (m.courseName.toLowerCase() === currentCourse.name.toLowerCase() ||
+                          m.courseName === currentCourse.id)
+                    );
+                    const modulesToDisplay =
+                      courseSpecific.length > 0
+                        ? courseSpecific
+                        : rawList.filter(
+                            (m) => !m.courseName || m.courseName === "All Courses" || m.courseName === ""
+                          );
+                    const activeModules = modulesToDisplay.length > 0 ? modulesToDisplay : defaultSyllabusModules;
 
-                      <div className="mt-5 pt-4 border-t border-border/80">
-                        <p className="text-[11px] font-bold text-foreground uppercase tracking-wider mb-2">Key Topics:</p>
-                        <ul className="space-y-1.5 text-xs text-muted-foreground">
-                          {module.topics.map((t) => (
-                            <li key={t} className="flex items-center gap-1.5">
-                              <span className="size-1 rounded-full bg-primary shrink-0" />
-                              <span>{t}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ))}
+                    return activeModules.map((module) => {
+                      const topicList = Array.isArray(module.topics)
+                        ? module.topics
+                        : typeof module.topics === "string"
+                        ? module.topics
+                            .split(",")
+                            .map((t: string) => t.trim())
+                            .filter(Boolean)
+                        : [];
+
+                      return (
+                        <div
+                          key={module.id || module.step || module.title}
+                          className="rounded-3xl border border-border bg-card p-6 flex flex-col justify-between transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
+                        >
+                          <div>
+                            <span className="font-display text-3xl font-extrabold text-primary/30">
+                              {module.step || "01"}
+                            </span>
+                            <h3 className="mt-3 font-display text-base sm:text-lg font-bold text-foreground">
+                              {module.title}
+                            </h3>
+                            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                              {module.desc}
+                            </p>
+                          </div>
+
+                          {topicList.length > 0 && (
+                            <div className="mt-5 pt-4 border-t border-border/80">
+                              <p className="text-[11px] font-bold text-foreground uppercase tracking-wider mb-2">Key Topics:</p>
+                              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                {topicList.map((t: string) => (
+                                  <li key={t} className="flex items-center gap-1.5">
+                                    <span className="size-1 rounded-full bg-primary shrink-0" />
+                                    <span>{t}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* About this Program / Methodology */}
@@ -704,47 +780,24 @@ export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
                 />
 
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {[
-                    {
-                      icon: Mic2,
-                      title: "Sound-Treated Isolation Rooms",
-                      desc: "Acoustically tuned practice spaces designed for natural resonance and zero external noise distraction.",
-                    },
-                    {
-                      icon: Volume2,
-                      title: "High-End Pro Audio Gear",
-                      desc: "Studio monitors, Shure and Sennheiser microphones, Fender and Cort amplifiers, and Focusrite recording interfaces.",
-                    },
-                    {
-                      icon: Tv,
-                      title: "Live Recital Stage",
-                      desc: "Dedicated stage arena with concert mood lighting for student showcases, open mics, and live ensemble jams.",
-                    },
-                    {
-                      icon: Music2,
-                      title: "Complimentary Instrument Access",
-                      desc: "No need to carry heavy gear—students can use our in-house premium guitars, keyboards, violins, and drum kits.",
-                    },
-                    {
-                      icon: Calendar,
-                      title: "Flexible Practice Hours",
-                      desc: "Book complimentary studio rehearsal hours before or after your scheduled classes to practice your songs.",
-                    },
-                    {
-                      icon: ShieldCheck,
-                      title: "Central Pune Location",
-                      desc: "Conveniently accessible campus with dedicated parking, high-speed WiFi, and a warm music lounge.",
-                    },
-                  ].map((item) => {
-                    const Icon = item.icon;
+                  {(studioGearList.length > 0 ? studioGearList : defaultStudioGearItems).map((item) => {
+                    const iconKey = item.icon || "Mic2";
+                    const Icon = studioIcons[iconKey] || Mic2;
                     return (
                       <div
-                        key={item.title}
+                        key={item.id || item.title}
                         className="rounded-3xl border border-border bg-card p-6 flex flex-col justify-between transition-all hover:border-primary/50 hover:shadow-lg"
                       >
                         <div>
-                          <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
-                            <Icon size={22} />
+                          <div className="flex items-center justify-between">
+                            <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
+                              <Icon size={22} />
+                            </div>
+                            {item.category && (
+                              <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground border border-border">
+                                {item.category}
+                              </span>
+                            )}
                           </div>
                           <h3 className="mt-4 font-display text-base font-bold text-foreground">
                             {item.title}
