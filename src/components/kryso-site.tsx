@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { saveEnquiry, useStored } from "@/lib/kryso-storage";
 import { siteSettings } from "@/data/catalog";
+import { SpotifyIcon } from "@/components/spotify-icon";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -150,6 +151,16 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 <Mail size={14} className="text-primary" /> Email Support
               </a>
             )}
+            {settings.spotifyUrl && (
+              <a
+                href={settings.spotifyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-xs font-bold text-foreground hover:border-emerald-500 hover:text-emerald-400 transition-colors"
+              >
+                <SpotifyIcon size={14} className="text-emerald-400" /> Spotify
+              </a>
+            )}
             {settings.instagramUrl && (
               <a
                 href={settings.instagramUrl}
@@ -271,6 +282,17 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               {settings.footerDescription || settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.
             </p>
             <div className="mt-5 flex items-center gap-3 text-muted-foreground">
+              {settings.spotifyUrl && (
+                <a
+                  href={settings.spotifyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border p-2 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
+                  aria-label="Spotify"
+                >
+                  <SpotifyIcon size={16} />
+                </a>
+              )}
               {settings.youtubeUrl && (
                 <a
                   href={settings.youtubeUrl}

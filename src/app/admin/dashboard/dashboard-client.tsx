@@ -52,6 +52,7 @@ import {
 import { siteSettings, teachers, defaultSyllabusModules, defaultStudioGearItems } from "@/data/catalog";
 import { SpotlightManager } from "@/components/admin-spotlight";
 import { MusicTrackManager } from "@/components/admin-music-tracks";
+import { SpotifyIcon } from "@/components/spotify-icon";
 
 export const sections = [
   "Dashboard",
@@ -1494,7 +1495,22 @@ function SettingSection() {
               <h2 className="font-display text-base font-bold text-foreground flex items-center gap-2">
                 <Globe size={16} className="text-primary" /> Footer Social Media Links
               </h2>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <SpotifyIcon size={14} /> Spotify Artist URL
+                  </span>
+                  <Input
+                    value={settings.spotifyUrl || ""}
+                    placeholder="https://open.spotify.com/artist/..."
+                    className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary text-xs"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, spotifyUrl: e.target.value });
+                    }}
+                  />
+                </label>
+
                 <label className="grid gap-1.5 text-sm font-semibold text-foreground">
                   <span className="flex items-center gap-1.5 text-red-400">
                     <Youtube size={14} /> YouTube Channel URL
@@ -1516,7 +1532,7 @@ function SettingSection() {
                   </span>
                   <Input
                     value={settings.instagramUrl || ""}
-                    placeholder="https://www.instagram.com/krysomusic"
+                    placeholder="https://www.instagram.com/_krysomusic"
                     className="bg-secondary/40 border-border text-foreground focus-visible:ring-primary text-xs"
                     onChange={(e) => {
                       setSaved(false);
@@ -1630,6 +1646,7 @@ function SettingSection() {
                     {settings.footerDescription || `${settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.`}
                   </p>
                   <div className="flex items-center gap-2 pt-2 text-muted-foreground">
+                    {settings.spotifyUrl && <span className="rounded-full border border-border p-1.5"><SpotifyIcon size={13} className="text-emerald-400" /></span>}
                     {settings.youtubeUrl && <span className="rounded-full border border-border p-1.5"><Youtube size={13} className="text-red-400" /></span>}
                     {settings.instagramUrl && <span className="rounded-full border border-border p-1.5"><Instagram size={13} className="text-pink-400" /></span>}
                     {settings.facebookUrl && <span className="rounded-full border border-border p-1.5"><Facebook size={13} className="text-blue-400" /></span>}

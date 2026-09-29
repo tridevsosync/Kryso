@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { useStored } from "@/lib/kryso-storage";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
 import { formatImageUrl, formatAudioUrl, formatDownloadUrl } from "@/lib/media-utils";
+import { SpotifyIcon } from "@/components/spotify-icon";
 
 const STORAGE_KEY = "admin-music-tracks-v1";
 const COLLECTION_NAME = "music_tracks";
@@ -86,6 +87,7 @@ export function MusicTrackManager() {
     audioUrl: "",
     isLocked: true,
     genre: "Electronic / EDM",
+    spotifyUrl: siteSettings.spotifyUrl,
     youtubeUrl: siteSettings.youtubeUrl,
     instagramUrl: siteSettings.instagramUrl,
     facebookUrl: siteSettings.facebookUrl,
@@ -694,7 +696,7 @@ export function MusicTrackManager() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {editing.isLocked
-                        ? "Users must subscribe on YouTube, Instagram, and Facebook to unlock download."
+                        ? "Users must follow on Spotify, YouTube, Instagram, and Facebook to unlock download."
                         : "Unlocked: Anyone can download the track directly."}
                     </p>
                   </div>
@@ -720,6 +722,17 @@ export function MusicTrackManager() {
                     <p className="text-xs font-bold text-amber-400">
                       Channels required to unlock:
                     </p>
+                    <label className="grid gap-1 text-xs text-foreground">
+                      <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                        <SpotifyIcon size={14} /> Spotify Artist Profile URL:
+                      </span>
+                      <Input
+                        value={editing.spotifyUrl || siteSettings.spotifyUrl}
+                        onChange={(e) => setEditing({ ...editing, spotifyUrl: e.target.value })}
+                        className="bg-background border-border text-foreground text-xs"
+                      />
+                    </label>
+
                     <label className="grid gap-1 text-xs text-foreground">
                       <span className="flex items-center gap-1.5 text-red-400 font-semibold">
                         <Youtube size={13} /> YouTube Channel URL:

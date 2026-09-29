@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
 import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
+import { SpotifyIcon } from "@/components/spotify-icon";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -49,7 +50,7 @@ export function MusicShopClient() {
   // Social follow-to-unlock modal state
   const [lockModalTrack, setLockModalTrack] = useState<MusicTrack | null>(null);
   const [unlockedTrackIds, setUnlockedTrackIds] = useState<string[]>([]);
-  const [steps, setSteps] = useState({ yt: false, ig: false, fb: false });
+  const [steps, setSteps] = useState({ sp: false, yt: false, ig: false, fb: false });
 
   // Clear any previously persisted unlocks so all locked tracks require unlocking on every page refresh
   useEffect(() => {
@@ -154,7 +155,7 @@ export function MusicShopClient() {
       triggerDownload(track);
     } else {
       setLockModalTrack(track);
-      setSteps({ yt: false, ig: false, fb: false });
+      setSteps({ sp: false, yt: false, ig: false, fb: false });
     }
   };
 
@@ -198,7 +199,7 @@ export function MusicShopClient() {
     }
   };
 
-  const markStepDone = (key: "yt" | "ig" | "fb", url: string) => {
+  const markStepDone = (key: "sp" | "yt" | "ig" | "fb", url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
     setSteps((prev) => ({ ...prev, [key]: true }));
   };
@@ -214,7 +215,7 @@ export function MusicShopClient() {
     triggerDownload(currentTrack);
   };
 
-  const allStepsDone = steps.yt && steps.ig && steps.fb;
+  const allStepsDone = steps.sp && steps.yt && steps.ig && steps.fb;
 
   return (
     <SiteShell>
@@ -513,7 +514,7 @@ export function MusicShopClient() {
                     </Button>
                     {!isUnlocked && (
                       <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-                        Subscribe on YouTube, Instagram & FB to get free download
+                        Follow on Spotify, YouTube, Instagram & FB to get free download
                       </p>
                     )}
                   </div>
@@ -618,7 +619,7 @@ export function MusicShopClient() {
                 </span>
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">Unlock Free Download</h3>
-                  <p className="text-xs text-muted-foreground">Subscribe on YouTube, Instagram & FB to unlock</p>
+                  <p className="text-xs text-muted-foreground">Follow on Spotify, YouTube, Instagram & FB to unlock</p>
                 </div>
               </div>
               <button
@@ -656,10 +657,40 @@ export function MusicShopClient() {
             {/* Social Steps List */}
             <div className="mt-5 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Required steps ({Object.values(steps).filter(Boolean).length}/3):
+                Required steps ({Object.values(steps).filter(Boolean).length}/4):
               </p>
 
-              {/* Step 1: YouTube */}
+              {/* Step 1: Spotify */}
+              <button
+                type="button"
+                onClick={() => markStepDone("sp", lockModalTrack.spotifyUrl || siteSettings.spotifyUrl)}
+                className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                  steps.sp
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                    : "border-emerald-500/40 bg-emerald-500/5 text-foreground hover:bg-emerald-500/10 hover:border-emerald-500"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid size-8 place-items-center rounded-full bg-[#1DB954] text-black shadow-sm">
+                    <SpotifyIcon size={18} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">Follow on Spotify</p>
+                    <p className="text-[11px] text-muted-foreground">Stream & follow KRYSO on Spotify</p>
+                  </div>
+                </div>
+                {steps.sp ? (
+                  <span className="flex items-center gap-1 text-xs font-bold text-emerald-400">
+                    <Check size={14} /> Done
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                    Follow <ExternalLink size={12} />
+                  </span>
+                )}
+              </button>
+
+              {/* Step 2: YouTube */}
               <button
                 type="button"
                 onClick={() => markStepDone("yt", lockModalTrack.youtubeUrl || siteSettings.youtubeUrl)}
@@ -689,7 +720,7 @@ export function MusicShopClient() {
                 )}
               </button>
 
-              {/* Step 2: Instagram */}
+              {/* Step 3: Instagram */}
               <button
                 type="button"
                 onClick={() => markStepDone("ig", lockModalTrack.instagramUrl || siteSettings.instagramUrl)}
@@ -705,7 +736,7 @@ export function MusicShopClient() {
                   </span>
                   <div>
                     <p className="text-xs font-bold text-foreground">Follow on Instagram</p>
-                    <p className="text-[11px] text-muted-foreground">@kryso_music_academy</p>
+                    <p className="text-[11px] text-muted-foreground">@_krysomusic</p>
                   </div>
                 </div>
                 {steps.ig ? (
@@ -719,7 +750,7 @@ export function MusicShopClient() {
                 )}
               </button>
 
-              {/* Step 3: Facebook */}
+              {/* Step 4: Facebook */}
               <button
                 type="button"
                 onClick={() => markStepDone("fb", lockModalTrack.facebookUrl || siteSettings.facebookUrl)}

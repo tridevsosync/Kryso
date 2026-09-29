@@ -236,8 +236,9 @@ export const siteSettings = {
   footerDescription: "A concert-grade music academy in Pune where passion meets world-class mentorship.",
   heroTitle: "Learn music. Enjoy music.",
   heroSubtitle: "Find your rhythm at Kryso Music Academy.",
+  spotifyUrl: "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH?si=UYIN8MgpRB27qtHnLqlKqw&utm_source=copy-link&nd=1&dlsi=271aaa25a7344871",
   youtubeUrl: "https://www.youtube.com/@krysomusic",
-  instagramUrl: "https://www.instagram.com/krysomusic",
+  instagramUrl: "https://www.instagram.com/_krysomusic",
   facebookUrl: "https://www.facebook.com/krysomusic",
   isMaintenanceMode: false,
   maintenanceTitle: "Under Scheduled Maintenance",
@@ -254,6 +255,7 @@ export type MusicTrack = {
   audioUrl: string; // MP4 / MP3 audio file or link
   isLocked: boolean; // Lock button / status
   genre?: string;
+  spotifyUrl?: string;
   youtubeUrl?: string;
   instagramUrl?: string;
   facebookUrl?: string;
