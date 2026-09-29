@@ -32,8 +32,9 @@ import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
 import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
+import JSZip from "jszip";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 8;
 
 export function MusicShopClient() {
   const [trackList, setTrackList] = useState<MusicTrack[]>([]);
@@ -159,42 +160,160 @@ export function MusicShopClient() {
     }
   };
 
-  const triggerDownload = (track: MusicTrack) => {
-    if (!track.audioUrl) {
-      alert("No audio file download link configured for this track yet.");
+  const triggerDownload = async (track: MusicTrack) => {
+    // Collect all audio files attached to this release
+    const filesToDownload: { url: string; title?: string }[] = [];
+
+    if (track.audioFiles && track.audioFiles.length > 0) {
+      track.audioFiles.forEach((file) => {
+        if (file.url && file.url.trim()) {
+          filesToDownload.push({ url: file.url.trim(), title: file.title });
+        }
+      });
+    }
+
+    // If audioFiles didn't include the primary audioUrl, add it
+    if (track.audioUrl && track.audioUrl.trim()) {
+      const alreadyIncluded = filesToDownload.some((f) => f.url === track.audioUrl.trim());
+      if (!alreadyIncluded) {
+        filesToDownload.unshift({ url: track.audioUrl.trim(), title: "Master Mix" });
+      }
+    }
+
+    if (filesToDownload.length === 0) {
+      alert("No audio download link configured for this release yet.");
       return;
     }
 
     setDownloadingTrackId(track.id);
 
+    const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
+    const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
+
+    // CASE 1: Single Audio Track -> Direct Native File Download
+    if (filesToDownload.length === 1) {
+      try {
+        const item = filesToDownload[0];
+        const isMp4 = item.url.toLowerCase().includes(".mp4");
+        const isWav = item.url.toLowerCase().includes(".wav");
+        const isM4a = item.url.toLowerCase().includes(".m4a");
+        const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
+        const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
+
+        const downloadEndpoint = `/api/download?url=${encodeURIComponent(item.url)}&filename=${encodeURIComponent(filename)}`;
+
+        const link = document.createElement("a");
+        link.href = downloadEndpoint;
+        link.download = filename;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          setDownloadingTrackId(null);
+        }, 1500);
+      } catch (err) {
+        console.error("Single track download error:", err);
+        window.open(filesToDownload[0].url, "_blank");
+        setDownloadingTrackId(null);
+      }
+      return;
+    }
+
+    // CASE 2: Multiple Audio Tracks / Bundle -> 1-Click Complete Zip Package Download
     try {
-      const isMp4 = track.audioUrl.toLowerCase().includes(".mp4");
-      const isWav = track.audioUrl.toLowerCase().includes(".wav");
-      const isM4a = track.audioUrl.toLowerCase().includes(".m4a");
-      const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
-      const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
-      const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
-      const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
+      const bundleName = `${cleanTrackName} - ${cleanSingerName} (Complete Audio Bundle)`;
+      const payloadFiles = filesToDownload.map((item, idx) => {
+        const isMp4 = item.url.toLowerCase().includes(".mp4");
+        const isWav = item.url.toLowerCase().includes(".wav");
+        const isM4a = item.url.toLowerCase().includes(".m4a");
+        const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
+        const versionTitle = item.title ? item.title.trim() : `Track ${idx + 1}`;
+        const cleanVersion = ` (${versionTitle.replace(/[/\\?%*:|"<>]/g, "_")})`;
+        const filename = `${cleanTrackName}${cleanVersion} - ${cleanSingerName}${ext}`;
+        return { url: item.url, filename };
+      });
 
-      const downloadEndpoint = `/api/download?url=${encodeURIComponent(track.audioUrl)}&filename=${encodeURIComponent(filename)}`;
+      // 1. Try server-side fast zip generator
+      const res = await fetch("/api/download-bundle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: payloadFiles, bundleName }),
+      });
 
-      // Create an invisible anchor tag to trigger instant native browser download
-      const link = document.createElement("a");
-      link.href = downloadEndpoint;
-      link.download = filename;
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${bundleName}.zip`;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
 
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link);
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          window.URL.revokeObjectURL(blobUrl);
+          setDownloadingTrackId(null);
+        }, 2000);
+        return;
+      }
+
+      // 2. Client-side JSZip Fallback if server returned non-ok
+      const zip = new JSZip();
+      await Promise.all(
+        payloadFiles.map(async (file) => {
+          try {
+            const fileRes = await fetch(
+              `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
+            );
+            if (fileRes.ok) {
+              const arrayBuf = await fileRes.arrayBuffer();
+              zip.file(file.filename, arrayBuf);
+            }
+          } catch (e) {
+            console.warn("Client fallback fetch failed for", file.filename, e);
+          }
+        })
+      );
+
+      const zipFilesCount = Object.keys(zip.files).length;
+      if (zipFilesCount > 0) {
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const clientBlobUrl = window.URL.createObjectURL(zipBlob);
+        const link = document.createElement("a");
+        link.href = clientBlobUrl;
+        link.download = `${bundleName}.zip`;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          window.URL.revokeObjectURL(clientBlobUrl);
+          setDownloadingTrackId(null);
+        }, 2000);
+      } else {
+        // Fallback: trigger first file directly
+        const first = payloadFiles[0];
+        if (first?.url) {
+          window.location.href = `/api/download?url=${encodeURIComponent(first.url)}&filename=${encodeURIComponent(first.filename)}`;
         }
         setDownloadingTrackId(null);
-      }, 1200);
+      }
     } catch (err) {
-      console.error("Direct download error:", err);
-      window.open(track.audioUrl, "_blank");
+      console.error("Multi-download bundle error:", err);
+      // Fallback: trigger first file
+      if (filesToDownload[0]?.url) {
+        window.location.href = `/api/download?url=${encodeURIComponent(filesToDownload[0].url)}&filename=${encodeURIComponent(cleanTrackName + ".mp3")}`;
+      }
       setDownloadingTrackId(null);
     }
   };
@@ -235,9 +354,9 @@ export function MusicShopClient() {
             <Sparkles size={14} className="text-primary" /> Kryso Official Music Releases
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-4xl font-extrabold sm:text-5xl text-foreground">
-            Music Releases, Tracks &{" "}
+            Music Releases &{" "}
             <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">
-              Exclusive Downloads.
+              Exclusive Download.
             </span>
           </h1>
           <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
@@ -261,7 +380,7 @@ export function MusicShopClient() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 pb-6 border-b border-border">
           <SectionHeading
             label="Original Sound Catalog"
-            title="Music Tracks & Audio Downloads"
+            title="Music Tracks"
             text="Explore the full discography. Stream track previews and download files."
           />
 
@@ -334,7 +453,7 @@ export function MusicShopClient() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                🔓 Direct
+                🔓 Free
               </button>
               <button
                 type="button"
@@ -348,7 +467,7 @@ export function MusicShopClient() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                🔒 Social Unlock
+                🔒 Premium
               </button>
             </div>
 
@@ -391,7 +510,7 @@ export function MusicShopClient() {
 
         {/* Tracks Grid */}
         {paginatedTracks.length > 0 ? (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {paginatedTracks.map((track) => {
               const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
               const isPlaying = playingTrackId === track.id;
@@ -399,35 +518,42 @@ export function MusicShopClient() {
               return (
                 <article
                   key={track.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all hover:border-primary hover:shadow-2xl hover:shadow-primary/5"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-3 sm:p-3.5 transition-all hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5"
                 >
                   <div>
                     {/* Cover Artwork with Play/Pause Button */}
-                    <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border bg-secondary shadow-inner">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border/80 bg-secondary shadow-inner">
                       {track.imageUrl ? (
                         <Image
                           src={formatImageUrl(track.imageUrl)}
                           alt={track.name}
                           fill
-                          sizes="(max-width: 768px) 100vw, 380px"
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           className="object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
                         <div className="grid h-full place-items-center text-muted-foreground">
-                          <Music size={52} />
+                          <Music size={36} />
                         </div>
                       )}
 
-                      {/* Genre Tag Pill */}
-                      {track.genre && (
-                        <span className="absolute left-3 top-3 rounded-full bg-black/75 backdrop-blur-md px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-primary border border-primary/30">
-                          {track.genre}
-                        </span>
-                      )}
+                      {/* Genre & Bundle Tag Pills */}
+                      <div className="absolute left-2 top-2 flex flex-col gap-1 items-start z-10 pointer-events-none">
+                        {track.genre && (
+                          <span className="rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
+                            {track.genre}
+                          </span>
+                        )}
+                        {track.audioFiles && track.audioFiles.length > 1 && (
+                          <span className="rounded-full bg-primary/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-extrabold text-primary-foreground shadow-sm">
+                            📦 {track.audioFiles.length} Tracks
+                          </span>
+                        )}
+                      </div>
 
-                      {/* Lock Status Pill */}
+                      {/* Lock / Free Status Pill */}
                       <span
-                        className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold backdrop-blur-md shadow-md ${
+                        className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold backdrop-blur-md shadow-sm ${
                           isUnlocked
                             ? "bg-emerald-500/95 text-white"
                             : "bg-amber-500/95 text-black animate-pulse"
@@ -435,11 +561,11 @@ export function MusicShopClient() {
                       >
                         {isUnlocked ? (
                           <>
-                            <Unlock size={11} /> Unlocked
+                            <Unlock size={10} /> Free
                           </>
                         ) : (
                           <>
-                            <Lock size={11} /> Locked
+                            <Lock size={10} /> Premium
                           </>
                         )}
                       </span>
@@ -451,28 +577,31 @@ export function MusicShopClient() {
                           className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
                           aria-label={isPlaying ? "Pause track" : "Play preview"}
                         >
-                          <span className="grid size-16 place-items-center rounded-full bg-primary text-primary-foreground shadow-2xl transition-transform hover:scale-110">
-                            {isPlaying ? <Pause size={28} /> : <Play size={28} className="ml-1" />}
+                          <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-110">
+                            {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
                           </span>
                         </button>
                       )}
                     </div>
 
                     {/* Track Info */}
-                    <div className="mt-4">
-                      <h3 className="font-display text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                    <div className="mt-2.5">
+                      <h3
+                        className="font-display text-sm sm:text-base font-bold text-foreground group-hover:text-primary transition-colors truncate"
+                        title={track.name}
+                      >
                         {track.name}
                       </h3>
-                      <p className="mt-1 text-sm font-semibold text-muted-foreground">
-                        Singer / Artist: <span className="text-foreground">{track.singer}</span>
+                      <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                        Singer / Artist: <span className="font-medium text-foreground">{track.singer}</span>
                       </p>
                     </div>
 
                     {/* Audio Player Widget (when track is actively playing) */}
                     {track.audioUrl && isPlaying && (
-                      <div className="mt-3 rounded-xl bg-secondary/90 p-3 border border-border animate-fade-in shadow-inner">
-                        <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-primary">
-                          <Volume2 size={14} className="animate-pulse" /> Now Playing Track Preview
+                      <div className="mt-2.5 rounded-lg bg-secondary/90 p-2.5 border border-border animate-fade-in shadow-inner">
+                        <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold text-primary">
+                          <Volume2 size={12} className="animate-pulse" /> Now Playing Preview
                         </div>
                         <audio
                           autoPlay
@@ -480,7 +609,7 @@ export function MusicShopClient() {
                           controlsList="nodownload noplaybackrate"
                           onContextMenu={(e) => e.preventDefault()}
                           src={formatAudioUrl(track.audioUrl)}
-                          className="w-full h-8"
+                          className="w-full h-7"
                           onEnded={() => setPlayingTrackId(null)}
                         />
                       </div>
@@ -488,11 +617,11 @@ export function MusicShopClient() {
                   </div>
 
                   {/* Download / Unlock CTA Button */}
-                  <div className="mt-6 border-t border-border/70 pt-4">
+                  <div className="mt-3 border-t border-border/70 pt-2.5">
                     <Button
                       onClick={() => handleDownloadClick(track)}
                       disabled={downloadingTrackId === track.id}
-                      className={`w-full h-11 rounded-full font-bold shadow-md transition-all text-sm ${
+                      className={`w-full h-9 rounded-lg font-bold shadow-sm transition-all text-xs ${
                         isUnlocked
                           ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
                           : "bg-gradient-to-r from-amber-500 to-primary text-primary-foreground hover:brightness-110"
@@ -500,21 +629,21 @@ export function MusicShopClient() {
                     >
                       {downloadingTrackId === track.id ? (
                         <>
-                          <Loader2 size={16} className="mr-2 animate-spin" /> Downloading...
+                          <Loader2 size={14} className="mr-1.5 animate-spin" /> Downloading {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} files)...` : "..."}
                         </>
                       ) : isUnlocked ? (
                         <>
-                          <Download size={16} className="mr-2" /> Download Track
+                          <Download size={14} className="mr-1.5" /> Free Download {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} Tracks)` : ""}
                         </>
                       ) : (
                         <>
-                          <Lock size={15} className="mr-2" /> Unlock to Download
+                          <Lock size={13} className="mr-1.5" /> Premium Download {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} Tracks)` : ""}
                         </>
                       )}
                     </Button>
                     {!isUnlocked && (
-                      <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-                        Follow on Spotify, YouTube, Instagram & FB to get free download
+                      <p className="mt-1 text-center text-[10px] text-muted-foreground line-clamp-1">
+                        Follow on socials to get free download
                       </p>
                     )}
                   </div>

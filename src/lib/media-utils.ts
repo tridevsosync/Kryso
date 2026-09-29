@@ -22,6 +22,10 @@ export function extractGoogleDriveId(url?: string | null): string | null {
   if (!url || typeof url !== "string") return null;
   const trimmed = url.trim();
 
+  // 0. Handle internal proxy URLs /api/audio-stream?id=...
+  const audioStreamMatch = trimmed.match(/\/api\/audio-stream\?id=([a-zA-Z0-9_-]+)/i);
+  if (audioStreamMatch && audioStreamMatch[1]) return audioStreamMatch[1];
+
   // Check if it looks like a Google Drive / Google Docs / Google User Content URL
   const isGoogleDomain =
     trimmed.includes("drive.google.com") ||
@@ -29,19 +33,19 @@ export function extractGoogleDriveId(url?: string | null): string | null {
     trimmed.includes("googleusercontent.com") ||
     trimmed.includes("drive.usercontent.google.com");
 
-  if (!isGoogleDomain) return null;
+  if (isGoogleDomain) {
+    // 1. /file/d/([a-zA-Z0-9_-]+)
+    const fileDMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i);
+    if (fileDMatch && fileDMatch[1]) return fileDMatch[1];
 
-  // 1. /file/d/([a-zA-Z0-9_-]+)
-  const fileDMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i);
-  if (fileDMatch && fileDMatch[1]) return fileDMatch[1];
+    // 2. /d/([a-zA-Z0-9_-]+)
+    const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/i);
+    if (dMatch && dMatch[1]) return dMatch[1];
 
-  // 2. /d/([a-zA-Z0-9_-]+)
-  const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/i);
-  if (dMatch && dMatch[1]) return dMatch[1];
-
-  // 3. id=([a-zA-Z0-9_-]+)
-  const idParamMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
-  if (idParamMatch && idParamMatch[1]) return idParamMatch[1];
+    // 3. id=([a-zA-Z0-9_-]+)
+    const idParamMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+    if (idParamMatch && idParamMatch[1]) return idParamMatch[1];
+  }
 
   return null;
 }

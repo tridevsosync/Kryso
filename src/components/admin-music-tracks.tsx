@@ -43,6 +43,7 @@ export function MusicTrackManager() {
   const [filterLock, setFilterLock] = useState<"all" | "locked" | "unlocked">("all");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadingMultiAudio, setUploadingMultiAudio] = useState(false);
   const [mongoConnected, setMongoConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -85,6 +86,7 @@ export function MusicTrackManager() {
     singer: "",
     imageUrl: "",
     audioUrl: "",
+    audioFiles: [],
     isLocked: true,
     genre: "Electronic / EDM",
     spotifyUrl: siteSettings.spotifyUrl,
@@ -106,10 +108,19 @@ export function MusicTrackManager() {
       return;
     }
 
+    const cleanAudioFiles = (track.audioFiles || [])
+      .filter((item) => item.url && item.url.trim())
+      .map((item, idx) => ({
+        id: item.id || `file-${idx}-${Date.now()}`,
+        title: item.title?.trim() || `Audio Track ${idx + 1}`,
+        url: formatAudioUrl(item.url),
+      }));
+
     const cleanTrack: MusicTrack = {
       ...track,
       imageUrl: formatImageUrl(track.imageUrl),
-      audioUrl: formatAudioUrl(track.audioUrl),
+      audioUrl: formatAudioUrl(track.audioUrl) || (cleanAudioFiles[0]?.url ? formatAudioUrl(cleanAudioFiles[0].url) : ""),
+      audioFiles: cleanAudioFiles,
     };
 
     const updated = tracks.some((item) => item.id === cleanTrack.id)
@@ -241,6 +252,110 @@ export function MusicTrackManager() {
     } finally {
       setUploadingAudio(false);
     }
+  };
+
+  // Cloudinary batch multi-audio upload handler
+  const handleMultiAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !editing) return;
+
+    setUploadingMultiAudio(true);
+    const uploadedItems: { id: string; title: string; url: string }[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", "kryso/music/audio");
+
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          const rawName = file.name.replace(/\.[^/.]+$/, "");
+          uploadedItems.push({
+            id: `file-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+            title: rawName,
+            url: data.url,
+          });
+        }
+      }
+
+      if (uploadedItems.length > 0) {
+        const currentFiles = editing.audioFiles || [];
+        const combined = [...currentFiles, ...uploadedItems];
+        setEditing({
+          ...editing,
+          audioUrl: editing.audioUrl || uploadedItems[0].url,
+          audioFiles: combined,
+        });
+        setStatusMsg(`Uploaded ${uploadedItems.length} audio file(s) to Cloudinary!`);
+        setTimeout(() => setStatusMsg(null), 3000);
+      }
+    } catch (err) {
+      console.error("Multi-audio upload failed:", err);
+      alert("Error uploading some audio files to Cloudinary.");
+    } finally {
+      setUploadingMultiAudio(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleSingleItemAudioUpload = async (fileId: string, file: File) => {
+    if (!editing) return;
+    setUploadingAudio(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "kryso/music/audio");
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        updateAudioFileItem(fileId, "url", data.url);
+      } else {
+        alert(data.error || "Audio upload failed.");
+      }
+    } catch (err) {
+      console.error("Audio item upload error:", err);
+      alert("Error uploading file.");
+    } finally {
+      setUploadingAudio(false);
+    }
+  };
+
+  const addAudioFileItem = () => {
+    if (!editing) return;
+    const currentFiles = editing.audioFiles || [];
+    setEditing({
+      ...editing,
+      audioFiles: [
+        ...currentFiles,
+        {
+          id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          title: `Audio Track ${currentFiles.length + 1}`,
+          url: "",
+        },
+      ],
+    });
+  };
+
+  const updateAudioFileItem = (id: string, field: "title" | "url", value: string) => {
+    if (!editing) return;
+    const currentFiles = editing.audioFiles || [];
+    setEditing({
+      ...editing,
+      audioFiles: currentFiles.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
+    });
+  };
+
+  const removeAudioFileItem = (id: string) => {
+    if (!editing) return;
+    const currentFiles = editing.audioFiles || [];
+    setEditing({
+      ...editing,
+      audioFiles: currentFiles.filter((f) => f.id !== id),
+    });
   };
 
   const filteredTracks = tracks.filter((t) => {
@@ -389,7 +504,14 @@ export function MusicTrackManager() {
                   {/* Name and Singer */}
                   <td className="px-4 py-3">
                     <p className="font-display font-bold text-foreground">{track.name}</p>
-                    <p className="text-xs text-muted-foreground">by {track.singer}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground">by {track.singer}</span>
+                      {track.audioFiles && track.audioFiles.length > 1 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-bold border border-primary/30">
+                          📦 {track.audioFiles.length} Tracks Bundle
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Genre */}
@@ -680,6 +802,142 @@ export function MusicTrackManager() {
                     onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}
                   />
                 </label>
+              </div>
+
+              {/* Multi-Audio Tracks Package & Download Links (One-Click Multi Download) */}
+              <div className="grid gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Music size={16} className="text-primary" />
+                      Multi-Audio Files & Download Links (One-Click Multi-Download)
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Attach multiple audio versions, stems, or mix links. When users click Download, ALL files download together at once!
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Batch Upload Multiple Files */}
+                    <label className="relative">
+                      <input
+                        type="file"
+                        multiple
+                        accept="audio/*, video/mp4, .mp3, .wav, .m4a, .mp4"
+                        disabled={uploadingMultiAudio}
+                        className="sr-only"
+                        onChange={handleMultiAudioUpload}
+                      />
+                      <div
+                        className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-primary/50 bg-primary/20 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/30 ${
+                          uploadingMultiAudio ? "pointer-events-none opacity-60" : ""
+                        }`}
+                      >
+                        {uploadingMultiAudio ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin text-primary" />
+                            <span>Uploading Batch...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={13} />
+                            <span>Upload Multiple Files</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
+
+                    {/* Add Custom Link / Item */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={addAudioFileItem}
+                      className="h-8 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-1 shadow-sm"
+                    >
+                      <Plus size={13} /> Add Track Link
+                    </Button>
+                  </div>
+                </div>
+
+                {/* List of Audio Items */}
+                {editing.audioFiles && editing.audioFiles.length > 0 ? (
+                  <div className="space-y-2.5 mt-1">
+                    {editing.audioFiles.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-border bg-card p-3 shadow-xs space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                            <Headphones size={13} /> Audio File #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeAudioFileItem(item.id)}
+                            className="text-muted-foreground hover:text-red-400 p-1 rounded transition-colors"
+                            title="Remove this track"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="grid sm:grid-cols-3 gap-2">
+                          <Input
+                            type="text"
+                            placeholder="Version / Title (e.g. Extended Mix, Instrumental, Vocal Stem)"
+                            value={item.title}
+                            className="bg-background border-border text-foreground text-xs focus-visible:ring-primary sm:col-span-1"
+                            onChange={(e) => updateAudioFileItem(item.id, "title", e.target.value)}
+                          />
+
+                          <div className="sm:col-span-2 flex items-center gap-1.5">
+                            <Input
+                              type="text"
+                              placeholder="Direct Audio URL, Cloudinary, Drive link, Dropbox"
+                              value={item.url}
+                              className="bg-background border-border text-foreground text-xs focus-visible:ring-primary flex-1"
+                              onChange={(e) => updateAudioFileItem(item.id, "url", e.target.value)}
+                            />
+
+                            <label className="relative shrink-0">
+                              <input
+                                type="file"
+                                accept="audio/*, video/mp4, .mp3, .wav, .m4a, .mp4"
+                                disabled={uploadingAudio}
+                                className="sr-only"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleSingleItemAudioUpload(item.id, file);
+                                }}
+                              />
+                              <div className="h-9 px-2.5 inline-flex items-center justify-center rounded-md border border-border bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer text-xs font-semibold gap-1">
+                                <Upload size={13} /> Upload
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        {item.url && (
+                          <div className="pt-1 flex items-center gap-2">
+                            <audio
+                              controls
+                              controlsList="nodownload noplaybackrate"
+                              onContextMenu={(e) => e.preventDefault()}
+                              src={formatAudioUrl(item.url)}
+                              className="w-full h-7"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/80 bg-background/50 p-4 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      No extra audio files added yet. Click &quot;Upload Multiple Files&quot; to batch upload audio stems/mixes or click &quot;Add Track Link&quot; to paste links.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Lock Button / Gate Configuration */}

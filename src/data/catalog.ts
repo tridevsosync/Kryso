@@ -245,14 +245,19 @@ export const siteSettings = {
   maintenanceMessage: "We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!",
 };
 
-export type SiteSettings = typeof siteSettings;
+export type TrackAudioItem = {
+  id: string;
+  title: string; // e.g. "Original Mix", "Extended Mix", "Instrumental", "Stem 1"
+  url: string; // Direct audio/mp4 file or download link
+};
 
 export type MusicTrack = {
   id: string;
   name: string; // Music Name
   singer: string; // Singer / Artist Name
   imageUrl: string; // Artwork Image
-  audioUrl: string; // MP4 / MP3 audio file or link
+  audioUrl: string; // Primary MP4 / MP3 audio file or link
+  audioFiles?: TrackAudioItem[]; // Multiple audio tracks / stems / alternate mixes in bundle
   isLocked: boolean; // Lock button / status
   genre?: string;
   spotifyUrl?: string;
