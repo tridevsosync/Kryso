@@ -2,12 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Cloud,
   Database,
   Edit2,
+  ExternalLink,
+  Eye,
   ImageIcon,
   List,
   Loader2,
@@ -47,6 +52,8 @@ export function CollectionManager({
   filterKey,
   apiCollection,
   folder = "kryso/uploads",
+  previewUrlPrefix,
+  publicPageUrl,
 }: {
   title: string;
   description: string;
@@ -56,11 +63,14 @@ export function CollectionManager({
   filterKey?: string;
   apiCollection?: string;
   folder?: string;
+  previewUrlPrefix?: string;
+  publicPageUrl?: string;
 }) {
   const [rows, setRows] = useStored<Row[]>(storageKey, seed);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [editing, setEditing] = useState<Row | null>(null);
+  const [previewItem, setPreviewItem] = useState<Row | null>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [mongoConnected, setMongoConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -139,16 +149,45 @@ export function CollectionManager({
     };
   }, [apiCollection, setRows]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
+
   const filterValues = useMemo(() => {
     if (!filterKey) return [];
-    return ["All", ...Array.from(new Set(rows.map((row) => String(row[filterKey]))))];
+    return ["All", ...Array.from(new Set(rows.map((row) => String(row[filterKey] || "")).filter(Boolean)))];
   }, [rows, filterKey]);
 
-  const visible = rows.filter((row) => {
-    const matchesQuery = Object.values(row).join(" ").toLowerCase().includes(query.toLowerCase());
-    const matchesFilter = !filterKey || filter === "All" || String(row[filterKey]) === filter;
-    return matchesQuery && matchesFilter;
-  });
+  // Reset pagination on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filter]);
+
+  const visible = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      const matchesQuery = !query.trim() || Object.values(row).join(" ").toLowerCase().includes(query.toLowerCase());
+      const matchesFilter = !filterKey || filter === "All" || String(row[filterKey]) === filter;
+      return matchesQuery && matchesFilter;
+    });
+
+    const hasOrder = fields.some((f) => f.key === "order" || f.key === "sequence");
+    if (hasOrder) {
+      return [...filtered].sort((a, b) => {
+        const orderA = a.order !== undefined && a.order !== "" ? Number(a.order) : a.sequence !== undefined && a.sequence !== "" ? Number(a.sequence) : 9999;
+        const orderB = b.order !== undefined && b.order !== "" ? Number(b.order) : b.sequence !== undefined && b.sequence !== "" ? Number(b.sequence) : 9999;
+        return orderA - orderB;
+      });
+    }
+
+    return filtered;
+  }, [rows, query, filter, filterKey, fields]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+  const validPage = Math.min(currentPage, totalPages);
+
+  const paginatedRows = useMemo(() => {
+    const start = (validPage - 1) * pageSize;
+    return visible.slice(start, start + pageSize);
+  }, [visible, validPage, pageSize]);
 
   const blank = () =>
     ({
@@ -171,13 +210,22 @@ export function CollectionManager({
       }
     });
 
-    const updated = rows.some((item) => item.id === cleanRow.id)
+    const rawUpdated = rows.some((item) => item.id === cleanRow.id)
       ? rows.map((item) => (item.id === cleanRow.id ? cleanRow : item))
       : [cleanRow, ...rows];
 
+    const hasOrder = fields.some((f) => f.key === "order" || f.key === "sequence");
+    const updated = hasOrder
+      ? [...rawUpdated].sort((a, b) => {
+          const orderA = a.order !== undefined && a.order !== "" ? Number(a.order) : a.sequence !== undefined && a.sequence !== "" ? Number(a.sequence) : 9999;
+          const orderB = b.order !== undefined && b.order !== "" ? Number(b.order) : b.sequence !== undefined && b.sequence !== "" ? Number(b.sequence) : 9999;
+          return orderA - orderB;
+        })
+      : rawUpdated;
+
     setRows(updated);
     setEditing(null);
-    setSaveStatus("Saving to MongoDB...");
+    setSaveStatus("Saving...");
 
     if (apiCollection) {
       try {
@@ -189,7 +237,7 @@ export function CollectionManager({
         const data = await res.json();
         if (data.savedTo === "mongodb") {
           setMongoConnected(true);
-          setSaveStatus("Saved to MongoDB & live site!");
+          setSaveStatus("Saved to database & live site!");
         } else {
           setSaveStatus("Saved locally in cache");
         }
@@ -221,7 +269,7 @@ export function CollectionManager({
         });
         const data = await res.json();
         if (data?.success) {
-          setSaveStatus("Deleted from MongoDB & live site!");
+          setSaveStatus("Deleted from database & live site!");
         } else {
           setSaveStatus("Deleted locally.");
         }
@@ -250,7 +298,7 @@ export function CollectionManager({
         await fetch(`/api/collections?name=${apiCollection}&id=ALL`, {
           method: "DELETE",
         });
-        setSaveStatus("All entries cleared from MongoDB!");
+        setSaveStatus("All entries cleared from database!");
       } catch (err) {
         console.warn("Failed to clear MongoDB:", err);
         setSaveStatus("Cleared locally.");
@@ -260,7 +308,7 @@ export function CollectionManager({
     setTimeout(() => setSaveStatus(null), 3500);
   };
 
-  // Handle Cloudinary image upload
+  // Handle image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldKey: string) => {
     const file = e.target.files?.[0];
     if (!file || !editing) return;
@@ -292,8 +340,8 @@ export function CollectionManager({
         alert(data.error || "Failed to upload image.");
       }
     } catch (err) {
-      console.error("Cloudinary upload error:", err);
-      alert("Error uploading image to Cloudinary.");
+      console.error("Upload error:", err);
+      alert("Error uploading image.");
     } finally {
       setUploadingField(null);
     }
@@ -308,7 +356,7 @@ export function CollectionManager({
             <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">{title}</h2>
             {mongoConnected === true && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                <Database size={11} /> MongoDB Active
+                <Database size={11} /> Database Active
               </span>
             )}
             {mongoConnected === false && (
@@ -317,14 +365,28 @@ export function CollectionManager({
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
-              <Cloud size={11} /> Cloudinary Ready
+              <Cloud size={11} /> Cloud Storage Ready
             </span>
             {syncing && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{description}</p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {(publicPageUrl || previewUrlPrefix) && (
+            <Link
+              href={publicPageUrl || previewUrlPrefix || "/academy"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors shrink-0 shadow-xs"
+              title="Open live website page in new tab"
+            >
+              <Eye size={14} />
+              <span>Live Page</span>
+              <ExternalLink size={12} />
+            </Link>
+          )}
+
           {rows.length > 0 && (
             <Button
               variant="outline"
@@ -399,7 +461,7 @@ export function CollectionManager({
               </tr>
             </thead>
             <tbody>
-              {visible.map((row) => (
+              {paginatedRows.map((row) => (
                 <tr
                   key={row.id}
                   className="border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors"
@@ -439,8 +501,19 @@ export function CollectionManager({
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="hover:bg-primary/10 text-muted-foreground hover:text-primary size-8 sm:size-9"
+                        aria-label="Preview details"
+                        title="View & Preview"
+                        onClick={() => setPreviewItem(row)}
+                      >
+                        <Eye size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="hover:bg-secondary text-muted-foreground hover:text-primary size-8 sm:size-9"
                         aria-label="Edit entry"
+                        title="Edit entry"
                         onClick={() => setEditing(row)}
                       >
                         <Pencil size={14} />
@@ -450,6 +523,7 @@ export function CollectionManager({
                         size="icon"
                         className="hover:bg-destructive/20 text-muted-foreground hover:text-destructive size-8 sm:size-9"
                         aria-label="Delete entry"
+                        title="Delete entry"
                         onClick={() => removeRow(row.id)}
                       >
                         <Trash2 size={14} />
@@ -460,12 +534,103 @@ export function CollectionManager({
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 bg-secondary/30 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing <strong className="text-foreground">{(validPage - 1) * pageSize + 1}</strong> to{" "}
+                <strong className="text-foreground">{Math.min(validPage * pageSize, visible.length)}</strong> of{" "}
+                <strong className="text-foreground">{visible.length}</strong> {visible.length === 1 ? "entry" : "entries"}
+                {query && ` (filtered from ${rows.length})`}
+              </span>
+
+              {visible.length > 6 && (
+                <div className="flex items-center gap-1.5 ml-2">
+                  <span>Per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-7 rounded border border-border bg-card px-2 text-xs text-foreground cursor-pointer"
+                  >
+                    <option value={6}>6</option>
+                    <option value={8}>8</option>
+                    <option value={12}>12</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={validPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold rounded-lg"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                    // Only show first, last, and window around validPage if lots of pages
+                    if (
+                      totalPages > 7 &&
+                      p !== 1 &&
+                      p !== totalPages &&
+                      Math.abs(p - validPage) > 1
+                    ) {
+                      if (p === 2 || p === totalPages - 1) {
+                        return (
+                          <span key={p} className="px-1 text-muted-foreground">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p)}
+                        className={`size-8 rounded-lg text-xs font-bold transition-all ${
+                          p === validPage
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={validPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold rounded-lg"
+                >
+                  Next <ChevronRight size={14} />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="mt-6 rounded-xl border border-dashed border-border py-12 px-4 text-center bg-card/40">
           <p className="font-display text-base sm:text-lg font-bold text-foreground">No entries found in {title}</p>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-            {query ? "No items matched your search query." : "Add your first item using the button above. Changes sync directly to MongoDB and Cloudinary."}
+            {query ? "No items matched your search query." : "Add your first item using the button above. Changes sync directly to the database."}
           </p>
           <Button
             className="mt-4 rounded-full font-bold shadow-md shadow-primary/20 text-xs sm:text-sm"
@@ -513,7 +678,7 @@ export function CollectionManager({
                       <div className="text-xs sm:text-sm font-semibold text-foreground flex items-center justify-between">
                         <span>{field.label}</span>
                         <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1">
-                          <Cloud size={12} /> Stored in Cloudinary
+                          <Cloud size={12} /> Cloud Storage
                         </span>
                       </div>
 
@@ -577,12 +742,12 @@ export function CollectionManager({
                             {isUploading ? (
                               <>
                                 <Loader2 size={14} className="animate-spin text-primary" />
-                                <span>Uploading to Cloudinary...</span>
+                                <span>Uploading...</span>
                               </>
                             ) : (
                               <>
                                 <Upload size={14} />
-                                <span>{currentImg ? "Replace image via Cloudinary" : "Upload image to Cloudinary"}</span>
+                                <span>{currentImg ? "Replace image" : "Upload image"}</span>
                               </>
                             )}
                           </div>
@@ -591,7 +756,7 @@ export function CollectionManager({
 
                       <Input
                         type="text"
-                        placeholder="Or paste direct image URL, Cloudinary, or Google Drive link"
+                        placeholder="Or paste direct image URL or Google Drive link"
                         value={currentImg}
                         className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                         onChange={(e) => setEditing((prev) => (prev ? { ...prev, [field.key]: e.target.value } : null))}
@@ -731,10 +896,157 @@ export function CollectionManager({
                 type="submit"
                 className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90 text-xs sm:text-sm"
               >
-                Save to MongoDB
+                Save Changes
               </Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Item Preview Modal (Eye button click) */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in-50">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Eye size={15} />
+                </span>
+                <h3 className="font-display text-lg font-bold text-foreground">
+                  {title.replace(/s$/, "")} Details & Preview
+                </h3>
+              </div>
+              <button
+                onClick={() => setPreviewItem(null)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground cursor-pointer transition-colors"
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Image Preview Banner if available */}
+            {(() => {
+              const imgField = fields.find((f) => f.type === "image");
+              const imgVal = imgField ? String(previewItem[imgField.key] || "") : "";
+              if (imgVal) {
+                return (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-secondary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={formatImageUrl(imgVal)}
+                      alt={String(previewItem.name || previewItem.title || "Preview")}
+                      className="size-full object-cover"
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Content Details */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-display text-xl font-extrabold text-foreground">
+                  {String(previewItem.name || previewItem.title || previewItem.question || "Untitled Entry")}
+                </h4>
+                {previewItem.category && (
+                  <span className="inline-block mt-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                    {String(previewItem.category)}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-xl border border-border/70 bg-background/50 p-3.5 text-xs">
+                {fields
+                  .filter((f) => f.type !== "image" && f.type !== "textarea")
+                  .map((f) => {
+                    const val = previewItem[f.key];
+                    if (val === undefined || val === null || val === "") return null;
+                    return (
+                      <div key={f.key} className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                          {f.label}
+                        </span>
+                        <p className="font-semibold text-foreground text-sm">
+                          {f.key.toLowerCase().includes("price") || f.key.toLowerCase().includes("fees")
+                            ? `₹${val}`
+                            : String(val)}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Textarea fields (e.g. description, syllabus, answer) */}
+              {fields
+                .filter((f) => f.type === "textarea")
+                .map((f) => {
+                  const val = previewItem[f.key];
+                  if (!val) return null;
+                  return (
+                    <div key={f.key} className="space-y-1 rounded-xl border border-border/70 bg-background/50 p-3.5 text-xs">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                        {f.label}
+                      </span>
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-xs sm:text-sm">
+                        {String(val)}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              {previewUrlPrefix ? (
+                <Link
+                  href={`${previewUrlPrefix}/${encodeURIComponent(previewItem.id || String(previewItem.name || ""))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-colors"
+                >
+                  <ExternalLink size={13} /> View Live Course Page
+                </Link>
+              ) : publicPageUrl ? (
+                <Link
+                  href={publicPageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20 transition-colors"
+                >
+                  <ExternalLink size={13} /> View on Website
+                </Link>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-border hover:bg-secondary text-xs"
+                  onClick={() => {
+                    const toEdit = previewItem;
+                    setPreviewItem(null);
+                    setEditing(toEdit);
+                  }}
+                >
+                  <Pencil size={13} className="mr-1" /> Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full text-xs font-semibold"
+                  onClick={() => setPreviewItem(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

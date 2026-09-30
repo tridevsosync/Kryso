@@ -157,7 +157,7 @@ export function AcademySpotlight() {
 
                 {/* Title */}
                 <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-extrabold leading-[1.15] sm:leading-[1.12] tracking-tight text-foreground">
-                  Identify Yourself as pro DJ Music producer
+                  Identify Yourself as <span className="text-primary font-black">PRO DJ</span> & Music Producer
                 </h1>
 
                 {/* Description */}

@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowRight,
   CheckCheck,
   CloudUpload,
   Database,
+  ExternalLink,
+  Eye,
   Image as ImageIcon,
   Loader2,
   Plus,
@@ -119,7 +122,7 @@ export function SpotlightManager() {
     setSaved(false);
     const newSlide: SpotlightSlide = {
       id: `slide-${Date.now()}`,
-      title: "Identify Yourself as pro DJ Music producer",
+      title: "Identify Yourself as PRO DJ & Music Producer",
       description:
         "Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.",
       primaryBtnText: "View all courses",
@@ -215,7 +218,7 @@ export function SpotlightManager() {
       });
       const data = await res.json();
       if (data?.success) {
-        setSaveTarget("Image removed and synced to MongoDB!");
+        setSaveTarget("Image removed and synced!");
       } else {
         setSaveTarget("Image removed locally.");
       }
@@ -246,7 +249,7 @@ export function SpotlightManager() {
     }
   };
 
-  // Upload image to Cloudinary
+  // Upload image
   const handleUpload = async (file: File, onSuccess: (url: string) => void) => {
     setUploading(true);
     setUploadError(null);
@@ -267,7 +270,7 @@ export function SpotlightManager() {
       }
 
       onSuccess(data.url);
-      setSaveTarget(`Uploaded to Cloudinary (${data.provider})`);
+      setSaveTarget("Image uploaded successfully!");
     } catch (err) {
       setUploadError((err as Error).message);
     } finally {
@@ -291,9 +294,9 @@ export function SpotlightManager() {
       const data = await res.json();
 
       if (data?.savedTo === "mongodb") {
-        setSaveTarget("Saved to MongoDB Database & Browser Cache");
+        setSaveTarget("Saved to Database & Browser Cache");
       } else {
-        setSaveTarget("Saved to Browser Cache (MongoDB offline)");
+        setSaveTarget("Saved to Browser Cache");
       }
     } catch {
       setSaveTarget("Saved to Browser Cache");
@@ -318,7 +321,7 @@ export function SpotlightManager() {
       });
       const data = await res.json();
       if (data?.success) {
-        setSaveTarget("Academy spotlight images synced to MongoDB & live website!");
+        setSaveTarget("Academy spotlight images synced & live on website!");
       } else {
         setSaveTarget("Saved to Browser Cache");
       }
@@ -342,12 +345,12 @@ export function SpotlightManager() {
             />
             <div>
               <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <CloudUpload size={14} className="text-primary" /> Cloudinary Image Cloud
+                <CloudUpload size={14} className="text-primary" /> Cloud Image Storage
               </p>
               <p className="text-[11px] text-muted-foreground">
                 {status?.cloudinary.configured
-                  ? `Active (Cloud: ${status.cloudinary.cloudName})`
-                  : "Checking Cloudinary credentials..."}
+                  ? `Active (Connected)`
+                  : "Checking cloud storage..."}
               </p>
             </div>
           </div>
@@ -365,12 +368,12 @@ export function SpotlightManager() {
             />
             <div>
               <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Database size={14} className="text-primary" /> MongoDB Database
+                <Database size={14} className="text-primary" /> Database Storage
               </p>
               <p className="text-[11px] text-muted-foreground">
                 {status?.mongodb.connected
-                  ? `Connected (DB: ${status.mongodb.database})`
-                  : "Workable (Configured in .env + Local Sync)"}
+                  ? `Connected (Live Database)`
+                  : "Workable (Local + Cloud Sync)"}
               </p>
             </div>
           </div>
@@ -381,7 +384,7 @@ export function SpotlightManager() {
                 : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
             }`}
           >
-            {status?.mongodb.connected ? "Connected" : "Ready / Atlas Whitelist"}
+            {status?.mongodb.connected ? "Connected" : "Ready / Active"}
           </span>
         </div>
       </div>
@@ -432,11 +435,22 @@ export function SpotlightManager() {
                 Academy Hero Card & Changeable Images
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                In the Academy section, the card content (<strong>Identify Yourself as pro DJ Music producer</strong>) is fixed, and only the right-side images rotate. Add or upload images below.
+                In the Academy section, the card content (<strong>Identify Yourself as PRO DJ & Music Producer</strong>) is fixed, and only the right-side images rotate. Add or upload images below.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/academy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs"
+                title="Open live Academy page in new tab"
+              >
+                <Eye size={14} />
+                <span>View Live Academy</span>
+                <ExternalLink size={12} />
+              </Link>
               <Button
                 type="button"
                 variant="outline"
@@ -503,7 +517,7 @@ export function SpotlightManager() {
                 )}
               </div>
 
-              {/* Cloudinary Upload Section */}
+              {/* Image Upload Section */}
               <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -511,7 +525,7 @@ export function SpotlightManager() {
                   </span>
                   {uploading && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                      <Loader2 size={13} className="animate-spin" /> Uploading to Cloudinary...
+                      <Loader2 size={13} className="animate-spin" /> Uploading image...
                     </span>
                   )}
                 </div>
@@ -534,7 +548,7 @@ export function SpotlightManager() {
                       uploading ? "opacity-50 pointer-events-none" : ""
                     }`}
                   >
-                    <CloudUpload size={14} /> Upload image to Cloudinary
+                    <CloudUpload size={14} /> Upload image
                   </label>
                   <span className="text-xs text-muted-foreground">or paste any image URL below</span>
                 </div>
@@ -543,7 +557,7 @@ export function SpotlightManager() {
 
                 <Input
                   value={activeAcademyImg.url || ""}
-                  placeholder="https://res.cloudinary.com/... or /dj-producer-hero.png"
+                  placeholder="https://... or /dj-producer-hero.png"
                   onChange={(e) => updateActiveAcademyImage({ url: e.target.value })}
                   className="bg-background border-border text-foreground text-sm font-normal"
                 />
@@ -571,7 +585,7 @@ export function SpotlightManager() {
               </div>
 
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
-                <strong className="text-primary font-bold">Note:</strong> On the Academy page, the headline (&quot;Identify Yourself as pro DJ Music producer&quot;), description and buttons are preserved exactly as shown, and the carousel will seamlessly cycle through the {academyImages.length} image(s) configured here.
+                <strong className="text-primary font-bold">Note:</strong> On the Academy page, the headline (&quot;Identify Yourself as PRO DJ & Music Producer&quot;), description and buttons are preserved exactly as shown, and the carousel will seamlessly cycle through the {academyImages.length} image(s) configured here.
               </div>
 
               <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-border/70">
@@ -601,7 +615,7 @@ export function SpotlightManager() {
                   • PRO DJ & MUSIC PRODUCTION
                 </span>
                 <h3 className="font-display text-xl sm:text-2xl font-extrabold text-foreground leading-snug">
-                  Identify Yourself as pro DJ Music producer
+                  Identify Yourself as <span className="text-primary font-black">PRO DJ</span> & Music Producer
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
                   Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.
@@ -659,11 +673,22 @@ export function SpotlightManager() {
                 Homepage Spotlight Slides
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Manage the hero banner on the homepage. Edit headlines, descriptions, buttons, and upload stage photos to Cloudinary.
+                Manage the hero banner on the homepage. Edit headlines, descriptions, buttons, and upload stage photos.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs"
+                title="Open live homepage in new tab"
+              >
+                <Eye size={14} />
+                <span>View Live Homepage</span>
+                <ExternalLink size={12} />
+              </Link>
               <Button
                 type="button"
                 variant="outline"
@@ -802,15 +827,15 @@ export function SpotlightManager() {
                 </label>
               </div>
 
-              {/* Cloudinary Image Upload Section */}
+              {/* Image Upload Section */}
               <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <ImageIcon size={14} className="text-primary" /> Slide Image & Cloudinary Upload
+                    <ImageIcon size={14} className="text-primary" /> Slide Image & Upload
                   </span>
                   {uploading && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                      <Loader2 size={13} className="animate-spin" /> Uploading to Cloudinary...
+                      <Loader2 size={13} className="animate-spin" /> Uploading image...
                     </span>
                   )}
                 </div>
@@ -833,7 +858,7 @@ export function SpotlightManager() {
                       uploading ? "opacity-50 pointer-events-none" : ""
                     }`}
                   >
-                    <CloudUpload size={14} /> Upload image to Cloudinary
+                    <CloudUpload size={14} /> Upload image
                   </label>
                   <span className="text-xs text-muted-foreground">or edit the URL below directly</span>
                 </div>
@@ -844,7 +869,7 @@ export function SpotlightManager() {
 
                 <Input
                   value={activeSlide.imageUrl || ""}
-                  placeholder="https://res.cloudinary.com/... or /dj-producer-hero.png"
+                  placeholder="https://... or /dj-producer-hero.png"
                   onChange={(e) => updateActiveSlide({ imageUrl: e.target.value })}
                   className="bg-background border-border text-foreground text-sm font-normal"
                 />
@@ -879,7 +904,15 @@ export function SpotlightManager() {
                   </span>
                 )}
                 <h3 className="font-display text-xl sm:text-2xl font-extrabold text-foreground leading-snug">
-                  {activeSlide.title || "Identify Yourself as pro DJ Music producer"}
+                  {activeSlide.title?.toLowerCase().includes("pro dj") ? (
+                    <>
+                      {activeSlide.title.split(/pro dj/i)[0]}
+                      <span className="text-primary font-black">PRO DJ</span>
+                      {activeSlide.title.split(/pro dj/i)[1]}
+                    </>
+                  ) : (
+                    activeSlide.title || "Identify Yourself as PRO DJ & Music Producer"
+                  )}
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
                   {activeSlide.description || "Tomorrowland Academy is where music creators grow..."}

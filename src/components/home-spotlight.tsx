@@ -110,7 +110,15 @@ export function HomeSpotlight() {
                   </div>
                 )}
                 <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-extrabold leading-[1.15] sm:leading-[1.12] tracking-tight text-foreground">
-                  {currentSlide.title}
+                  {currentSlide.title.toLowerCase().includes("pro dj") ? (
+                    <>
+                      {currentSlide.title.split(/pro dj/i)[0]}
+                      <span className="text-primary font-black">PRO DJ</span>
+                      {currentSlide.title.split(/pro dj/i)[1]}
+                    </>
+                  ) : (
+                    currentSlide.title
+                  )}
                 </h2>
                 <p className="mt-3 sm:mt-5 text-xs sm:text-sm lg:text-base leading-relaxed text-muted-foreground/90 max-w-xl">
                   {currentSlide.description}

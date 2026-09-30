@@ -32,9 +32,8 @@ import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
 import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
-import JSZip from "jszip";
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 12;
 
 export function MusicShopClient() {
   const [trackList, setTrackList] = useState<MusicTrack[]>([]);
@@ -161,27 +160,10 @@ export function MusicShopClient() {
   };
 
   const triggerDownload = async (track: MusicTrack) => {
-    // Collect all audio files attached to this release
-    const filesToDownload: { url: string; title?: string }[] = [];
+    const downloadTarget = (track.downloadUrl && track.downloadUrl.trim()) || (track.audioUrl && track.audioUrl.trim());
 
-    if (track.audioFiles && track.audioFiles.length > 0) {
-      track.audioFiles.forEach((file) => {
-        if (file.url && file.url.trim()) {
-          filesToDownload.push({ url: file.url.trim(), title: file.title });
-        }
-      });
-    }
-
-    // If audioFiles didn't include the primary audioUrl, add it
-    if (track.audioUrl && track.audioUrl.trim()) {
-      const alreadyIncluded = filesToDownload.some((f) => f.url === track.audioUrl.trim());
-      if (!alreadyIncluded) {
-        filesToDownload.unshift({ url: track.audioUrl.trim(), title: "Master Mix" });
-      }
-    }
-
-    if (filesToDownload.length === 0) {
-      alert("No audio download link configured for this release yet.");
+    if (!downloadTarget) {
+      alert("No audio/ZIP download link configured for this release yet.");
       return;
     }
 
@@ -190,130 +172,33 @@ export function MusicShopClient() {
     const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
     const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
 
-    // CASE 1: Single Audio Track -> Direct Native File Download
-    if (filesToDownload.length === 1) {
-      try {
-        const item = filesToDownload[0];
-        const isMp4 = item.url.toLowerCase().includes(".mp4");
-        const isWav = item.url.toLowerCase().includes(".wav");
-        const isM4a = item.url.toLowerCase().includes(".m4a");
-        const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
-        const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
-
-        const downloadEndpoint = `/api/download?url=${encodeURIComponent(item.url)}&filename=${encodeURIComponent(filename)}`;
-
-        const link = document.createElement("a");
-        link.href = downloadEndpoint;
-        link.download = filename;
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-          setDownloadingTrackId(null);
-        }, 1500);
-      } catch (err) {
-        console.error("Single track download error:", err);
-        window.open(filesToDownload[0].url, "_blank");
-        setDownloadingTrackId(null);
-      }
-      return;
-    }
-
-    // CASE 2: Multiple Audio Tracks / Bundle -> 1-Click Complete Zip Package Download
     try {
-      const bundleName = `${cleanTrackName} - ${cleanSingerName} (Complete Audio Bundle)`;
-      const payloadFiles = filesToDownload.map((item, idx) => {
-        const isMp4 = item.url.toLowerCase().includes(".mp4");
-        const isWav = item.url.toLowerCase().includes(".wav");
-        const isM4a = item.url.toLowerCase().includes(".m4a");
-        const ext = isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
-        const versionTitle = item.title ? item.title.trim() : `Track ${idx + 1}`;
-        const cleanVersion = ` (${versionTitle.replace(/[/\\?%*:|"<>]/g, "_")})`;
-        const filename = `${cleanTrackName}${cleanVersion} - ${cleanSingerName}${ext}`;
-        return { url: item.url, filename };
-      });
+      const lower = downloadTarget.toLowerCase();
+      const isZip = lower.includes(".zip") || (track.downloadUrl && !track.downloadUrl.match(/\.(mp3|mp4|wav|m4a)$/i));
+      const isMp4 = lower.includes(".mp4");
+      const isWav = lower.includes(".wav");
+      const isM4a = lower.includes(".m4a");
+      const ext = isZip ? ".zip" : isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
+      const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
 
-      // 1. Try server-side fast zip generator
-      const res = await fetch("/api/download-bundle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: payloadFiles, bundleName }),
-      });
+      const downloadEndpoint = `/api/download?url=${encodeURIComponent(downloadTarget)}&filename=${encodeURIComponent(filename)}`;
 
-      if (res.ok) {
-        const blob = await res.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = `${bundleName}.zip`;
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.click();
+      const link = document.createElement("a");
+      link.href = downloadEndpoint;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
 
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-          window.URL.revokeObjectURL(blobUrl);
-          setDownloadingTrackId(null);
-        }, 2000);
-        return;
-      }
-
-      // 2. Client-side JSZip Fallback if server returned non-ok
-      const zip = new JSZip();
-      await Promise.all(
-        payloadFiles.map(async (file) => {
-          try {
-            const fileRes = await fetch(
-              `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.filename)}`
-            );
-            if (fileRes.ok) {
-              const arrayBuf = await fileRes.arrayBuffer();
-              zip.file(file.filename, arrayBuf);
-            }
-          } catch (e) {
-            console.warn("Client fallback fetch failed for", file.filename, e);
-          }
-        })
-      );
-
-      const zipFilesCount = Object.keys(zip.files).length;
-      if (zipFilesCount > 0) {
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        const clientBlobUrl = window.URL.createObjectURL(zipBlob);
-        const link = document.createElement("a");
-        link.href = clientBlobUrl;
-        link.download = `${bundleName}.zip`;
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-          window.URL.revokeObjectURL(clientBlobUrl);
-          setDownloadingTrackId(null);
-        }, 2000);
-      } else {
-        // Fallback: trigger first file directly
-        const first = payloadFiles[0];
-        if (first?.url) {
-          window.location.href = `/api/download?url=${encodeURIComponent(first.url)}&filename=${encodeURIComponent(first.filename)}`;
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
         }
         setDownloadingTrackId(null);
-      }
+      }, 1500);
     } catch (err) {
-      console.error("Multi-download bundle error:", err);
-      // Fallback: trigger first file
-      if (filesToDownload[0]?.url) {
-        window.location.href = `/api/download?url=${encodeURIComponent(filesToDownload[0].url)}&filename=${encodeURIComponent(cleanTrackName + ".mp3")}`;
-      }
+      console.error("Track download error:", err);
+      window.open(downloadTarget, "_blank");
       setDownloadingTrackId(null);
     }
   };
@@ -537,16 +422,16 @@ export function MusicShopClient() {
                         </div>
                       )}
 
-                      {/* Genre & Bundle Tag Pills */}
+                      {/* Genre & ZIP Tag Pills */}
                       <div className="absolute left-2 top-2 flex flex-col gap-1 items-start z-10 pointer-events-none">
                         {track.genre && (
                           <span className="rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
                             {track.genre}
                           </span>
                         )}
-                        {track.audioFiles && track.audioFiles.length > 1 && (
+                        {track.downloadUrl && (
                           <span className="rounded-full bg-primary/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-extrabold text-primary-foreground shadow-sm">
-                            📦 {track.audioFiles.length} Tracks
+                            📦 ZIP Package
                           </span>
                         )}
                       </div>
@@ -629,15 +514,15 @@ export function MusicShopClient() {
                     >
                       {downloadingTrackId === track.id ? (
                         <>
-                          <Loader2 size={14} className="mr-1.5 animate-spin" /> Downloading {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} files)...` : "..."}
+                          <Loader2 size={14} className="mr-1.5 animate-spin" /> Downloading...
                         </>
                       ) : isUnlocked ? (
                         <>
-                          <Download size={14} className="mr-1.5" /> Free Download {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} Tracks)` : ""}
+                          <Download size={14} className="mr-1.5" /> Free Download
                         </>
                       ) : (
                         <>
-                          <Lock size={13} className="mr-1.5" /> Premium Download {track.audioFiles && track.audioFiles.length > 1 ? `(${track.audioFiles.length} Tracks)` : ""}
+                          <Lock size={13} className="mr-1.5" /> Premium Download
                         </>
                       )}
                     </Button>

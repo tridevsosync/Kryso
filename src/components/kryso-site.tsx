@@ -215,15 +215,15 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              onClick={() => {
-                setCourseError(false);
-                setEnquiryOpen(true);
-              }}
-              className="hidden h-9 sm:h-10 rounded-full px-4 sm:px-5 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 sm:inline-flex text-xs sm:text-sm"
+            <a
+              href={`tel:${(settings.altPhone || settings.phone || "+919767378750").replace(/[^0-9+]/g, "")}`}
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-primary px-3 sm:px-5 h-9 sm:h-10 font-bold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer"
+              title={`Call ${settings.altPhone || settings.phone || "+91 97673 78750"}`}
+              aria-label={`Call ${settings.altPhone || settings.phone || "+91 97673 78750"}`}
             >
-              Enquiry now <ArrowUpRight size={15} />
-            </Button>
+              <Phone size={14} className="animate-pulse shrink-0" />
+              <span>{settings.altPhone || settings.phone || "+91 97673 78750"}</span>
+            </a>
             <Button
               variant="ghost"
               size="icon"
@@ -252,16 +252,14 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            <Button
-              onClick={() => {
-                setCourseError(false);
-                setEnquiryOpen(true);
-                setMobileOpen(false);
-              }}
-              className="mt-2 h-11 rounded-full font-bold shadow-md shadow-primary/20 text-sm"
+            <a
+              href={`tel:${(settings.altPhone || settings.phone || "+919767378750").replace(/[^0-9+]/g, "")}`}
+              onClick={() => setMobileOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2.5 h-11 rounded-full bg-primary font-bold text-primary-foreground shadow-md shadow-primary/20 text-sm hover:bg-primary/90 transition-all cursor-pointer"
             >
-              Enquiry now <ArrowUpRight size={15} className="ml-1" />
-            </Button>
+              <Phone size={16} className="animate-pulse" />
+              <span>Call: {settings.altPhone || settings.phone || "+91 97673 78750"}</span>
+            </a>
           </nav>
         )}
       </header>
@@ -282,17 +280,28 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               {settings.footerDescription || settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.
             </p>
             <div className="mt-5 flex items-center gap-3 text-muted-foreground">
-              {settings.spotifyUrl && (
-                <a
-                  href={settings.spotifyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full border border-border p-2 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
-                  aria-label="Spotify"
-                >
-                  <SpotifyIcon size={16} />
-                </a>
-              )}
+              {/* WhatsApp Icon */}
+              <a
+                href="https://wa.me/918767828945?text=Hello%20Kryso%20Music%20Academy%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses!"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border p-2 hover:border-[#25D366] hover:text-[#25D366] transition-colors"
+                aria-label="WhatsApp"
+                title="WhatsApp (8767828945)"
+              >
+                <WhatsAppIcon size={16} />
+              </a>
+              {/* Spotify Icon */}
+              <a
+                href={settings.spotifyUrl || "https://open.spotify.com"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border p-2 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
+                aria-label="Spotify"
+                title="Spotify"
+              >
+                <SpotifyIcon size={16} />
+              </a>
               {settings.youtubeUrl && (
                 <a
                   href={settings.youtubeUrl}
@@ -345,16 +354,20 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           <div>
             <p className="eyebrow">Say hello</p>
             <div className="mt-4 grid gap-3 text-sm text-muted-foreground">
-              {settings.phone && (
-                <a href={`tel:${settings.phone.replace(/[^0-9+]/g, "")}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                  <Phone size={14} className="text-primary shrink-0" /> {settings.phone}
-                </a>
-              )}
-              {settings.altPhone && (
-                <a href={`tel:${settings.altPhone.replace(/[^0-9+]/g, "")}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                  <Phone size={14} className="text-primary shrink-0" /> {settings.altPhone}
-                </a>
-              )}
+              <a
+                href="https://wa.me/918767828945?text=Hello%20Kryso%20Music%20Academy%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses!"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-[#25D366] transition-colors"
+              >
+                <WhatsAppIcon size={14} className="text-[#25D366] shrink-0" /> WhatsApp: 8767828945
+              </a>
+              <a
+                href="tel:9767378750"
+                className="flex items-center gap-2 hover:text-primary transition-colors"
+              >
+                <Phone size={14} className="text-primary shrink-0" /> Call: 9767378750
+              </a>
               {settings.email && (
                 <a href={`mailto:${settings.email}`} className="flex items-center gap-2 hover:text-primary transition-colors">
                   <Mail size={14} className="text-primary shrink-0" /> {settings.email}
@@ -369,9 +382,6 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <div className="border-t border-border/50">
           <div className="page-shell flex flex-wrap items-center justify-between gap-3 py-5 text-xs text-muted-foreground">
             <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
-            <Link href="/admin" className="hover:text-primary transition-colors">
-              Admin login
-            </Link>
           </div>
         </div>
       </footer>
@@ -478,7 +488,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                   ))}
                 </select>
                 <p className="text-[11px] text-muted-foreground">
-                  Select the instrument or vocal discipline you want to learn.
+                  Select the course discipline you want to learn.
                 </p>
               </label>
 
@@ -535,11 +545,55 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Floating Action Buttons - Bottom Right (WhatsApp & Call in Circle) */}
+      {!pathname.startsWith("/admin") && (
+        <aside
+          aria-label="Quick contact"
+          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex flex-col items-center gap-3 print:hidden"
+        >
+          {/* Call Button */}
+          <a
+            href="tel:9767378750"
+            aria-label="Call Kryso Music Academy (9767378750)"
+            title="Call 9767378750"
+            className="group flex size-12 sm:size-13 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-orange-500 text-primary-foreground shadow-xl shadow-primary/35 hover:scale-110 hover:shadow-primary/50 active:scale-95 transition-all duration-200 border border-white/20 cursor-pointer"
+          >
+            <Phone size={20} className="shrink-0 animate-bounce" />
+          </a>
+
+          {/* WhatsApp Button */}
+          <a
+            href="https://wa.me/918767828945?text=Hello%20Kryso%20Music%20Academy%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses!"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Chat with Kryso Music Academy on WhatsApp (8767828945)"
+            title="WhatsApp 8767828945"
+            className="group flex size-12 sm:size-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl shadow-emerald-600/35 hover:bg-[#20bd5a] hover:scale-110 hover:shadow-emerald-600/50 active:scale-95 transition-all duration-200 border border-white/20 cursor-pointer"
+          >
+            <WhatsAppIcon size={22} className="shrink-0" />
+          </a>
+        </aside>
+      )}
     </div>
   );
 }
 
-export function SectionHeading({ label, title, text }: { label: string; title: string; text?: string }) {
+export function WhatsAppIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+    </svg>
+  );
+}
+
+export function SectionHeading({ label, title, text }: { label: string; title: React.ReactNode; text?: string }) {
   return (
     <div className="max-w-2xl">
       <p className="eyebrow">{label}</p>

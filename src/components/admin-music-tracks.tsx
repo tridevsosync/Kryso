@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Cloud,
   Database,
   Download,
   ExternalLink,
+  Eye,
   Facebook,
   Headphones,
   ImageIcon,
@@ -20,6 +25,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   Unlock,
   Upload,
@@ -42,8 +48,6 @@ export function MusicTrackManager() {
   const [query, setQuery] = useState("");
   const [filterLock, setFilterLock] = useState<"all" | "locked" | "unlocked">("all");
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingAudio, setUploadingAudio] = useState(false);
-  const [uploadingMultiAudio, setUploadingMultiAudio] = useState(false);
   const [mongoConnected, setMongoConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export function MusicTrackManager() {
     singer: "",
     imageUrl: "",
     audioUrl: "",
-    audioFiles: [],
+    downloadUrl: "",
     isLocked: true,
     genre: "Electronic / EDM",
     spotifyUrl: siteSettings.spotifyUrl,
@@ -108,19 +112,11 @@ export function MusicTrackManager() {
       return;
     }
 
-    const cleanAudioFiles = (track.audioFiles || [])
-      .filter((item) => item.url && item.url.trim())
-      .map((item, idx) => ({
-        id: item.id || `file-${idx}-${Date.now()}`,
-        title: item.title?.trim() || `Audio Track ${idx + 1}`,
-        url: formatAudioUrl(item.url),
-      }));
-
     const cleanTrack: MusicTrack = {
       ...track,
       imageUrl: formatImageUrl(track.imageUrl),
-      audioUrl: formatAudioUrl(track.audioUrl) || (cleanAudioFiles[0]?.url ? formatAudioUrl(cleanAudioFiles[0].url) : ""),
-      audioFiles: cleanAudioFiles,
+      audioUrl: formatAudioUrl(track.audioUrl) || "",
+      downloadUrl: formatAudioUrl(track.downloadUrl) || "",
     };
 
     const updated = tracks.some((item) => item.id === cleanTrack.id)
@@ -129,7 +125,7 @@ export function MusicTrackManager() {
 
     setTracks(updated);
     setEditing(null);
-    setStatusMsg("Saving track to MongoDB...");
+    setStatusMsg("Saving track...");
 
     try {
       const res = await fetch("/api/collections", {
@@ -140,7 +136,7 @@ export function MusicTrackManager() {
       const data = await res.json();
       if (data.savedTo === "mongodb") {
         setMongoConnected(true);
-        setStatusMsg("Track saved to MongoDB & Cloudinary!");
+        setStatusMsg("Track saved to database!");
       } else {
         setStatusMsg("Track saved in local storage.");
       }
@@ -187,7 +183,7 @@ export function MusicTrackManager() {
 
   // Clear all tracks
   const clearAllTracks = async () => {
-    if (!confirm("Are you sure you want to delete ALL music tracks from MongoDB and local storage?")) {
+    if (!confirm("Are you sure you want to delete ALL music tracks?")) {
       return;
     }
     setTracks([]);
@@ -202,7 +198,7 @@ export function MusicTrackManager() {
     setTimeout(() => setStatusMsg(null), 3000);
   };
 
-  // Cloudinary image upload handler
+  // Image upload handler
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editing) return;
@@ -222,150 +218,50 @@ export function MusicTrackManager() {
       }
     } catch (err) {
       console.error("Cover image upload failed:", err);
-      alert("Error uploading cover image to Cloudinary.");
+      alert("Error uploading cover image.");
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // Cloudinary audio / MP4 upload handler
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editing) return;
+  const [genreFilter, setGenreFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
 
-    setUploadingAudio(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "kryso/music/audio");
-
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setEditing({ ...editing, audioUrl: data.url });
-      } else {
-        alert(data.error || "Audio upload failed.");
+  const availableGenres = useMemo(() => {
+    const set = new Set<string>();
+    tracks.forEach((t) => {
+      if (t.genre && t.genre.trim()) {
+        set.add(t.genre.trim());
       }
-    } catch (err) {
-      console.error("Audio upload failed:", err);
-      alert("Error uploading audio file to Cloudinary.");
-    } finally {
-      setUploadingAudio(false);
-    }
-  };
-
-  // Cloudinary batch multi-audio upload handler
-  const handleMultiAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !editing) return;
-
-    setUploadingMultiAudio(true);
-    const uploadedItems: { id: string; title: string; url: string }[] = [];
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "kryso/music/audio");
-
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (res.ok && data.url) {
-          const rawName = file.name.replace(/\.[^/.]+$/, "");
-          uploadedItems.push({
-            id: `file-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-            title: rawName,
-            url: data.url,
-          });
-        }
-      }
-
-      if (uploadedItems.length > 0) {
-        const currentFiles = editing.audioFiles || [];
-        const combined = [...currentFiles, ...uploadedItems];
-        setEditing({
-          ...editing,
-          audioUrl: editing.audioUrl || uploadedItems[0].url,
-          audioFiles: combined,
-        });
-        setStatusMsg(`Uploaded ${uploadedItems.length} audio file(s) to Cloudinary!`);
-        setTimeout(() => setStatusMsg(null), 3000);
-      }
-    } catch (err) {
-      console.error("Multi-audio upload failed:", err);
-      alert("Error uploading some audio files to Cloudinary.");
-    } finally {
-      setUploadingMultiAudio(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleSingleItemAudioUpload = async (fileId: string, file: File) => {
-    if (!editing) return;
-    setUploadingAudio(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "kryso/music/audio");
-
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        updateAudioFileItem(fileId, "url", data.url);
-      } else {
-        alert(data.error || "Audio upload failed.");
-      }
-    } catch (err) {
-      console.error("Audio item upload error:", err);
-      alert("Error uploading file.");
-    } finally {
-      setUploadingAudio(false);
-    }
-  };
-
-  const addAudioFileItem = () => {
-    if (!editing) return;
-    const currentFiles = editing.audioFiles || [];
-    setEditing({
-      ...editing,
-      audioFiles: [
-        ...currentFiles,
-        {
-          id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          title: `Audio Track ${currentFiles.length + 1}`,
-          url: "",
-        },
-      ],
     });
-  };
+    return ["All", ...Array.from(set)];
+  }, [tracks]);
 
-  const updateAudioFileItem = (id: string, field: "title" | "url", value: string) => {
-    if (!editing) return;
-    const currentFiles = editing.audioFiles || [];
-    setEditing({
-      ...editing,
-      audioFiles: currentFiles.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
+  // Reset pagination on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filterLock, genreFilter]);
+
+  const filteredTracks = useMemo(() => {
+    return tracks.filter((t) => {
+      const matchesQuery = `${t.name} ${t.singer} ${t.genre || ""}`.toLowerCase().includes(query.toLowerCase());
+      const matchesLock =
+        filterLock === "all" ||
+        (filterLock === "locked" && t.isLocked) ||
+        (filterLock === "unlocked" && !t.isLocked);
+      const matchesGenre = genreFilter === "All" || (t.genre && t.genre.trim() === genreFilter);
+      return matchesQuery && matchesLock && matchesGenre;
     });
-  };
+  }, [tracks, query, filterLock, genreFilter]);
 
-  const removeAudioFileItem = (id: string) => {
-    if (!editing) return;
-    const currentFiles = editing.audioFiles || [];
-    setEditing({
-      ...editing,
-      audioFiles: currentFiles.filter((f) => f.id !== id),
-    });
-  };
+  const totalPages = Math.max(1, Math.ceil(filteredTracks.length / pageSize));
+  const validPage = Math.min(currentPage, totalPages);
 
-  const filteredTracks = tracks.filter((t) => {
-    const matchesQuery = `${t.name} ${t.singer} ${t.genre || ""}`.toLowerCase().includes(query.toLowerCase());
-    const matchesLock =
-      filterLock === "all" ||
-      (filterLock === "locked" && t.isLocked) ||
-      (filterLock === "unlocked" && !t.isLocked);
-    return matchesQuery && matchesLock;
-  });
+  const paginatedTracks = useMemo(() => {
+    const start = (validPage - 1) * pageSize;
+    return filteredTracks.slice(start, start + pageSize);
+  }, [filteredTracks, validPage, pageSize]);
 
   return (
     <div className="space-y-6">
@@ -376,20 +272,31 @@ export function MusicTrackManager() {
             <h2 className="font-display text-2xl font-extrabold text-foreground">Music Tracks & Downloads</h2>
             {mongoConnected === true && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                <Database size={11} /> MongoDB Active
+                <Database size={11} /> Database Active
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
-              <Cloud size={11} /> Cloudinary Ready
+              <Cloud size={11} /> Cloud Storage Ready
             </span>
             {syncing && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add tracks with artwork, singer name, MP4/audio files, and lock buttons for social follow-to-download gating.
+            Add tracks with artwork, singer name, audio/music link, and lock buttons for social follow-to-download gating.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/music"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs"
+            title="Open live Music page in new tab"
+          >
+            <Eye size={14} />
+            <span>View Music Page</span>
+            <ExternalLink size={12} />
+          </Link>
           {tracks.length > 0 && (
             <Button
               variant="outline"
@@ -415,20 +322,42 @@ export function MusicTrackManager() {
         </div>
       )}
 
-      {/* Filter and Search */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="relative w-full max-w-xs">
-          <span className="sr-only">Search tracks</span>
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by track, singer, genre..."
-            className="h-10 rounded-full pl-9 bg-card border-border text-foreground focus-visible:ring-primary"
-          />
-        </label>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          <label className="relative w-full sm:max-w-xs">
+            <span className="sr-only">Search tracks</span>
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by track, singer, genre..."
+              className="h-10 rounded-full pl-9 bg-card border-border text-foreground focus-visible:ring-primary w-full"
+            />
+          </label>
 
-        <div className="flex rounded-lg bg-secondary p-1 border border-border">
+          {/* Genre selector if multiple genres exist */}
+          {availableGenres.length > 2 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                <SlidersHorizontal size={12} /> Genre:
+              </span>
+              <select
+                value={genreFilter}
+                onChange={(e) => setGenreFilter(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {availableGenres.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div className="flex rounded-lg bg-secondary p-1 border border-border shrink-0">
           <button
             onClick={() => setFilterLock("all")}
             className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
@@ -440,16 +369,6 @@ export function MusicTrackManager() {
             All Tracks ({tracks.length})
           </button>
           <button
-            onClick={() => setFilterLock("locked")}
-            className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
-              filterLock === "locked"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            🔒 Locked ({tracks.filter((t) => t.isLocked).length})
-          </button>
-          <button
             onClick={() => setFilterLock("unlocked")}
             className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
               filterLock === "unlocked"
@@ -457,7 +376,17 @@ export function MusicTrackManager() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            🔓 Direct ({tracks.filter((t) => !t.isLocked).length})
+            🔓 Free ({tracks.filter((t) => !t.isLocked).length})
+          </button>
+          <button
+            onClick={() => setFilterLock("locked")}
+            className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+              filterLock === "locked"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🔒 Premium ({tracks.filter((t) => t.isLocked).length})
           </button>
         </div>
       </div>
@@ -472,12 +401,12 @@ export function MusicTrackManager() {
                 <th className="px-4 py-3 font-semibold text-foreground">Music & Singer</th>
                 <th className="px-4 py-3 font-semibold text-foreground">Genre</th>
                 <th className="px-4 py-3 font-semibold text-foreground">Audio / Player</th>
-                <th className="px-4 py-3 font-semibold text-foreground">Lock Status</th>
+                <th className="px-4 py-3 font-semibold text-foreground">Access Type</th>
                 <th className="px-4 py-3 text-right font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTracks.map((track) => (
+              {paginatedTracks.map((track) => (
                 <tr
                   key={track.id}
                   className="border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors"
@@ -506,9 +435,9 @@ export function MusicTrackManager() {
                     <p className="font-display font-bold text-foreground">{track.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground">by {track.singer}</span>
-                      {track.audioFiles && track.audioFiles.length > 1 && (
+                      {track.downloadUrl && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-bold border border-primary/30">
-                          📦 {track.audioFiles.length} Tracks Bundle
+                          📦 ZIP Link
                         </span>
                       )}
                     </div>
@@ -542,7 +471,7 @@ export function MusicTrackManager() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => toggleLock(track)}
-                      title="Click to toggle lock state"
+                      title="Click to toggle Free / Premium status"
                       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all shadow-sm ${
                         track.isLocked
                           ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30"
@@ -552,12 +481,12 @@ export function MusicTrackManager() {
                       {track.isLocked ? (
                         <>
                           <Lock size={12} />
-                          <span>Locked (Social Gate)</span>
+                          <span>Premium</span>
                         </>
                       ) : (
                         <>
                           <Unlock size={12} />
-                          <span>Unlocked (Free)</span>
+                          <span>Free</span>
                         </>
                       )}
                     </button>
@@ -565,12 +494,17 @@ export function MusicTrackManager() {
 
                   {/* Actions */}
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    {track.audioUrl && (
+                    {(track.downloadUrl || track.audioUrl) && (
                       <a
-                        href={formatDownloadUrl(track.audioUrl, `${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`)}
-                        download={`${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`}
+                        href={formatDownloadUrl(
+                          track.downloadUrl || track.audioUrl,
+                          track.downloadUrl?.toLowerCase().includes(".zip") || (track.downloadUrl && !track.downloadUrl.match(/\.(mp3|mp4|wav|m4a)$/i))
+                            ? `${track.name || "Track"} - ${track.singer || "Kryso"}.zip`
+                            : `${track.name || "Track"} - ${track.singer || "Kryso"}.mp3`
+                        )}
+                        download={`${track.name || "Track"} - ${track.singer || "Kryso"}`}
                         className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
-                        title="Download audio file directly"
+                        title="Download file directly"
                       >
                         <Download size={15} />
                       </a>
@@ -598,12 +532,102 @@ export function MusicTrackManager() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 bg-secondary/30 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing <strong className="text-foreground">{(validPage - 1) * pageSize + 1}</strong> to{" "}
+                <strong className="text-foreground">{Math.min(validPage * pageSize, filteredTracks.length)}</strong> of{" "}
+                <strong className="text-foreground">{filteredTracks.length}</strong> {filteredTracks.length === 1 ? "track" : "tracks"}
+                {(query || filterLock !== "all" || genreFilter !== "All") && ` (filtered from ${tracks.length})`}
+              </span>
+
+              {filteredTracks.length > 6 && (
+                <div className="flex items-center gap-1.5 ml-2">
+                  <span>Per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-7 rounded border border-border bg-card px-2 text-xs text-foreground cursor-pointer"
+                  >
+                    <option value={6}>6</option>
+                    <option value={8}>8</option>
+                    <option value={12}>12</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={validPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold rounded-lg"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                    if (
+                      totalPages > 7 &&
+                      p !== 1 &&
+                      p !== totalPages &&
+                      Math.abs(p - validPage) > 1
+                    ) {
+                      if (p === 2 || p === totalPages - 1) {
+                        return (
+                          <span key={p} className="px-1 text-muted-foreground">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p)}
+                        className={`size-8 rounded-lg text-xs font-bold transition-all ${
+                          p === validPage
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={validPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="h-8 gap-1 px-2.5 text-xs font-semibold rounded-lg"
+                >
+                  Next <ChevronRight size={14} />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-border py-16 text-center bg-card/40">
           <p className="font-display text-lg font-bold text-foreground">No music tracks added yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Click &quot;Add Music Track&quot; above to upload cover art, song name, singer, MP4/audio, and configure the social lock button.
+            Click &quot;Add Music Track&quot; above to add cover art, song name, singer, audio link, and configure the social lock button.
           </p>
           <Button
             className="mt-4 rounded-full font-bold shadow-md shadow-primary/20"
@@ -677,7 +701,7 @@ export function MusicTrackManager() {
                 <label className="text-sm font-semibold text-foreground flex items-center justify-between">
                   <span>Cover Artwork Image</span>
                   <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1">
-                    <Cloud size={12} /> Stored in Cloudinary
+                    <Cloud size={12} /> Cloud Storage
                   </span>
                 </label>
 
@@ -718,12 +742,12 @@ export function MusicTrackManager() {
                       {uploadingImage ? (
                         <>
                           <Loader2 size={14} className="animate-spin text-primary" />
-                          <span>Uploading cover to Cloudinary...</span>
+                          <span>Uploading cover...</span>
                         </>
                       ) : (
                         <>
                           <Upload size={14} />
-                          <span>{editing.imageUrl ? "Replace Cover Image (Cloudinary)" : "Upload Cover Image (Cloudinary)"}</span>
+                          <span>{editing.imageUrl ? "Replace Cover Image" : "Upload Cover Image"}</span>
                         </>
                       )}
                     </div>
@@ -731,28 +755,42 @@ export function MusicTrackManager() {
                 </div>
                 <Input
                   type="text"
-                  placeholder="Or paste direct image URL, Cloudinary, or Google Drive link"
+                  placeholder="Or paste direct image URL or Google Drive link"
                   value={editing.imageUrl}
                   className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
                   onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value })}
                 />
               </div>
 
-              {/* Audio / MP4 File Upload or Direct Link */}
-              <div className="grid gap-2 rounded-xl border border-border bg-secondary/30 p-4">
+              {/* Audio Stream / Preview Link */}
+              <div className="grid gap-2.5 rounded-xl border border-border bg-secondary/30 p-4">
                 <label className="text-sm font-semibold text-foreground flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Headphones size={15} className="text-primary" />
-                    Upload MP4 Audio / Music File or Add Link
+                    Audio Stream / Preview Link
                   </span>
-                  <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1">
-                    <Cloud size={12} /> Cloudinary Audio/Video
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Player Stream Link
                   </span>
                 </label>
 
+                <p className="text-xs text-muted-foreground">
+                  Paste the audio URL for the player (Google Drive share link, direct audio link, MP3, MP4, Dropbox).
+                </p>
+
+                <Input
+                  type="text"
+                  placeholder="https://drive.google.com/file/d/... or direct MP3/MP4 link"
+                  value={editing.audioUrl}
+                  className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
+                  onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}
+                />
+
                 {editing.audioUrl && (
-                  <div className="rounded-lg bg-background p-3 border border-border">
-                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">Audio Player Preview:</p>
+                  <div className="rounded-lg bg-background p-3 border border-border mt-1">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <Play size={12} className="text-primary" /> Audio Player Preview:
+                    </p>
                     <audio
                       controls
                       controlsList="nodownload noplaybackrate"
@@ -762,185 +800,40 @@ export function MusicTrackManager() {
                     />
                   </div>
                 )}
-
-                <div className="flex items-center gap-2">
-                  <label className="relative flex-1">
-                    <input
-                      type="file"
-                      accept="audio/*, video/mp4, .mp3, .wav, .m4a, .mp4"
-                      disabled={uploadingAudio}
-                      className="sr-only"
-                      onChange={handleAudioUpload}
-                    />
-                    <div
-                      className={`flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/50 bg-primary/10 px-4 text-xs font-bold text-primary transition-colors hover:bg-primary/20 ${
-                        uploadingAudio ? "pointer-events-none opacity-60" : ""
-                      }`}
-                    >
-                      {uploadingAudio ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin text-primary" />
-                          <span>Uploading MP4 / Audio to Cloudinary...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload size={16} />
-                          <span>Upload MP4 / MP3 Audio File</span>
-                        </>
-                      )}
-                    </div>
-                  </label>
-                </div>
-
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  Direct Music Link (Cloudinary URL, MP3, MP4, Google Drive share link, Dropbox):
-                  <Input
-                    type="text"
-                    placeholder="https://drive.google.com/file/d/... or Cloudinary URL or direct link"
-                    value={editing.audioUrl}
-                    className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
-                    onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}
-                  />
-                </label>
               </div>
 
-              {/* Multi-Audio Tracks Package & Download Links (One-Click Multi Download) */}
-              <div className="grid gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div>
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Music size={16} className="text-primary" />
-                      Multi-Audio Files & Download Links (One-Click Multi-Download)
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Attach multiple audio versions, stems, or mix links. When users click Download, ALL files download together at once!
-                    </p>
-                  </div>
+              {/* Direct ZIP Package / Google Drive Download Link */}
+              <div className="grid gap-2.5 rounded-xl border border-primary/40 bg-primary/5 p-4">
+                <label className="text-sm font-bold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Download size={15} className="text-primary" />
+                    Download File / ZIP Link (Google Drive / Direct)
+                  </span>
+                  <span className="text-[11px] font-medium text-primary flex items-center gap-1">
+                    ZIP, MP3, WAV or Full Package
+                  </span>
+                </label>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Batch Upload Multiple Files */}
-                    <label className="relative">
-                      <input
-                        type="file"
-                        multiple
-                        accept="audio/*, video/mp4, .mp3, .wav, .m4a, .mp4"
-                        disabled={uploadingMultiAudio}
-                        className="sr-only"
-                        onChange={handleMultiAudioUpload}
-                      />
-                      <div
-                        className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-primary/50 bg-primary/20 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/30 ${
-                          uploadingMultiAudio ? "pointer-events-none opacity-60" : ""
-                        }`}
-                      >
-                        {uploadingMultiAudio ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin text-primary" />
-                            <span>Uploading Batch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Upload size={13} />
-                            <span>Upload Multiple Files</span>
-                          </>
-                        )}
-                      </div>
-                    </label>
+                <p className="text-xs text-muted-foreground">
+                  Add a direct Google Drive ZIP file link, Dropbox bundle, or package link. When users complete the social lock and click Download, this ZIP/file will download directly! (If left empty, it will download the audio preview link above).
+                </p>
 
-                    {/* Add Custom Link / Item */}
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={addAudioFileItem}
-                      className="h-8 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-1 shadow-sm"
-                    >
-                      <Plus size={13} /> Add Track Link
-                    </Button>
-                  </div>
-                </div>
+                <Input
+                  type="text"
+                  placeholder="https://drive.google.com/file/d/... (Google Drive ZIP / file link) or direct URL"
+                  value={editing.downloadUrl || ""}
+                  className="bg-background border-border text-foreground text-xs focus-visible:ring-primary"
+                  onChange={(e) => setEditing({ ...editing, downloadUrl: e.target.value })}
+                />
 
-                {/* List of Audio Items */}
-                {editing.audioFiles && editing.audioFiles.length > 0 ? (
-                  <div className="space-y-2.5 mt-1">
-                    {editing.audioFiles.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className="rounded-lg border border-border bg-card p-3 shadow-xs space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-primary flex items-center gap-1.5">
-                            <Headphones size={13} /> Audio File #{idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeAudioFileItem(item.id)}
-                            className="text-muted-foreground hover:text-red-400 p-1 rounded transition-colors"
-                            title="Remove this track"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-
-                        <div className="grid sm:grid-cols-3 gap-2">
-                          <Input
-                            type="text"
-                            placeholder="Version / Title (e.g. Extended Mix, Instrumental, Vocal Stem)"
-                            value={item.title}
-                            className="bg-background border-border text-foreground text-xs focus-visible:ring-primary sm:col-span-1"
-                            onChange={(e) => updateAudioFileItem(item.id, "title", e.target.value)}
-                          />
-
-                          <div className="sm:col-span-2 flex items-center gap-1.5">
-                            <Input
-                              type="text"
-                              placeholder="Direct Audio URL, Cloudinary, Drive link, Dropbox"
-                              value={item.url}
-                              className="bg-background border-border text-foreground text-xs focus-visible:ring-primary flex-1"
-                              onChange={(e) => updateAudioFileItem(item.id, "url", e.target.value)}
-                            />
-
-                            <label className="relative shrink-0">
-                              <input
-                                type="file"
-                                accept="audio/*, video/mp4, .mp3, .wav, .m4a, .mp4"
-                                disabled={uploadingAudio}
-                                className="sr-only"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleSingleItemAudioUpload(item.id, file);
-                                }}
-                              />
-                              <div className="h-9 px-2.5 inline-flex items-center justify-center rounded-md border border-border bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer text-xs font-semibold gap-1">
-                                <Upload size={13} /> Upload
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-
-                        {item.url && (
-                          <div className="pt-1 flex items-center gap-2">
-                            <audio
-                              controls
-                              controlsList="nodownload noplaybackrate"
-                              onContextMenu={(e) => e.preventDefault()}
-                              src={formatAudioUrl(item.url)}
-                              className="w-full h-7"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border/80 bg-background/50 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">
-                      No extra audio files added yet. Click &quot;Upload Multiple Files&quot; to batch upload audio stems/mixes or click &quot;Add Track Link&quot; to paste links.
-                    </p>
+                {editing.downloadUrl && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+                    <span>📦 ZIP / Download file link configured</span>
                   </div>
                 )}
               </div>
 
-              {/* Lock Button / Gate Configuration */}
+              {/* Access Tier Configuration (Free vs Premium) */}
               <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -950,12 +843,12 @@ export function MusicTrackManager() {
                       ) : (
                         <Unlock size={16} className="text-emerald-400" />
                       )}
-                      Download Lock Button
+                      {editing.isLocked ? "Premium Track (Locked)" : "Free Track (Direct Download)"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {editing.isLocked
-                        ? "Users must follow on Spotify, YouTube, Instagram, and Facebook to unlock download."
-                        : "Unlocked: Anyone can download the track directly."}
+                        ? "Premium: Visitors must follow Spotify, YouTube, Instagram, and Facebook to download."
+                        : "Free: Anyone can listen and download this track directly with no lock."}
                     </p>
                   </div>
 
@@ -1041,7 +934,7 @@ export function MusicTrackManager() {
                 type="submit"
                 className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90"
               >
-                Save Track to MongoDB
+                Save Track
               </Button>
             </div>
           </form>

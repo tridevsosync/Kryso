@@ -2,6 +2,7 @@ export type Product = { id: string; name: string; category: string; price: numbe
 export type Course = {
   id: string;
   name: string;
+  order?: number;
   duration: string;
   fees: number;
   actualPrice?: number;
@@ -123,6 +124,7 @@ export const courses: Course[] = [
   {
     id: "course-djing",
     name: "DJING",
+    order: 1,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
     instructor: "Kryso",
     fees: 2500,
@@ -135,6 +137,7 @@ export const courses: Course[] = [
   {
     id: "course-music-production",
     name: "Music Production",
+    order: 2,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597851/kryso/academy/course_music_production.jpg",
     instructor: "Kryso",
     fees: 3000,
@@ -147,6 +150,7 @@ export const courses: Course[] = [
   {
     id: "course-piano",
     name: "Piano",
+    order: 3,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597883/kryso/academy/course_piano.jpg",
     instructor: "Kryso Faculty",
     fees: 2200,
@@ -159,6 +163,7 @@ export const courses: Course[] = [
   {
     id: "course-guitar",
     name: "Guitar",
+    order: 4,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597853/kryso/academy/course_guitar.jpg",
     instructor: "Kryso Faculty",
     fees: 2000,
@@ -171,6 +176,7 @@ export const courses: Course[] = [
   {
     id: "course-tabla",
     name: "Tabla",
+    order: 5,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597854/kryso/academy/course_tabla.jpg",
     instructor: "Kryso Faculty",
     fees: 1800,
@@ -183,6 +189,7 @@ export const courses: Course[] = [
   {
     id: "course-singing",
     name: "Singing",
+    order: 6,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597855/kryso/academy/course_singing.jpg",
     instructor: "Kryso Faculty",
     fees: 2200,
@@ -195,6 +202,7 @@ export const courses: Course[] = [
   {
     id: "course-drums",
     name: "Drums",
+    order: 7,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597856/kryso/academy/course_drums.jpg",
     instructor: "Kryso Faculty",
     fees: 2500,
@@ -207,6 +215,7 @@ export const courses: Course[] = [
   {
     id: "course-rapping",
     name: "Rapping",
+    order: 8,
     imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597857/kryso/academy/course_rapping.jpg",
     instructor: "Kryso",
     fees: 2000,
@@ -256,8 +265,9 @@ export type MusicTrack = {
   name: string; // Music Name
   singer: string; // Singer / Artist Name
   imageUrl: string; // Artwork Image
-  audioUrl: string; // Primary MP4 / MP3 audio file or link
-  audioFiles?: TrackAudioItem[]; // Multiple audio tracks / stems / alternate mixes in bundle
+  audioUrl: string; // Primary MP4 / MP3 audio preview file or stream link
+  downloadUrl?: string; // Direct ZIP file / download package link (Google Drive, Dropbox, etc.)
+  audioFiles?: TrackAudioItem[]; // Legacy multi audio tracks bundle
   isLocked: boolean; // Lock button / status
   genre?: string;
   spotifyUrl?: string;
@@ -283,7 +293,7 @@ export type SpotlightSlide = {
 export const defaultSpotlightSlides: SpotlightSlide[] = [
   {
     id: "dj-pro-producer",
-    title: "Identify Yourself as pro DJ Music producer",
+    title: "Identify Yourself as PRO DJ & Music Producer",
     description:
       "Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.",
     primaryBtnText: "View all courses",

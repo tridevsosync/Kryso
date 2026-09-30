@@ -12,6 +12,7 @@ import {
   Heart,
   Info,
   Music2,
+  PhoneCall,
   Search,
   Star,
   UsersRound,
@@ -52,7 +53,7 @@ export function AcademyClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
     // Fetch courses from MongoDB collection
@@ -95,21 +96,27 @@ export function AcademyClient() {
       .catch(() => {});
   }, []);
 
-  // Filtered & searched courses
+  // Filtered & searched courses (sorted by display order)
   const filteredCourses = useMemo(() => {
-    return courseList.filter((course) => {
-      const matchSearch =
-        searchQuery === "" ||
-        course.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return courseList
+      .filter((course) => {
+        const matchSearch =
+          searchQuery === "" ||
+          course.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchLevel =
-        selectedLevel === "all" ||
-        course.level?.toLowerCase().includes(selectedLevel.toLowerCase());
+        const matchLevel =
+          selectedLevel === "all" ||
+          course.level?.toLowerCase().includes(selectedLevel.toLowerCase());
 
-      return matchSearch && matchLevel;
-    });
+        return matchSearch && matchLevel;
+      })
+      .sort((a, b) => {
+        const orderA = a.order !== undefined && a.order !== null && !isNaN(Number(a.order)) ? Number(a.order) : 9999;
+        const orderB = b.order !== undefined && b.order !== null && !isNaN(Number(b.order)) ? Number(b.order) : 9999;
+        return orderA - orderB;
+      });
   }, [courseList, searchQuery, selectedLevel]);
 
   // Pagination calculation
@@ -189,7 +196,11 @@ export function AcademyClient() {
         <div className="flex flex-wrap items-end justify-between gap-5">
           <SectionHeading
             label="Curriculums & Classes"
-            title="Choose Your Instrument"
+            title={
+              <>
+                Choose Your <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">Course</span>
+              </>
+            }
             text="Explore classes taught by concert artists at our Pune academy."
           />
           {courseList.length > 0 && (
@@ -302,7 +313,7 @@ export function AcademyClient() {
               return (
                 <article
                   key={course.id || course.name}
-                  className="group relative rounded-2xl border border-border bg-card overflow-hidden shadow-sm transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5 flex flex-col justify-between"
+                  className="group relative rounded-2xl border border-border bg-card overflow-hidden shadow-sm transition-all duration-300 hover:border-primary/60 hover:shadow-2xl hover:shadow-primary/10 hover:scale-[1.03] hover:-translate-y-1.5 z-0 hover:z-10 flex flex-col justify-between"
                 >
                   {/* Full-width Card Cover Image */}
                   <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-secondary">
@@ -390,27 +401,40 @@ export function AcademyClient() {
                       </div>
                     </div>
 
-                    {/* Action Buttons: Know More & Enroll Now */}
-                    <div className="mt-5 grid grid-cols-2 gap-2.5 pt-3 border-t border-border/60">
-                      <Link
-                        href={`/academy/${encodeURIComponent(course.id || course.name)}`}
-                        className="w-full"
-                      >
+                    {/* Action Buttons: Know More, Enroll Now & Free Demo Call (Appears on Hover) */}
+                    <div className="mt-5 pt-3 border-t border-border/60">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <Link
+                          href={`/academy/${encodeURIComponent(course.id || course.name)}`}
+                          className="w-full"
+                        >
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all cursor-pointer"
+                          >
+                            Know More <Info size={13} className="ml-1 text-primary" />
+                          </Button>
+                        </Link>
                         <Button
                           type="button"
-                          variant="outline"
-                          className="w-full h-10 rounded-full border-border hover:bg-secondary hover:border-primary/50 text-foreground font-bold text-xs transition-all cursor-pointer"
+                          onClick={() => setEnrollModalCourse(course)}
+                          className="h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all cursor-pointer"
                         >
-                          Know More <Info size={13} className="ml-1 text-primary" />
+                          Enroll Now <ArrowRight size={13} className="ml-1" />
                         </Button>
-                      </Link>
-                      <Button
-                        type="button"
-                        onClick={() => setEnrollModalCourse(course)}
-                        className="h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 transition-all cursor-pointer"
-                      >
-                        Enroll Now <ArrowRight size={13} className="ml-1" />
-                      </Button>
+                      </div>
+
+                      {/* Book Your Free Demo Today Button (Appears on Card Hover) */}
+                      <div className="overflow-hidden transition-all duration-300 ease-out md:max-h-0 md:opacity-0 md:-translate-y-1 md:pointer-events-none group-hover:max-h-16 group-hover:opacity-100 group-hover:translate-y-0 group-hover:mt-2.5 group-hover:pointer-events-auto max-md:max-h-16 max-md:opacity-100 max-md:mt-2.5">
+                        <a
+                          href="tel:9767378750"
+                          className="w-full flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f05a14] via-[#ff6a20] to-[#f05a14] bg-[length:200%_auto] hover:bg-right px-4 py-2.5 text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-orange-500/25 transition-all duration-300 hover:brightness-110 active:scale-95 cursor-pointer"
+                        >
+                          <PhoneCall size={14} className="animate-bounce shrink-0" />
+                          <span>Book Your Free Demo Today</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </article>

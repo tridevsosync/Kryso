@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Check,
-  CheckCheck,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Eye,
   Facebook,
   Globe,
   GraduationCap,
-  Inbox,
   Instagram,
   LayoutDashboard,
   LogOut,
@@ -26,6 +26,7 @@ import {
   PhoneCall,
   Power,
   RefreshCw,
+  Search,
   Settings,
   ShieldAlert,
   Sparkles,
@@ -41,13 +42,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { CollectionManager } from "@/components/admin-collection";
 import {
   ADMIN_SESSION_KEY,
-  ENQUIRIES_KEY,
   readStored,
   useStored,
   writeStored,
-  deleteEnquiryRemote,
-  markEnquiryReadRemote,
-  type Enquiry,
 } from "@/lib/kryso-storage";
 import { siteSettings, teachers, defaultSyllabusModules, defaultStudioGearItems } from "@/data/catalog";
 import { SpotlightManager } from "@/components/admin-spotlight";
@@ -61,7 +58,6 @@ export const sections = [
   "Academy",
   "Teacher",
   "Contact",
-  "Enquiry",
   "Setting",
 ] as const;
 
@@ -85,10 +81,7 @@ export function AdminDashboardClient() {
   const [ready, setReady] = useState(false);
   const [section, setSection] = useState<Section>("Dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [enquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
   const [settings, setSettings] = useStored("admin-settings", siteSettings);
-
-  const unreadCount = enquiries.filter((e) => !e.read).length;
 
   useEffect(() => {
     if (!readStored<{ user?: string } | null>(ADMIN_SESSION_KEY, null)) {
@@ -130,7 +123,6 @@ export function AdminDashboardClient() {
     { id: "Academy" as const, label: "Academy", icon: GraduationCap },
     { id: "Teacher" as const, label: "Teacher", icon: Users },
     { id: "Contact" as const, label: "Contact", icon: PhoneCall },
-    { id: "Enquiry" as const, label: "Enquiry", icon: Inbox, badge: unreadCount },
     { id: "Setting" as const, label: "Setting", icon: Settings },
   ];
 
@@ -205,11 +197,6 @@ export function AdminDashboardClient() {
                       <Icon size={16} />
                       {item.label}
                     </span>
-                    {Boolean(item.badge && item.badge > 0) && (
-                      <span className="rounded-full bg-primary-foreground text-primary px-1.5 py-0.5 text-[10px] font-extrabold">
-                        {item.badge}
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -244,11 +231,6 @@ export function AdminDashboardClient() {
             >
               <Icon size={13} />
               <span>{item.label}</span>
-              {Boolean(item.badge && item.badge > 0) && (
-                <span className="rounded-full bg-primary-foreground text-primary px-1 text-[9px] font-extrabold">
-                  {item.badge}
-                </span>
-              )}
             </button>
           );
         })}
@@ -286,17 +268,6 @@ export function AdminDashboardClient() {
                     <Icon size={17} />
                     {item.label}
                   </span>
-                  {Boolean(item.badge && item.badge > 0) && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
-                        isActive
-                          ? "bg-primary-foreground text-primary"
-                          : "bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -358,7 +329,6 @@ export function AdminDashboardClient() {
             {section === "Academy" && <AcademySection />}
             {section === "Teacher" && <TeacherSection />}
             {section === "Contact" && <ContactSection />}
-            {section === "Enquiry" && <EnquirySection />}
             {section === "Setting" && <SettingSection />}
           </div>
         </main>
@@ -371,79 +341,34 @@ export function AdminDashboardClient() {
 // 1. Dashboard Overview
 // ----------------------------------------------------
 function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
-  const [enquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
   const [storedTracks] = useStored<unknown[]>("admin-music-tracks-v1", []);
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
-  const pendingCount = enquiries.filter((item) => !item.read).length;
 
   const cards: Array<{ label: string; value: number | string; section: Section; desc: string }> = [
     { label: "Hero spotlight", value: 2, section: "Hero spotlight", desc: "Active hero slides" },
-    { label: "Music", value: storedTracks.length, section: "Music", desc: "Tracks & MP4 downloads" },
-    { label: "Academy", value: storedCourses.length, section: "Academy", desc: "Stored in MongoDB" },
+    { label: "Music", value: storedTracks.length, section: "Music", desc: "Tracks & releases" },
+    { label: "Academy", value: storedCourses.length, section: "Academy", desc: "Published courses" },
     { label: "Teacher", value: teachers.length, section: "Teacher", desc: "Mentors & instructors" },
     { label: "Contact", value: "Pune", section: "Contact", desc: "Studio hours & location" },
-    { label: "Enquiry", value: pendingCount, section: "Enquiry", desc: "Unread student queries" },
     { label: "Setting", value: "Active", section: "Setting", desc: "Branding & copy config" },
   ];
 
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold text-foreground">Welcome back</h1>
-      <p className="mt-1 text-sm text-muted-foreground">A quick look at your academy, concert shop, and active leads.</p>
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <p className="mt-1 text-sm text-muted-foreground">A quick look at your academy, concert tracks, and settings.</p>
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <button
             key={card.label}
             onClick={() => onOpen(card.section)}
-            className="rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/5"
+            className="rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary hover:shadow-lg hover:shadow-primary/5 cursor-pointer"
           >
             <p className="font-display text-3xl font-extrabold text-primary">{card.value}</p>
             <p className="mt-2 text-base font-bold text-foreground">{card.label}</p>
             <p className="text-xs text-muted-foreground">{card.desc}</p>
           </button>
         ))}
-      </div>
-
-      <div className="mt-8 rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold text-foreground">Recent enquiries</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpen("Enquiry")}
-            className="text-xs text-primary hover:bg-secondary"
-          >
-            View all enquiries →
-          </Button>
-        </div>
-        {enquiries.length ? (
-          <ul className="mt-4 grid gap-3 text-sm">
-            {enquiries.slice(0, 5).map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-3 last:border-0"
-              >
-                <span>
-                  <strong className="text-foreground">{item.name}</strong>{" "}
-                  <span className="text-muted-foreground">sent a {item.kind} enquiry</span>
-                  {item.course ? <span className="text-primary font-medium"> about {item.course}</span> : ""}
-                  {!item.read && (
-                    <span className="ml-2 rounded-full bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-bold">
-                      NEW
-                    </span>
-                  )}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(item.createdAt).toLocaleDateString("en-IN")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No enquiries yet. Inquiries submitted through the website will appear here and in the Enquiry section.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -464,7 +389,7 @@ function MusicSection() {
         <div>
           <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Music Management</h1>
           <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
-            Manage music tracks, MP4/audio uploads, social lock gating, and instruments in MongoDB & Cloudinary.
+            Manage music tracks, audio streaming links, social lock gating, and instruments.
           </p>
         </div>
         <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto max-w-full shrink-0">
@@ -506,7 +431,7 @@ function MusicSection() {
       {tab === "products" && (
         <CollectionManager
           title="Instruments & Gear"
-          description="Instruments and accessories in the music shop. Saved in MongoDB; images uploaded to Cloudinary."
+          description="Instruments and accessories in the music shop."
           storageKey="admin-products-v3"
           apiCollection="music_products"
           folder="kryso/music"
@@ -527,7 +452,7 @@ function MusicSection() {
       {tab === "categories" && (
         <CollectionManager
           title="Instrument Categories"
-          description="Product categories used across the music catalog. Saved in MongoDB."
+          description="Product categories used across the music catalog."
           storageKey="admin-categories-v3"
           apiCollection="music_categories"
           seed={[]}
@@ -556,9 +481,22 @@ function AcademySection() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Academy Management</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Academy Management</h1>
+            <Link
+              href="/academy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs shrink-0"
+              title="Open live Academy website page in new tab"
+            >
+              <Eye size={13} />
+              <span>View Academy Page</span>
+              <ExternalLink size={11} />
+            </Link>
+          </div>
           <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
-            Manage courses, curriculum/syllabus, studio gear, and student enrollments directly synced with MongoDB.
+            Manage courses, curriculum/syllabus, studio gear, and student enrollments.
           </p>
         </div>
         <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto max-w-full shrink-0">
@@ -608,13 +546,21 @@ function AcademySection() {
       {tab === "courses" && (
         <CollectionManager
           title="Academy Courses"
-          description="Classes and curriculums offered at the academy. Saved in MongoDB; images on Cloudinary."
+          description="Classes and curriculums offered at the academy."
           storageKey="admin-courses-v3"
           apiCollection="academy_courses"
           folder="kryso/academy"
+          previewUrlPrefix="/academy"
+          publicPageUrl="/academy"
           seed={[]}
           fields={[
-            { key: "imageUrl", label: "Course Image", type: "image", placeholder: "Upload course image to Cloudinary" },
+            {
+              key: "order",
+              label: "Display Order / Sequence (e.g. 1, 2, 3)",
+              type: "number",
+              placeholder: "e.g. 1 (Lowest number appears on top, e.g. 1, 2, 3...)",
+            },
+            { key: "imageUrl", label: "Course Image", type: "image", placeholder: "Upload or paste course image URL" },
             { key: "name", label: "Course Name", placeholder: "e.g. Electric Guitar Mastery" },
             {
               key: "instructor",
@@ -665,10 +611,11 @@ function AcademySection() {
       {tab === "curriculum" && (
         <CollectionManager
           title="Course Curriculum & Syllabus Modules"
-          description="Manage learning steps, milestone topics, and syllabus modules displayed on the Course 'Know More' page. Saved in MongoDB."
+          description="Manage learning steps, milestone topics, and syllabus modules displayed on the Course 'Know More' page."
           storageKey="admin-curriculum-v3"
           apiCollection="academy_curriculum"
           folder="kryso/curriculum"
+          publicPageUrl="/academy"
           seed={defaultSyllabusModules}
           filterKey="courseName"
           fields={[
@@ -710,10 +657,11 @@ function AcademySection() {
       {tab === "studiogear" && (
         <CollectionManager
           title="Studio Gear & Campus Infrastructure"
-          description="Manage rehearsal rooms, pro audio gear, recital stage, and amenities shown in the 'Studio Gear & Campus' tab on course pages. Saved in MongoDB."
+          description="Manage rehearsal rooms, pro audio gear, recital stage, and amenities shown in the 'Studio Gear & Campus' tab on course pages."
           storageKey="admin-studio-gear-v3"
           apiCollection="academy_studio_gear"
           folder="kryso/studio"
+          publicPageUrl="/academy"
           seed={defaultStudioGearItems}
           fields={[
             {
@@ -770,7 +718,7 @@ function AcademySection() {
       {tab === "students" && (
         <CollectionManager
           title="Student Roster & Enrollments"
-          description="Enrolled students across academy courses with payment records & contact info. Saved in MongoDB."
+          description="Enrolled students across academy courses with payment records & contact info."
           storageKey="admin-students-v3"
           apiCollection="academy_students"
           folder="kryso/students"
@@ -818,19 +766,35 @@ function AcademySection() {
 function TeacherSection() {
   return (
     <div>
-      <div className="border-b border-border pb-4 mb-6">
-        <h1 className="font-display text-2xl font-extrabold text-foreground">Teacher & Faculty Management</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage music instructors, masterclass leaders, and concert mentors.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-extrabold text-foreground">Teacher & Faculty Management</h1>
+            <Link
+              href="/academy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs shrink-0"
+              title="Open live Academy website page in new tab"
+            >
+              <Eye size={13} />
+              <span>View Academy Page</span>
+              <ExternalLink size={11} />
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage music instructors, masterclass leaders, and concert mentors.
+          </p>
+        </div>
       </div>
 
       <CollectionManager
         title="Instructors & Mentors"
-        description="The artists and educators who teach at Kryso Music Academy. Saved in MongoDB; photos in Cloudinary."
+        description="The artists and educators who teach at Kryso Music Academy."
         storageKey="admin-teachers-v3"
         apiCollection="academy_teachers"
         folder="kryso/teachers"
+        publicPageUrl="/academy"
         seed={[]}
         fields={[
           { key: "name", label: "Teacher Name" },
@@ -923,7 +887,7 @@ function ContactSection() {
           {syncedMongo && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
               <span className="size-1.5 rounded-full bg-emerald-400" />
-              Synced with MongoDB
+              Database Synced
             </span>
           )}
         </div>
@@ -976,7 +940,7 @@ function ContactSection() {
           </Button>
           {saved && (
             <span className="text-sm font-semibold text-emerald-400">
-              ✓ Saved successfully to MongoDB & live website!
+              ✓ Saved successfully to database & live website!
             </span>
           )}
         </div>
@@ -986,305 +950,7 @@ function ContactSection() {
 }
 
 // ----------------------------------------------------
-// 6. Enquiry Section
-// ----------------------------------------------------
-function EnquirySection() {
-  const [enquiries, setEnquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
-  const [filter, setFilter] = useState<"all" | "course" | "contact" | "unread">("all");
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // Sync enquiries from MongoDB on mount
-  const syncEnquiriesFromMongo = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/enquiries");
-      const data = await res.json();
-      if (data?.enquiries && Array.isArray(data.enquiries)) {
-        // Merge remote and local enquiries, avoiding duplicates
-        const remoteList: Enquiry[] = data.enquiries;
-        const localList = readStored<Enquiry[]>(ENQUIRIES_KEY, []);
-        const map = new Map<string, Enquiry>();
-        // Add remote first
-        for (const item of remoteList) {
-          if (item?.id) map.set(item.id, item);
-        }
-        // Add any local that might not have reached server yet
-        for (const item of localList) {
-          if (item?.id && !map.has(item.id)) {
-            map.set(item.id, item);
-          }
-        }
-        const merged = Array.from(map.values()).sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
-        setEnquiries(merged);
-        writeStored(ENQUIRIES_KEY, merged);
-      }
-    } catch {
-      // Local enquiries remain active
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    syncEnquiriesFromMongo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleMarkRead = async (id: string, read: boolean) => {
-    setEnquiries((list) => list.map((e) => (e.id === id ? { ...e, read } : e)));
-    await markEnquiryReadRemote(id, read);
-  };
-
-  const handleDelete = async (id: string) => {
-    setEnquiries((list) => list.filter((e) => e.id !== id));
-    await deleteEnquiryRemote(id);
-  };
-
-  const handleMarkAllRead = async () => {
-    const unread = enquiries.filter((e) => !e.read);
-    setEnquiries((list) => list.map((e) => ({ ...e, read: true })));
-    for (const item of unread) {
-      markEnquiryReadRemote(item.id, true);
-    }
-  };
-
-  const filtered = enquiries.filter((item) => {
-    const matchesFilter =
-      filter === "all"
-        ? true
-        : filter === "unread"
-        ? !item.read
-        : item.kind === filter;
-
-    const matchesQuery = `${item.name} ${item.phone} ${item.email} ${item.course || ""} ${item.message}`
-      .toLowerCase()
-      .includes(query.toLowerCase());
-
-    return matchesFilter && matchesQuery;
-  });
-
-  const contactCount = enquiries.filter((e) => e.kind === "contact").length;
-  const courseCount = enquiries.filter((e) => e.kind === "course").length;
-  const unreadCount = enquiries.filter((e) => !e.read).length;
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-extrabold text-foreground">Course Enquiries & Contacts</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={syncEnquiriesFromMongo}
-              disabled={loading}
-              className="h-8 gap-1.5 rounded-full text-xs font-semibold"
-            >
-              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-              {loading ? "Syncing..." : "Sync MongoDB"}
-            </Button>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Leads and applications submitted by students selecting courses or sending messages.
-          </p>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex rounded-lg bg-secondary p-1 border border-border flex-wrap gap-1">
-          <button
-            onClick={() => setFilter("all")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
-              filter === "all"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            All ({enquiries.length})
-          </button>
-          <button
-            onClick={() => setFilter("course")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
-              filter === "course"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            🎓 Courses ({courseCount})
-          </button>
-          <button
-            onClick={() => setFilter("contact")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
-              filter === "contact"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            ✉️ Contact ({contactCount})
-          </button>
-          <button
-            onClick={() => setFilter("unread")}
-            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
-              filter === "unread"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            New ({unreadCount})
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, course, phone, or email..."
-          className="h-10 max-w-sm rounded-full bg-card border-border text-foreground focus-visible:ring-primary"
-        />
-        {unreadCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleMarkAllRead}
-            className="text-xs text-primary hover:bg-secondary font-semibold"
-          >
-            <CheckCheck size={14} className="mr-1" /> Mark all ({unreadCount}) as read
-          </Button>
-        )}
-      </div>
-
-      {filtered.length ? (
-        <div className="grid gap-3.5">
-          {filtered.map((item) => {
-            const cleanPhone = item.phone.replace(/[^0-9]/g, "");
-            const whatsappText = item.course
-              ? `Hello ${item.name}, thank you for inquiring about the ${item.course} course at Kryso Music Academy! How can we assist you with admissions?`
-              : `Hello ${item.name}, thank you for contacting Kryso Music Academy!`;
-
-            return (
-              <article
-                key={item.id}
-                className={`rounded-xl border p-5 shadow-sm transition-all ${
-                  item.read
-                    ? "border-border bg-card/70"
-                    : "border-primary/40 bg-card shadow-md shadow-primary/5"
-                }`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-display text-lg font-bold text-foreground">{item.name}</p>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
-                          item.kind === "course"
-                            ? "bg-primary/20 text-primary border border-primary/30"
-                            : "bg-secondary text-muted-foreground border border-border"
-                        }`}
-                      >
-                        {item.kind === "course" ? "Course Enquiry" : "Contact Message"}
-                      </span>
-                      {!item.read && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold text-primary-foreground shadow-sm animate-pulse">
-                          NEW
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Course Highlight Badge */}
-                    {item.course && (
-                      <div className="pt-1">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 px-3 py-1 text-xs font-bold text-primary">
-                          <span>🎵 Selected Course:</span>
-                          <span className="font-extrabold underline">{item.course}</span>
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-3 pt-1 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">{item.phone}</span>
-                      {item.email && <span>· {item.email}</span>}
-                      <span>· {new Date(item.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions Bar */}
-                  <div className="flex items-center gap-1.5">
-                    {cleanPhone && (
-                      <a
-                        href={`https://wa.me/${cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone}?text=${encodeURIComponent(whatsappText)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors"
-                        title="Chat on WhatsApp"
-                      >
-                        <MessageSquare size={16} />
-                      </a>
-                    )}
-                    {item.phone && (
-                      <a
-                        href={`tel:${cleanPhone}`}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        title="Call applicant"
-                      >
-                        <Phone size={15} />
-                      </a>
-                    )}
-                    {item.email && (
-                      <a
-                        href={`mailto:${item.email}?subject=${encodeURIComponent(item.course ? `Kryso Music Academy - ${item.course} Enquiry` : "Kryso Music Academy")}`}
-                        className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        title="Send Email"
-                      >
-                        <Mail size={15} />
-                      </a>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title={item.read ? "Mark as unread" : "Mark as read"}
-                      aria-label="Toggle read status"
-                      className="hover:bg-secondary text-muted-foreground hover:text-primary"
-                      onClick={() => handleMarkRead(item.id, !item.read)}
-                    >
-                      <CheckCheck size={16} className={item.read ? "text-primary" : ""} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Delete enquiry"
-                      aria-label="Delete enquiry"
-                      className="hover:bg-secondary text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mt-3.5 rounded-lg bg-secondary/50 p-3.5 border border-border/50 text-sm text-foreground">
-                  <p className="whitespace-pre-wrap">{item.message || "No notes or message provided."}</p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center bg-card/40">
-          <p className="font-display text-lg font-bold text-foreground">No enquiries found</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {query ? "Try adjusting your search query." : "Incoming enquiries submitted through the website will appear here in real time."}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ----------------------------------------------------
-// 7. Setting Section
+// 6. Setting Section
 // ----------------------------------------------------
 function SettingSection() {
   const [settings, setSettings] = useStored("admin-settings", siteSettings);
@@ -1372,7 +1038,7 @@ function SettingSection() {
             <h1 className="font-display text-2xl font-extrabold text-foreground">Website Settings</h1>
             {syncedMongo && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-400" /> MongoDB Synced
+                <span className="size-1.5 rounded-full bg-emerald-400" /> Database Synced
               </span>
             )}
             {settings.isMaintenanceMode && (
@@ -1623,11 +1289,11 @@ function SettingSection() {
                 disabled={saving}
                 className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
               >
-                {saving ? "Saving to MongoDB..." : "Save Footer Settings"}
+                {saving ? "Saving..." : "Save Footer Settings"}
               </Button>
               {saved && (
                 <span className="text-sm font-semibold text-emerald-400">
-                  ✓ Footer settings saved to MongoDB & live website!
+                  ✓ Footer settings saved to database & live website!
                 </span>
               )}
             </div>
@@ -1777,11 +1443,11 @@ function SettingSection() {
                 disabled={saving}
                 className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
               >
-                {saving ? "Saving to MongoDB..." : "Save Maintenance Configuration"}
+                {saving ? "Saving..." : "Save Maintenance Configuration"}
               </Button>
               {saved && (
                 <span className="text-sm font-semibold text-emerald-400">
-                  ✓ Maintenance settings saved to MongoDB!
+                  ✓ Maintenance settings saved to database!
                 </span>
               )}
             </div>
@@ -1871,11 +1537,11 @@ function SettingSection() {
               disabled={saving}
               className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
             >
-              {saving ? "Saving to MongoDB..." : "Save Branding"}
+              {saving ? "Saving..." : "Save Branding"}
             </Button>
             {saved && (
               <span className="text-sm font-semibold text-emerald-400">
-                ✓ Saved to MongoDB & live website!
+                ✓ Saved to database & live website!
               </span>
             )}
           </div>
@@ -1931,11 +1597,11 @@ function SettingSection() {
               disabled={saving}
               className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
             >
-              {saving ? "Saving to MongoDB..." : "Save Homepage Content"}
+              {saving ? "Saving..." : "Save Homepage Content"}
             </Button>
             {saved && (
               <span className="text-sm font-semibold text-emerald-400">
-                ✓ Saved to MongoDB & live website!
+                ✓ Saved to database & live website!
               </span>
             )}
           </div>
