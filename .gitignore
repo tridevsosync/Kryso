@@ -45,3 +45,11 @@ next-env.d.ts
 .output/
 .tanstack/
 .nitro/
+
+# Media / Uploads
+*.mp4
+*.mov
+*.avi
+*.mkv
+public/uploads/
+

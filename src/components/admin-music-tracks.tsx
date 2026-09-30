@@ -270,14 +270,6 @@ export function MusicTrackManager() {
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-display text-2xl font-extrabold text-foreground">Music Tracks & Downloads</h2>
-            {mongoConnected === true && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                <Database size={11} /> Database Active
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
-              <Cloud size={11} /> Cloud Storage Ready
-            </span>
             {syncing && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

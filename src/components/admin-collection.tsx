@@ -354,19 +354,6 @@ export function CollectionManager({
         <div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">{title}</h2>
-            {mongoConnected === true && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                <Database size={11} /> Database Active
-              </span>
-            )}
-            {mongoConnected === false && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-400">
-                <Database size={11} /> Local Storage
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-bold text-sky-400">
-              <Cloud size={11} /> Cloud Storage Ready
-            </span>
             {syncing && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{description}</p>

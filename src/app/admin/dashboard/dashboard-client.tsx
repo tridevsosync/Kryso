@@ -15,6 +15,7 @@ import {
   Facebook,
   Globe,
   GraduationCap,
+  Image as ImageIcon,
   Instagram,
   LayoutDashboard,
   LogOut,
@@ -118,7 +119,7 @@ export function AdminDashboardClient() {
 
   const navItems = [
     { id: "Dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
-    { id: "Hero spotlight" as const, label: "Hero spotlight", icon: Sparkles },
+    { id: "Hero spotlight" as const, label: "KRYSO Images", icon: ImageIcon },
     { id: "Music" as const, label: "Music", icon: Music },
     { id: "Academy" as const, label: "Academy", icon: GraduationCap },
     { id: "Teacher" as const, label: "Teacher", icon: Users },
@@ -345,7 +346,7 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
 
   const cards: Array<{ label: string; value: number | string; section: Section; desc: string }> = [
-    { label: "Hero spotlight", value: 2, section: "Hero spotlight", desc: "Active hero slides" },
+    { label: "Hero spotlight", value: "3 Images + Video", section: "Hero spotlight", desc: "KRYSO 3 images & 10s autoplay video" },
     { label: "Music", value: storedTracks.length, section: "Music", desc: "Tracks & releases" },
     { label: "Academy", value: storedCourses.length, section: "Academy", desc: "Published courses" },
     { label: "Teacher", value: teachers.length, section: "Teacher", desc: "Mentors & instructors" },

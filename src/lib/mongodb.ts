@@ -9,38 +9,23 @@ interface GlobalWithMongo {
 
 const globalWithMongo = globalThis as unknown as GlobalWithMongo;
 
-let clientPromise: Promise<MongoClient> | null = null;
-
 export function getMongoClientPromise(): Promise<MongoClient> | null {
   if (!uri) {
     return null;
   }
 
-  if (process.env.NODE_ENV === "development") {
-    if (!globalWithMongo._mongoClientPromise) {
-      const client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 7000,
-      });
-      globalWithMongo._mongoClientPromise = client.connect().catch((err) => {
-        globalWithMongo._mongoClientPromise = undefined;
-        throw err;
-      });
-    }
-    return globalWithMongo._mongoClientPromise;
-  } else {
-    if (!clientPromise) {
-      const client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 7000,
-      });
-      clientPromise = client.connect().catch((err) => {
-        clientPromise = null;
-        throw err;
-      });
-    }
-    return clientPromise;
+  if (!globalWithMongo._mongoClientPromise) {
+    const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 7000,
+      maxPoolSize: 10,
+    });
+    globalWithMongo._mongoClientPromise = client.connect().catch((err) => {
+      globalWithMongo._mongoClientPromise = undefined;
+      throw err;
+    });
   }
+  return globalWithMongo._mongoClientPromise;
 }
 
 export async function getDb(databaseName = DB_NAME): Promise<Db | null> {

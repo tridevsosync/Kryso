@@ -14,23 +14,20 @@ import {
   Loader2,
   Lock,
   Music,
-  Pause,
-  Play,
   RotateCcw,
   Search,
   SlidersHorizontal,
   Sparkles,
   Unlock,
-  Volume2,
   X,
   Youtube,
 } from "lucide-react";
-import heroImage from "@/assets/kryso-hero.jpg";
+import musicHeroImage from "@/assets/music-hero.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
 import { siteSettings, type MusicTrack } from "@/data/catalog";
-import { formatImageUrl, formatAudioUrl } from "@/lib/media-utils";
+import { formatImageUrl } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
 
 const ITEMS_PER_PAGE = 12;
@@ -43,8 +40,7 @@ export function MusicShopClient() {
   const [selectedLockFilter, setSelectedLockFilter] = useState<"all" | "locked" | "unlocked">("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Audio player state
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  // Download state
   const [downloadingTrackId, setDownloadingTrackId] = useState<string | null>(null);
 
   // Social follow-to-unlock modal state
@@ -226,15 +222,15 @@ export function MusicShopClient() {
       {/* Hero Banner */}
       <section className="relative isolate overflow-hidden bg-background text-foreground border-b border-border">
         <Image
-          src={heroImage}
-          alt="Concert stage audio control"
+          src={musicHeroImage}
+          alt="KRYSO Music Studio & Live Stage"
           fill
           priority
           sizes="100vw"
-          className="absolute inset-0 -z-20 object-cover object-[center_45%] opacity-30 brightness-75 contrast-125"
+          className="absolute inset-0 -z-20 object-cover object-[72%_center] sm:object-[75%_center] opacity-65 brightness-100 contrast-110"
         />
-        <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-secondary/95 to-background/60" />
-        <div className="page-shell py-16 sm:py-20">
+        <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-background/80 to-transparent sm:via-background/55" />
+        <div className="page-shell py-10 sm:py-14">
           <p className="eyebrow flex items-center gap-2">
             <Sparkles size={14} className="text-primary" /> Kryso Official Music Releases
           </p>
@@ -245,7 +241,7 @@ export function MusicShopClient() {
             </span>
           </h1>
           <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-            Listen to studio master releases, stream live sets, and download high-definition MP4/MP3 audio directly to your device.
+            Explore studio master releases, exclusive audio packages, and download high-definition MP4/MP3 files directly to your device.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-2 text-foreground font-semibold">
@@ -254,7 +250,7 @@ export function MusicShopClient() {
             <span>·</span>
             <span>Follow to Unlock Exclusive Downloads</span>
             <span>·</span>
-            <span>Direct Audio Stream</span>
+            <span>Direct Audio & ZIP Downloads</span>
           </div>
         </div>
       </section>
@@ -266,7 +262,7 @@ export function MusicShopClient() {
           <SectionHeading
             label="Original Sound Catalog"
             title="Music Tracks"
-            text="Explore the full discography. Stream track previews and download files."
+            text="Explore the full discography and download high-definition studio master packages."
           />
 
           {/* Search Input with Dedicated Search Button */}
@@ -398,7 +394,6 @@ export function MusicShopClient() {
           <div className="mt-8 grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {paginatedTracks.map((track) => {
               const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
-              const isPlaying = playingTrackId === track.id;
 
               return (
                 <article
@@ -406,7 +401,7 @@ export function MusicShopClient() {
                   className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-3 sm:p-3.5 transition-all hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5"
                 >
                   <div>
-                    {/* Cover Artwork with Play/Pause Button */}
+                    {/* Cover Artwork */}
                     <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border/80 bg-secondary shadow-inner">
                       {track.imageUrl ? (
                         <Image
@@ -454,19 +449,6 @@ export function MusicShopClient() {
                           </>
                         )}
                       </span>
-
-                      {/* Play/Pause Overlay Button */}
-                      {track.audioUrl && (
-                        <button
-                          onClick={() => setPlayingTrackId(isPlaying ? null : track.id)}
-                          className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"
-                          aria-label={isPlaying ? "Pause track" : "Play preview"}
-                        >
-                          <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-110">
-                            {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
-                          </span>
-                        </button>
-                      )}
                     </div>
 
                     {/* Track Info */}
@@ -481,24 +463,6 @@ export function MusicShopClient() {
                         Singer / Artist: <span className="font-medium text-foreground">{track.singer}</span>
                       </p>
                     </div>
-
-                    {/* Audio Player Widget (when track is actively playing) */}
-                    {track.audioUrl && isPlaying && (
-                      <div className="mt-2.5 rounded-lg bg-secondary/90 p-2.5 border border-border animate-fade-in shadow-inner">
-                        <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-semibold text-primary">
-                          <Volume2 size={12} className="animate-pulse" /> Now Playing Preview
-                        </div>
-                        <audio
-                          autoPlay
-                          controls
-                          controlsList="nodownload noplaybackrate"
-                          onContextMenu={(e) => e.preventDefault()}
-                          src={formatAudioUrl(track.audioUrl)}
-                          className="w-full h-7"
-                          onEnded={() => setPlayingTrackId(null)}
-                        />
-                      </div>
-                    )}
                   </div>
 
                   {/* Download / Unlock CTA Button */}

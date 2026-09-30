@@ -60,7 +60,7 @@ export function formatImageUrl(url?: string | null): string {
   const trimmed = url.trim();
   const driveId = extractGoogleDriveId(trimmed);
   if (driveId) {
-    return `https://lh3.googleusercontent.com/d/${driveId}`;
+    return `/api/image-stream?id=${driveId}`;
   }
   return trimmed;
 }
@@ -89,3 +89,55 @@ export function formatDownloadUrl(url?: string | null, filename?: string): strin
   const name = filename || "audio-track.mp3";
   return `/api/download?url=${encodeURIComponent(resolved)}&filename=${encodeURIComponent(name)}`;
 }
+
+export type VideoSourceType = "drive" | "youtube" | "video";
+
+export interface VideoSourceInfo {
+  type: VideoSourceType;
+  src: string;
+  driveId?: string;
+  youtubeId?: string;
+}
+
+/**
+ * Resolves video sources for optimized playback.
+ * - Google Drive links are converted to Google's direct preview iframe stream,
+ *   putting ZERO load or CDN bandwidth on Vercel.
+ * - YouTube links are converted to standard embedded players.
+ * - Direct video URLs (.mp4, .webm, local) are returned for native HTML5 video playback.
+ */
+export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
+  if (!url || typeof url !== "string") {
+    return { type: "video", src: "" };
+  }
+  const trimmed = url.trim();
+
+  // 1. Google Drive URLs
+  const driveId = extractGoogleDriveId(trimmed);
+  if (driveId) {
+    return {
+      type: "drive",
+      src: `https://drive.google.com/file/d/${driveId}/preview?autoplay=1`,
+      driveId,
+    };
+  }
+
+  // 2. YouTube URLs
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
+  );
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: "youtube",
+      src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&enablejsapi=1&controls=1&rel=0`,
+      youtubeId: ytMatch[1],
+    };
+  }
+
+  // 3. Direct video file
+  return {
+    type: "video",
+    src: trimmed,
+  };
+}
+

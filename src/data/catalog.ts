@@ -317,3 +317,204 @@ export const defaultSpotlightSlides: SpotlightSlide[] = [
   },
 ];
 
+export type KrysoPageImage = {
+  id: string;
+  url: string;
+  title?: string;
+  caption?: string;
+  link?: string;
+};
+
+export type KrysoPageConfig = {
+  videoUrl: string;
+  timerSeconds: number;
+  autoPlayVideo: boolean;
+  videoTitle?: string;
+};
+
+export const defaultKrysoPageImages: KrysoPageImage[] = [
+  {
+    id: "kryso-img-1",
+    url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
+    title: "Live Stage & Concert Experience",
+    caption: "Master live performance, DJing, and concert stage energy with seasoned mentors.",
+    link: "/academy",
+  },
+  {
+    id: "kryso-img-2",
+    url: "/dj-producer-hero.png",
+    title: "Acoustic & Studio Production",
+    caption: "State-of-the-art recording equipment, soundproofing, and hands-on guidance.",
+    link: "/music",
+  },
+  {
+    id: "kryso-img-3",
+    url: "/kryso-hero.jpg",
+    title: "1-on-1 Artist Mentorship",
+    caption: "Learn Guitar, Piano, Drums, Vocals, DJing, and sound engineering in Pune.",
+    link: "/contact",
+  },
+];
+
+export const defaultKrysoPageConfig: KrysoPageConfig = {
+  videoUrl: "https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/view?usp=sharing",
+  timerSeconds: 10,
+  autoPlayVideo: true,
+  videoTitle: "KRYSO Live Concert & Studio Showcase",
+};
+
+export type KrysoBiography = {
+  name: string;
+  role: string;
+  tagline: string;
+  imageUrl: string;
+  bioParagraph1: string;
+  bioParagraph2: string;
+  bioParagraph3?: string;
+  genres: string[];
+  stats?: Array<{ label: string; value: string }>;
+  spotifyUrl?: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+};
+
+export const defaultKrysoBiography: KrysoBiography = {
+  name: "Kryso",
+  role: "Rapper, Singer & Music Producer",
+  tagline: "Bridging Hard-Hitting Flow, Soulful Vocals & High-Octane Stage Energy",
+  imageUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+  bioParagraph1:
+    "Kryso is an Indian rapper, singer, songwriter, and visionary music producer known for blending lyrical storytelling, explosive rap cadence, and melodic vocal hooks. Driven by a deep passion for musical experimentation, Kryso transforms raw street emotion and contemporary rhythms into chart-ready anthems.",
+  bioParagraph2:
+    "From rocking electrifying live concert stages to crafting immersive studio soundscapes, Kryso has built a distinct sonic identity across Hip-Hop, Pop, and Electronic genres. As the creative force behind Kryso Music Academy in Pune, he mentors the next generation of vocalists, rappers, and music creators with hands-on studio training and live stage discipline.",
+  bioParagraph3:
+    "Whether dropping high-energy rap bars or singing heartfelt acoustic melodies, Kryso continues to push sonic boundaries with original releases and concert performances.",
+  genres: ["Hip-Hop & Rap", "Melodic Vocals", "Music Production", "Live Stage Performance", "DJing & Sound Design"],
+  stats: [
+    { label: "Original Releases", value: "15+" },
+    { label: "Live Stage Shows", value: "50+" },
+    { label: "Students Coached", value: "200+" },
+    { label: "Years Experience", value: "7+" },
+  ],
+  spotifyUrl: "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH?si=UYIN8MgpRB27qtHnLqlKqw&utm_source=copy-link&nd=1&dlsi=271aaa25a7344871",
+  youtubeUrl: "https://www.youtube.com/@krysomusic",
+  instagramUrl: "https://www.instagram.com/_krysomusic",
+};
+
+export type KrysoShowsData = {
+  title: string;
+  subtitle?: string;
+  bgImageUrl?: string;
+  indiaShows: string[];
+  internationalShows: Array<{ venue: string; country: string; flag?: string }>;
+  sharedStageWith: string[];
+};
+
+export const defaultKrysoShowsData: KrysoShowsData = {
+  title: "SHOWS",
+  subtitle: "Concerts, Festivals & International Tours",
+  bgImageUrl: "/kryso-shows.jpg",
+  indiaShows: [
+    "Zomaland Festival",
+    "ICW Festival",
+    "Mandala Festival",
+    "Doon Festival",
+    "Press Play by Armani Exchange Festival",
+    "Gin Festival",
+    "DGTL Festival",
+    "Swiggy Steppin Out Festival",
+    "The Holi Moo Festival",
+    "Casa Bacardi",
+    "The International Cricket Council",
+    "IBTIDA Ek Mehfil",
+    "Joy town by BMW",
+    "Mijwan show by Manish Malhotra",
+    "Anita Dongre Mumbai",
+    "The Cartier Showcase at the French Embassy, India",
+    "India Design ID",
+    "India Art Fair",
+    "Pravaas Journey",
+    "Cymbal Rotations",
+    "Mahindra Roots",
+    "Svasa Homes",
+    "Royal Enfield",
+    "EO Jaisalmer",
+  ],
+  internationalShows: [
+    { venue: "Chelsea Music Hall, New York", country: "USA", flag: "🇺🇸" },
+    { venue: "ICY Club, Dubai", country: "UAE", flag: "🇦🇪" },
+    { venue: "Techno & Chill x Boatriders, Dubai", country: "UAE", flag: "🇦🇪" },
+    { venue: "Prince Bandroom, Melbourne", country: "Australia", flag: "🇦🇺" },
+    { venue: "The Underground, Sydney", country: "Australia", flag: "🇦🇺" },
+    { venue: "IWA Fest, Melilla", country: "Spain", flag: "🇪🇸" },
+    { venue: "Hï Ibiza", country: "Spain", flag: "🇪🇸" },
+    { venue: "Fridas Pier, Stuttgart", country: "Germany", flag: "🇩🇪" },
+  ],
+  sharedStageWith: [
+    "Solomun",
+    "Black Coffee",
+    "Artbat",
+    "Dixon",
+    "Claptone",
+    "Innellea",
+    "Indo Warehouse",
+    "Space Motion",
+    "Kilimanjaro",
+  ],
+};
+
+export type KrysoDownloadItem = {
+  id: string;
+  title: string;
+  type: "image" | "video";
+  category?: string;
+  thumbnailUrl: string;
+  driveUrl: string;
+  description?: string;
+  fileSize?: string;
+  dateAdded?: string;
+};
+
+export const defaultKrysoDownloads: KrysoDownloadItem[] = [
+  {
+    id: "dl-1",
+    title: "Official Press Kit & 4K Portraits",
+    type: "image",
+    category: "Press Photos",
+    thumbnailUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    driveUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    description: "High-resolution studio portraits and artist photographs for media, promoters, and event features.",
+    fileSize: "45 MB",
+  },
+  {
+    id: "dl-2",
+    title: "KRYSO Live Festival Visuals & Cut Reel",
+    type: "video",
+    category: "Live Sets & Video",
+    thumbnailUrl: "/kryso-hero.jpg",
+    driveUrl: "https://drive.google.com/drive/folders/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP?usp=sharing",
+    description: "High-energy festival performance cut, 4K stage visuals, and concert recap footage.",
+    fileSize: "280 MB",
+  },
+  {
+    id: "dl-3",
+    title: "Official Shows & Tour Artwork Poster",
+    type: "image",
+    category: "Tour Posters",
+    thumbnailUrl: "/kryso-shows.jpg",
+    driveUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    description: "Print-ready high-resolution tour posters, banner artworks, and social media flyers.",
+    fileSize: "18 MB",
+  },
+  {
+    id: "dl-4",
+    title: "KRYSO KJSC Festival Aftermovie 4K",
+    type: "video",
+    category: "Recap Videos",
+    thumbnailUrl: "/kryso-hero.jpg",
+    driveUrl: "https://drive.google.com/drive/folders/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP?usp=sharing",
+    description: "Official 4K master cut of the KJSC festival performance with live crowd reactions.",
+    fileSize: "1.2 GB",
+  },
+];
+
