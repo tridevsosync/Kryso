@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { checkMongoConnection } from "@/lib/mongodb";
 import { checkCloudinaryConnection } from "@/lib/cloudinary";
+import { checkRedisConnection } from "@/lib/redis";
 
 export async function GET() {
-  const [mongoStatus, cloudinaryStatus] = await Promise.all([
+  const [mongoStatus, cloudinaryStatus, redisStatus] = await Promise.all([
     checkMongoConnection(),
     checkCloudinaryConnection(),
+    checkRedisConnection(),
   ]);
 
   return NextResponse.json({
@@ -15,6 +17,10 @@ export async function GET() {
       mongodb: {
         ...mongoStatus,
         configured: Boolean(process.env.MONGODB_URI),
+      },
+      redis: {
+        ...redisStatus,
+        configured: Boolean(process.env.REDIS_URL),
       },
       cloudinary: {
         ...cloudinaryStatus,

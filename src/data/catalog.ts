@@ -342,7 +342,7 @@ export const defaultKrysoPageImages: KrysoPageImage[] = [
   },
   {
     id: "kryso-img-2",
-    url: "/dj-producer-hero.png",
+    url: "/kryso-dj-music-producer-bg.png",
     title: "Acoustic & Studio Production",
     caption: "State-of-the-art recording equipment, soundproofing, and hands-on guidance.",
     link: "/music",

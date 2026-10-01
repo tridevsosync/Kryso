@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId, type Filter, type Document } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { getCache, setCache, invalidateCollectionsCache } from "@/lib/redis";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,31 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // 1. Try Redis cache first for lightning-fast sub-millisecond response
+    const cacheKey = `col:${name}`;
+    const cachedData = await getCache<{
+      success: boolean;
+      source: string;
+      collection: string;
+      items: Array<Record<string, unknown>>;
+    }>(cacheKey);
+
+    if (cachedData && Array.isArray(cachedData.items)) {
+      return NextResponse.json(
+        {
+          ...cachedData,
+          source: "redis-cache",
+        },
+        {
+          headers: {
+            "X-Cache": "HIT",
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          },
+        }
+      );
+    }
+
+    // 2. Fetch from MongoDB if cache miss
     const db = await getDb();
     if (db) {
       const items = await db.collection(name).find({}).toArray();
@@ -73,11 +99,21 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return NextResponse.json({
+      const responsePayload = {
         success: true,
         source: "mongodb",
         collection: name,
         items: sanitized,
+      };
+
+      // 3. Cache in Redis (TTL: 1 hour)
+      await setCache(cacheKey, responsePayload, 3600);
+
+      return NextResponse.json(responsePayload, {
+        headers: {
+          "X-Cache": "MISS",
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
       });
     }
 
@@ -125,6 +161,10 @@ export async function POST(req: NextRequest) {
           }));
           await col.insertMany(docs);
         }
+
+        // Invalidate Redis cache for this collection
+        await invalidateCollectionsCache(name);
+
         return NextResponse.json({
           success: true,
           savedTo: "mongodb",
@@ -145,6 +185,10 @@ export async function POST(req: NextRequest) {
           { $set: { ...item, id: itemId, updatedAt: new Date() } },
           { upsert: true }
         );
+
+        // Invalidate Redis cache for this collection
+        await invalidateCollectionsCache(name);
+
         return NextResponse.json({
           success: true,
           savedTo: "mongodb",
@@ -190,6 +234,10 @@ export async function DELETE(req: NextRequest) {
             await db.collection("academy_enrollments").deleteMany({});
           } catch {}
         }
+
+        // Invalidate Redis cache
+        await invalidateCollectionsCache(name, "academy_enrollments");
+
         return NextResponse.json({
           success: true,
           cleared: true,
@@ -216,6 +264,9 @@ export async function DELETE(req: NextRequest) {
             console.warn("Failed to delete from academy_enrollments:", enrErr);
           }
         }
+
+        // Invalidate Redis cache
+        await invalidateCollectionsCache(name, "academy_enrollments");
 
         return NextResponse.json({
           success: true,

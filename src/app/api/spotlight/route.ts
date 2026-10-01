@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { defaultSpotlightSlides, SpotlightSlide } from "@/data/catalog";
+import { getCache, setCache, deleteCache } from "@/lib/redis";
 
 const COLLECTION = "spotlight_slides";
+const REDIS_KEY = "spotlight:slides";
 
 export async function GET() {
   try {
+    // 1. Try Redis cache first
+    const cached = await getCache<{ source: string; slides: SpotlightSlide[] }>(REDIS_KEY);
+    if (cached && Array.isArray(cached.slides) && cached.slides.length > 0) {
+      return NextResponse.json(
+        {
+          ...cached,
+          source: "redis-cache",
+        },
+        {
+          headers: {
+            "X-Cache": "HIT",
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          },
+        }
+      );
+    }
+
     const db = await getDb();
     if (db) {
       const slides = await db
@@ -17,9 +36,19 @@ export async function GET() {
       if (slides.length > 0) {
         // Strip _id before returning to client
         const cleanSlides = slides.map(({ ...rest }) => rest);
-        return NextResponse.json({
+        const payload = {
           source: "mongodb",
           slides: cleanSlides,
+        };
+
+        // Cache in Redis for 1 hour
+        await setCache(REDIS_KEY, payload, 3600);
+
+        return NextResponse.json(payload, {
+          headers: {
+            "X-Cache": "MISS",
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          },
         });
       }
     }
@@ -57,6 +86,9 @@ export async function POST(req: NextRequest) {
         }));
         await collection.insertMany(docs);
       }
+
+      // Invalidate Redis cache
+      await deleteCache(REDIS_KEY);
 
       return NextResponse.json({
         success: true,

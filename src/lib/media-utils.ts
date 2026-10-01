@@ -60,7 +60,7 @@ export function formatImageUrl(url?: string | null): string {
   const trimmed = url.trim();
   const driveId = extractGoogleDriveId(trimmed);
   if (driveId) {
-    return `/api/image-stream?id=${driveId}`;
+    return `https://lh3.googleusercontent.com/d/${driveId}`;
   }
   return trimmed;
 }

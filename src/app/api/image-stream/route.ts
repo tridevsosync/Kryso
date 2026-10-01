@@ -46,65 +46,23 @@ export async function GET(req: NextRequest) {
 
     // 2. Fetch Google Drive image using high-res thumbnail / export
     if (driveId) {
-      const candidateUrls = [
-        `https://drive.google.com/thumbnail?id=${driveId}&sz=w1920`,
-        `https://lh3.googleusercontent.com/d/${driveId}`,
-        `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`,
-        `https://docs.google.com/uc?export=download&id=${driveId}`,
-      ];
-
-      for (const targetUrl of candidateUrls) {
-        try {
-          const remoteRes = await fetch(targetUrl, {
-            headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            },
-            redirect: "follow",
-          });
-
-          if (remoteRes.ok) {
-            const arrayBuffer = await remoteRes.arrayBuffer();
-            if (arrayBuffer.byteLength > 200) {
-              const contentType = remoteRes.headers.get("content-type") || "image/jpeg";
-              return new NextResponse(arrayBuffer, {
-                status: 200,
-                headers: {
-                  "Content-Type": contentType,
-                  "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-                },
-              });
-            }
-          }
-        } catch {
-          // try next candidate
-        }
-      }
+      const targetUrl = `https://lh3.googleusercontent.com/d/${driveId}`;
+      return NextResponse.redirect(targetUrl, {
+        status: 302,
+        headers: {
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        },
+      });
     }
 
     // 3. Fallback for other external URLs
     if (rawUrl && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))) {
-      try {
-        const remoteRes = await fetch(rawUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          },
-          redirect: "follow",
-        });
-
-        if (remoteRes.ok) {
-          const arrayBuffer = await remoteRes.arrayBuffer();
-          const contentType = remoteRes.headers.get("content-type") || "image/jpeg";
-          return new NextResponse(arrayBuffer, {
-            status: 200,
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control": "public, max-age=86400",
-            },
-          });
-        }
-      } catch {}
+      return NextResponse.redirect(rawUrl, {
+        status: 302,
+        headers: {
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
     }
 
     return NextResponse.json({ error: "Could not stream image" }, { status: 502 });

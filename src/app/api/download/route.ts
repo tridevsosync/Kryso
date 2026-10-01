@@ -56,60 +56,16 @@ export async function GET(req: NextRequest) {
     const driveId = extractGoogleDriveId(rawFileUrl);
     let targetUrl = rawFileUrl;
     if (driveId) {
-      targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+      targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0&confirm=t`;
     }
 
     if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
-      try {
-        let remoteRes = await fetch(targetUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          },
-          redirect: "follow",
-        });
-
-        // Fallback for Google Drive if drive.usercontent fails
-        if (!remoteRes.ok && driveId) {
-          const fallbackUrl = `https://docs.google.com/uc?export=download&id=${driveId}`;
-          remoteRes = await fetch(fallbackUrl, {
-            headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            },
-            redirect: "follow",
-          });
-        }
-
-        if (remoteRes.ok && remoteRes.body) {
-          const contentType =
-            remoteRes.headers.get("content-type") || "application/octet-stream";
-          const contentLength = remoteRes.headers.get("content-length");
-
-          const headers = new Headers();
-          headers.set("Content-Type", contentType);
-          headers.set(
-            "Content-Disposition",
-            `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`
-          );
-          headers.set("Cache-Control", "public, max-age=86400");
-          if (contentLength) {
-            headers.set("Content-Length", contentLength);
-          }
-
-          // Stream the remote body directly to user for instant downloads of any file size
-          return new Response(remoteRes.body, {
-            status: 200,
-            headers,
-          });
-        }
-
-        // Fallback redirect if fetch failed
-        return NextResponse.redirect(targetUrl, { status: 302 });
-      } catch (fetchErr) {
-        console.warn("Proxy download fetch error, redirecting directly:", fetchErr);
-        return NextResponse.redirect(targetUrl, { status: 302 });
-      }
+      return NextResponse.redirect(targetUrl, {
+        status: 302,
+        headers: {
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
     }
 
     return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });

@@ -49,65 +49,19 @@ export async function GET(req: NextRequest) {
     // 2. Resolve Google Drive Direct Stream URL
     let targetUrl = rawUrl || "";
     if (driveId) {
-      // Direct high-reliability Google User Content download endpoint
-      targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+      targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0&confirm=t`;
     }
 
-    // Pass along Range header from browser if present
-    const rangeHeader = req.headers.get("range");
-    const fetchHeaders: Record<string, string> = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    };
-    if (rangeHeader) {
-      fetchHeaders["Range"] = rangeHeader;
-    }
-
-    let remoteRes = await fetch(targetUrl, {
-      headers: fetchHeaders,
-      redirect: "follow",
-    });
-
-    // If drive.usercontent fails or returns non-200, fallback to docs.google.com export
-    if (!remoteRes.ok && driveId) {
-      const fallbackUrl = `https://docs.google.com/uc?export=download&id=${driveId}`;
-      remoteRes = await fetch(fallbackUrl, {
-        headers: fetchHeaders,
-        redirect: "follow",
+    if (targetUrl && (targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+      return NextResponse.redirect(targetUrl, {
+        status: 302,
+        headers: {
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        },
       });
     }
 
-    if (remoteRes.ok && remoteRes.body) {
-      const contentType =
-        remoteRes.headers.get("content-type")?.includes("audio") ||
-        remoteRes.headers.get("content-type")?.includes("video")
-          ? remoteRes.headers.get("content-type")!
-          : "audio/mpeg";
-
-      const headers = new Headers();
-      headers.set("Content-Type", contentType);
-      headers.set("Content-Disposition", "inline");
-      headers.set("Accept-Ranges", "bytes");
-      headers.set("Cache-Control", "public, max-age=86400");
-
-      const contentLength = remoteRes.headers.get("content-length");
-      if (contentLength) {
-        headers.set("Content-Length", contentLength);
-      }
-
-      const contentRange = remoteRes.headers.get("content-range");
-      if (contentRange) {
-        headers.set("Content-Range", contentRange);
-      }
-
-      return new Response(remoteRes.body, {
-        status: remoteRes.status,
-        headers,
-      });
-    }
-
-    // Fallback: If fetch failed, return redirect
-    return NextResponse.redirect(targetUrl, { status: 302 });
+    return NextResponse.json({ error: "Invalid audio URL" }, { status: 400 });
   } catch (err) {
     console.error("Audio streaming error:", err);
     return NextResponse.json(
