@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, CheckCircle2, Instagram, Menu, Phone, Mail, MapPin, ShieldAlert, Wrench, X, Youtube, Facebook } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Instagram, Menu, Phone, Mail, MapPin, ShieldAlert, Wrench, X, Youtube, Facebook, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -87,10 +87,22 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 15);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const links = [
     { label: "KRYSO", to: "/" },
     { label: "Music", to: "/music" },
     { label: "Academy", to: "/academy" },
+    { label: "Techrider", to: "/#techrider" },
+    { label: "Downloads", to: "/#downloads" },
     { label: "Contact", to: "/contact" },
   ];
 
@@ -184,29 +196,51 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const phoneDisplay = settings.altPhone || settings.phone || "+91 97673 78750";
+  const phoneClean = phoneDisplay.replace(/[^0-9+]/g, "");
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-md">
-        <div className="page-shell flex h-16 sm:h-[76px] items-center justify-between gap-2 sm:gap-4 lg:gap-8">
-          <Link href="/" className="flex items-center shrink-0 py-1 group" aria-label="KRYSO home">
-            <Image
-              src="/kryso-logo.png"
-              alt="KRYSO"
-              width={140}
-              height={49}
-              priority
-              className="h-7 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+      {/* ---------------------------------------------------- */}
+      {/* WONDERFUL MODERN NAVBAR HEADER                       */}
+      {/* ---------------------------------------------------- */}
+      <header
+        className={`sticky top-0 z-40 transition-all duration-300 ${
+          scrolled
+            ? "bg-background/85 backdrop-blur-2xl border-b border-border/80 shadow-[0_8px_30px_rgba(0,0,0,0.4)] py-2 sm:py-2.5"
+            : "bg-background/70 backdrop-blur-xl border-b border-border/60 py-3 sm:py-3.5"
+        }`}
+      >
+        {/* Subtle Ambient Glowing Accent Line at Bottom of Navbar */}
+        <div className="absolute bottom-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/40 to-transparent pointer-events-none" />
+
+        <div className="page-shell flex items-center justify-between gap-3 sm:gap-6">
+          {/* 1. Left: Brand Logo */}
+          <Link href="/" className="flex items-center gap-3 shrink-0 py-0.5 group" aria-label="KRYSO home">
+            <div className="relative">
+              <Image
+                src="/kryso-logo.png"
+                alt="KRYSO"
+                width={140}
+                height={49}
+                priority
+                className="h-7 sm:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+            </div>
           </Link>
-          <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
+
+          {/* 2. Center: Floating Frosted Glass Capsule Navigation */}
+          <nav className="hidden md:flex items-center p-1.5 rounded-full bg-secondary/60 border border-border/80 backdrop-blur-md shadow-inner gap-1">
             {links.map((link) => {
-              const isActive = link.to === "/" ? pathname === "/" : pathname.startsWith(link.to);
+              const isActive = link.to === "/" ? pathname === "/" : link.to.startsWith("/#") ? false : pathname.startsWith(link.to);
               return (
                 <Link
                   key={link.to}
                   href={link.to}
-                  className={`text-sm font-semibold transition-colors hover:text-primary ${
-                    isActive ? "text-primary font-bold" : "text-muted-foreground"
+                  className={`relative px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold tracking-wide transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                   }`}
                 >
                   {link.label}
@@ -214,53 +248,101 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={`tel:${(settings.altPhone || settings.phone || "+919767378750").replace(/[^0-9+]/g, "")}`}
-              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-primary px-3 sm:px-5 h-9 sm:h-10 font-bold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer"
-              title={`Call ${settings.altPhone || settings.phone || "+91 97673 78750"}`}
-              aria-label={`Call ${settings.altPhone || settings.phone || "+91 97673 78750"}`}
+
+          {/* 3. Right: Quick Actions (Enquiry + Live Call Studio) */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Quick Enquiry CTA (Desktop) */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCourse("");
+                setCourseError(false);
+                setEnquiryOpen(true);
+              }}
+              className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary px-3.5 h-9 sm:h-10 font-extrabold text-xs tracking-wider uppercase transition-all hover:scale-105 cursor-pointer shadow-xs"
             >
-              <Phone size={14} className="animate-pulse shrink-0" />
-              <span>{settings.altPhone || settings.phone || "+91 97673 78750"}</span>
+              <Sparkles size={13} className="text-primary animate-spin" style={{ animationDuration: "6s" }} />
+              <span>Enquire</span>
+            </button>
+
+            {/* Live Studio Call Button */}
+            <a
+              href={`tel:${phoneClean}`}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary via-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 text-primary-foreground px-3.5 sm:px-5 h-9 sm:h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.03] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer"
+              title={`Call Studio: ${phoneDisplay}`}
+              aria-label={`Call Studio: ${phoneDisplay}`}
+            >
+              <span className="relative flex size-2 shrink-0">
+                <span className="animate-ping absolute inline-flex size-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full size-2 bg-white"></span>
+              </span>
+              <Phone size={13} className="shrink-0" />
+              <span className="hidden sm:inline font-mono tracking-tight">{phoneDisplay}</span>
+              <span className="sm:hidden font-bold">Call</span>
             </a>
+
+            {/* Mobile Hamburger Toggle Button */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-foreground hover:bg-secondary size-9"
+              className="md:hidden text-foreground hover:bg-secondary size-9 rounded-full border border-border/80 cursor-pointer"
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               onClick={() => setMobileOpen((v) => !v)}
             >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileOpen ? <X size={19} /> : <Menu size={19} />}
             </Button>
           </div>
         </div>
+
+        {/* 4. Mobile Navigation Dropdown Sheet */}
         {mobileOpen && (
-          <nav className="page-shell grid gap-1 border-t border-border bg-background/98 backdrop-blur-xl py-3 md:hidden animate-in fade-in-50 slide-in-from-top-2 duration-200">
-            {links.map((link) => {
-              const isActive = link.to === "/" ? pathname === "/" : pathname.startsWith(link.to);
-              return (
-                <Link
-                  onClick={() => setMobileOpen(false)}
-                  key={link.to}
-                  href={link.to}
-                  className={`rounded-xl px-4 py-2.5 font-semibold text-sm transition-colors ${
-                    isActive ? "bg-secondary text-primary font-bold" : "text-foreground hover:bg-secondary/70 hover:text-primary"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-            <a
-              href={`tel:${(settings.altPhone || settings.phone || "+919767378750").replace(/[^0-9+]/g, "")}`}
-              onClick={() => setMobileOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2.5 h-11 rounded-full bg-primary font-bold text-primary-foreground shadow-md shadow-primary/20 text-sm hover:bg-primary/90 transition-all cursor-pointer"
-            >
-              <Phone size={16} className="animate-pulse" />
-              <span>Call: {settings.altPhone || settings.phone || "+91 97673 78750"}</span>
-            </a>
-          </nav>
+          <div className="page-shell mt-3 border-t border-border/80 bg-background/95 backdrop-blur-2xl py-4 md:hidden animate-in fade-in-50 slide-in-from-top-3 duration-200 rounded-b-3xl shadow-2xl space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              {links.map((link) => {
+                const isActive = link.to === "/" ? pathname === "/" : link.to.startsWith("/#") ? false : pathname.startsWith(link.to);
+                return (
+                  <Link
+                    onClick={() => setMobileOpen(false)}
+                    key={link.to}
+                    href={link.to}
+                    className={`flex items-center justify-between rounded-2xl px-4 py-3 font-bold text-xs sm:text-sm transition-all border ${
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
+                        : "bg-secondary/60 text-foreground border-border/60 hover:bg-secondary hover:text-primary"
+                    }`}
+                  >
+                    <span>{link.label}</span>
+                    <ArrowUpRight size={14} className="opacity-60" />
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  setSelectedCourse("");
+                  setCourseError(false);
+                  setEnquiryOpen(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 h-11 rounded-full border border-primary/40 bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 transition-all cursor-pointer"
+              >
+                <Sparkles size={14} className="animate-spin" style={{ animationDuration: "6s" }} />
+                <span>Quick Course Enquiry</span>
+              </button>
+
+              <a
+                href={`tel:${phoneClean}`}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 h-11 rounded-full bg-gradient-to-r from-primary to-amber-500 font-bold text-primary-foreground shadow-lg shadow-primary/25 text-xs sm:text-sm hover:opacity-95 transition-all cursor-pointer font-mono"
+              >
+                <Phone size={15} />
+                <span>Call Studio: {phoneDisplay}</span>
+              </a>
+            </div>
+          </div>
         )}
       </header>
       <main>{children}</main>

@@ -119,7 +119,7 @@ export function AdminDashboardClient() {
 
   const navItems = [
     { id: "Dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
-    { id: "Hero spotlight" as const, label: "KRYSO Images", icon: ImageIcon },
+    { id: "Hero spotlight" as const, label: "KRYSO Presskit & Spotlight", icon: ImageIcon },
     { id: "Music" as const, label: "Music", icon: Music },
     { id: "Academy" as const, label: "Academy", icon: GraduationCap },
     { id: "Teacher" as const, label: "Teacher", icon: Users },
@@ -346,7 +346,7 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
 
   const cards: Array<{ label: string; value: number | string; section: Section; desc: string }> = [
-    { label: "Hero spotlight", value: "3 Images + Video", section: "Hero spotlight", desc: "KRYSO 3 images & 10s autoplay video" },
+    { label: "Hero spotlight", value: "6 Modules", section: "Hero spotlight", desc: "Spotlight, DJ Producer, Techrider & Downloads" },
     { label: "Music", value: storedTracks.length, section: "Music", desc: "Tracks & releases" },
     { label: "Academy", value: storedCourses.length, section: "Academy", desc: "Published courses" },
     { label: "Teacher", value: teachers.length, section: "Teacher", desc: "Mentors & instructors" },

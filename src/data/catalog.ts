@@ -518,3 +518,109 @@ export const defaultKrysoDownloads: KrysoDownloadItem[] = [
   },
 ];
 
+export type KrysoProducerData = {
+  title: string;
+  subtitle: string;
+  badge: string;
+  bgImageUrl: string;
+  description: string;
+  subDescription: string;
+  recordLabels: string[];
+  tvFeatures: string[];
+  artistSupporters: string[];
+  streamingPlatforms: Array<{ name: string; url?: string; color?: string }>;
+};
+
+export const defaultKrysoProducerData: KrysoProducerData = {
+  title: "Kryso DJ / Music Producer",
+  subtitle: "Releases, TV Features & Global Artist Support",
+  badge: "INDUSTRY DISCOGRAPHY & BROADCASTS",
+  bgImageUrl: "/kryso-dj-music-producer-bg.png",
+  description:
+    "Signed to prestigious record labels across the globe, broadcasting dynamic electronic productions through mainstream television networks, and receiving consistent live support from premier global DJs and chart-topping artists.",
+  subDescription:
+    "Explore Kryso's industry footprint spanning international record label catalogues, televised music shows, and collaborative festival anthems.",
+  recordLabels: [
+    "Harmour Records",
+    "LLF Records",
+    "Zee Music",
+    "Play Life Records",
+  ],
+  tvFeatures: [
+    "MTV",
+    "Vh1",
+    "9XM",
+    "ZOOM",
+    "ZEE",
+  ],
+  artistSupporters: [
+    "NICKY ROMERO",
+    "TIMMY TRUMPET",
+    "BLASTERJAXX",
+    "F-TAMPA",
+    "QUINTINO",
+    "DIVINE",
+  ],
+  streamingPlatforms: [
+    { name: "Spotify", url: "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH", color: "text-[#1DB954]" },
+    { name: "SoundCloud", url: "https://soundcloud.com/kyrso_music", color: "text-[#FF5500]" },
+    { name: "Beatport", url: "https://beatport.com", color: "text-[#01FF95]" },
+    { name: "Apple Music", url: "https://music.apple.com", color: "text-white" },
+    { name: "Gaana", url: "https://gaana.com", color: "text-[#E72C33]" },
+    { name: "JioSaavn", url: "https://jiosaavn.com", color: "text-[#2BC5B4]" },
+  ],
+};
+
+export type KrysoTechriderItem = {
+  id: string;
+  category: string;
+  spec: string;
+};
+
+export type KrysoTechriderData = {
+  sectionTitle: string;
+  sectionSubtitle: string;
+  badge: string;
+  posterImageUrl: string;
+  posterTitle: string;
+  posterSubtitle: string;
+  techriderTitle: string;
+  techriderItems: KrysoTechriderItem[];
+  contactTitle: string;
+  bookingPhone: string;
+  bookingEmail: string;
+  websiteUrl: string;
+  facebookUrl: string;
+  soundcloudUrl: string;
+  instagramUrl?: string;
+};
+
+export const defaultKrysoTechriderData: KrysoTechriderData = {
+  sectionTitle: "Techrider & Contact",
+  sectionSubtitle:
+    "Official stage technical requirements, DJ gear checklist, and direct artist representation for festivals, clubs, and international tour bookings.",
+  badge: "STAGE SPECIFICATIONS & BOOKING INQUIRIES",
+  posterImageUrl: "/kryso-techrider-contact.png",
+  posterTitle: "KRYSO • LIVE ON STAGE",
+  posterSubtitle: "Headliner Rider 2026",
+  techriderTitle: "Stage Technical Requirements",
+  techriderItems: [
+    { id: "tr-1", category: "DJ Mixer", spec: "1 X PIONEER DJM 900 NEXUS NX2" },
+    { id: "tr-2", category: "Media Decks", spec: "PIONEER CDJ 2000 NX2" },
+    {
+      id: "tr-3",
+      category: "Stage Microphone",
+      spec: "1 X SHURE SM 58 MICROPHONE WITH SWITCH OR SENNHEISER CONNECTED INTO THE DJ MIXER",
+    },
+    { id: "tr-4", category: "Stage Audio Monitoring", spec: "2 IN EAR STEREO MONITORS" },
+  ],
+  contactTitle: "Bookings & Direct Channels",
+  bookingPhone: "+91 9767378750",
+  bookingEmail: "krysomusic@gmail.com",
+  websiteUrl: "https://www.krysomusic.com",
+  facebookUrl: "https://facebook.com/krysomusic",
+  soundcloudUrl: "https://soundcloud.com/kyrso_music",
+  instagramUrl: "https://instagram.com/_krysomusic",
+};
+
+

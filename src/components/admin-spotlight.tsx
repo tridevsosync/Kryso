@@ -22,6 +22,15 @@ import {
   FolderDown,
   FileVideo,
   Download,
+  Play,
+  Sliders,
+  Disc3,
+  Phone,
+  Mail,
+  Globe,
+  Tv,
+  Flame,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,10 +41,15 @@ import {
   defaultKrysoPageConfig,
   defaultKrysoBiography,
   defaultKrysoDownloads,
+  defaultKrysoProducerData,
+  defaultKrysoTechriderData,
   type KrysoPageImage,
   type KrysoPageConfig,
   type KrysoBiography,
   type KrysoDownloadItem,
+  type KrysoProducerData,
+  type KrysoTechriderData,
+  type KrysoTechriderItem,
 } from "@/data/catalog";
 import {
   defaultAcademySpotlightImages,
@@ -44,7 +58,9 @@ import {
 import { formatImageUrl, getVideoSourceInfo } from "@/lib/media-utils";
 
 export function SpotlightManager() {
-  const [managerTab, setManagerTab] = useState<"kryso" | "biography" | "downloads" | "academy">("kryso");
+  const [managerTab, setManagerTab] = useState<
+    "kryso" | "producer" | "techrider" | "biography" | "downloads" | "academy"
+  >("kryso");
 
   // 1. KRYSO Page (3 Images & Video)
   const [krysoImages, setKrysoImages] = useStored<KrysoPageImage[]>(
@@ -57,20 +73,32 @@ export function SpotlightManager() {
   );
   const [activeKrysoImgIndex, setActiveKrysoImgIndex] = useState(0);
 
-  // 2. KRYSO Biography
+  // 2. KRYSO DJ / Producer
+  const [producer, setProducer] = useStored<KrysoProducerData>(
+    "admin-kryso-producer",
+    defaultKrysoProducerData
+  );
+
+  // 3. KRYSO Techrider & Contact
+  const [techrider, setTechrider] = useStored<KrysoTechriderData>(
+    "admin-kryso-techrider",
+    defaultKrysoTechriderData
+  );
+
+  // 4. KRYSO Biography
   const [biography, setBiography] = useStored<KrysoBiography>(
     "admin-kryso-biography",
     defaultKrysoBiography
   );
 
-  // 3. KRYSO Downloads (Google Drive Links)
+  // 5. KRYSO Downloads (Google Drive Links)
   const [downloads, setDownloads] = useStored<KrysoDownloadItem[]>(
     "admin-kryso-downloads",
     defaultKrysoDownloads
   );
   const [activeDownloadIndex, setActiveDownloadIndex] = useState(0);
 
-  // 4. Academy Spotlight Images
+  // 6. Academy Spotlight Images
   const [academyImages, setAcademyImages] = useStored<AcademySpotlightImage[]>(
     "admin-academy-spotlight-images",
     defaultAcademySpotlightImages
@@ -83,6 +111,8 @@ export function SpotlightManager() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const krysoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const producerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const techriderFileInputRef = useRef<HTMLInputElement | null>(null);
   const academyFileInputRef = useRef<HTMLInputElement | null>(null);
   const bioFileInputRef = useRef<HTMLInputElement | null>(null);
   const downloadFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -135,7 +165,27 @@ export function SpotlightManager() {
         }
       })
       .catch(() => {});
-  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setAcademyImages]);
+
+    fetch("/api/collections?name=kryso_producer")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remoteProducer = data.items[0];
+          if (remoteProducer) setProducer((prev) => ({ ...prev, ...remoteProducer }));
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/collections?name=kryso_techrider")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remoteTechrider = data.items[0];
+          if (remoteTechrider) setTechrider((prev) => ({ ...prev, ...remoteTechrider }));
+        }
+      })
+      .catch(() => {});
+  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setAcademyImages, setProducer, setTechrider]);
 
   // Upload image handler
   const handleUpload = async (file: File, onSuccess: (url: string) => void) => {
@@ -164,9 +214,156 @@ export function SpotlightManager() {
     } finally {
       setUploading(false);
       if (krysoFileInputRef.current) krysoFileInputRef.current.value = "";
+      if (producerFileInputRef.current) producerFileInputRef.current.value = "";
+      if (techriderFileInputRef.current) techriderFileInputRef.current.value = "";
       if (academyFileInputRef.current) academyFileInputRef.current.value = "";
       if (bioFileInputRef.current) bioFileInputRef.current.value = "";
+      if (downloadFileInputRef.current) downloadFileInputRef.current.value = "";
     }
+  };
+
+  // -------------------------------------------------------------
+  // KRYSO PRODUCER HANDLERS
+  // -------------------------------------------------------------
+  const prod = producer || defaultKrysoProducerData;
+
+  const updateProducer = (fields: Partial<KrysoProducerData>) => {
+    setSaved(false);
+    setProducer((prev) => ({ ...prev, ...fields }));
+  };
+
+  const handleSaveProducer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaved(false);
+
+    try {
+      const res = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "kryso_producer",
+          items: [prod],
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSaveTarget("Producer details & background image saved and live on website!");
+      } else {
+        setSaveTarget("Saved locally to browser cache");
+      }
+    } catch {
+      setSaveTarget("Saved locally to browser cache");
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3500);
+  };
+
+  const handleResetProducerDefaults = async () => {
+    if (confirm("Reset DJ / Music Producer section back to defaults?")) {
+      setProducer(defaultKrysoProducerData);
+      setSaved(true);
+      setSaveTarget("Producer section defaults restored!");
+
+      try {
+        await fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "kryso_producer",
+            items: [defaultKrysoProducerData],
+          }),
+        });
+      } catch {}
+    }
+  };
+
+  // -------------------------------------------------------------
+  // KRYSO TECHRIDER & CONTACT HANDLERS
+  // -------------------------------------------------------------
+  const tr = techrider || defaultKrysoTechriderData;
+
+  const updateTechrider = (fields: Partial<KrysoTechriderData>) => {
+    setSaved(false);
+    setTechrider((prev) => ({ ...prev, ...fields }));
+  };
+
+  const handleSaveTechrider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaved(false);
+
+    try {
+      const res = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "kryso_techrider",
+          items: [tr],
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSaveTarget("Techrider & Contact requirements saved and live on website!");
+      } else {
+        setSaveTarget("Saved locally to browser cache");
+      }
+    } catch {
+      setSaveTarget("Saved locally to browser cache");
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3500);
+  };
+
+  const handleResetTechriderDefaults = async () => {
+    if (confirm("Reset Techrider & Contact back to defaults?")) {
+      setTechrider(defaultKrysoTechriderData);
+      setSaved(true);
+      setSaveTarget("Techrider & Contact defaults restored!");
+
+      try {
+        await fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "kryso_techrider",
+            items: [defaultKrysoTechriderData],
+          }),
+        });
+      } catch {}
+    }
+  };
+
+  const handleAddTechriderItem = () => {
+    setSaved(false);
+    const newItem: KrysoTechriderItem = {
+      id: `tr-${Date.now()}`,
+      category: "Gear Spec",
+      spec: "1 X SPECIFICATION ITEM",
+    };
+    updateTechrider({
+      techriderItems: [...(tr.techriderItems || defaultKrysoTechriderData.techriderItems), newItem],
+    });
+  };
+
+  const handleDeleteTechriderItem = (idToDelete: string) => {
+    setSaved(false);
+    const current = tr.techriderItems || defaultKrysoTechriderData.techriderItems;
+    if (current.length <= 1) {
+      alert("At least one technical rider item must remain.");
+      return;
+    }
+    updateTechrider({
+      techriderItems: current.filter((item) => item.id !== idToDelete),
+    });
+  };
+
+  const handleUpdateTechriderItem = (id: string, fields: Partial<KrysoTechriderItem>) => {
+    setSaved(false);
+    const current = tr.techriderItems || defaultKrysoTechriderData.techriderItems;
+    updateTechrider({
+      techriderItems: current.map((item) => (item.id === id ? { ...item, ...fields } : item)),
+    });
   };
 
   // -------------------------------------------------------------
@@ -533,6 +730,36 @@ export function SpotlightManager() {
         <button
           type="button"
           onClick={() => {
+            setManagerTab("producer");
+            setSaved(false);
+          }}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+            managerTab === "producer"
+              ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+          }`}
+        >
+          <Disc3 size={15} /> KRYSO DJ / Producer
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setManagerTab("techrider");
+            setSaved(false);
+          }}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+            managerTab === "techrider"
+              ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+          }`}
+        >
+          <Sliders size={15} /> KRYSO Techrider & Contact
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
             setManagerTab("biography");
             setSaved(false);
           }}
@@ -722,10 +949,10 @@ export function SpotlightManager() {
               <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
                 <div className="border-b border-border/70 pb-3">
                   <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
-                    <Video size={16} className="text-primary" /> 10-Second Video Playback
+                    <Video size={16} className="text-primary" /> Auto Video Playback & Repeat
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    This video automatically plays in fullscreen after the 10-second image slideshow.
+                    This video automatically plays in crystal clear 1080p HD (with no control icons) after the image slideshow, and automatically repeats the photo slideshow once the video ends.
                   </p>
                 </div>
 
@@ -813,6 +1040,602 @@ export function SpotlightManager() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 1.5 KRYSO DJ / MUSIC PRODUCER MANAGER                */}
+      {/* ---------------------------------------------------- */}
+      {managerTab === "producer" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-400">
+                <Disc3 size={14} /> KRYSO DJ / MUSIC PRODUCER MANAGER
+              </div>
+              <h1 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-foreground">
+                DJ / Music Producer Section
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage background presskit image (from Google Drive link or upload), record labels, TV channels, artist support, and streaming links.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/#music-producer"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors"
+              >
+                <Eye size={14} /> View Live Section <ExternalLink size={12} />
+              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetProducerDefaults}
+                className="rounded-full text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <Undo2 size={14} className="mr-1.5" /> Reset Defaults
+              </Button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveProducer} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Editor (7 cols) */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="border-b border-border/70 pb-3">
+                  <h3 className="font-display font-bold text-foreground text-base">
+                    Producer Headers & Description
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Customize titles, badges, and the introduction text for Kryso as DJ & Music Producer.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Section Badge
+                    <Input
+                      value={prod.badge || ""}
+                      placeholder="INDUSTRY DISCOGRAPHY & BROADCASTS"
+                      onChange={(e) => updateProducer({ badge: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Section Title
+                    <Input
+                      value={prod.title || ""}
+                      placeholder="Kryso DJ / Music Producer"
+                      onChange={(e) => updateProducer({ title: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+                </div>
+
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Credentials Subtitle
+                  <Input
+                    value={prod.subtitle || ""}
+                    placeholder="Releases, TV Features & Global Artist Support"
+                    onChange={(e) => updateProducer({ subtitle: e.target.value })}
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+
+                {/* Background Image / Presskit Upload */}
+                <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <ImageIcon size={14} className="text-teal-400" /> Background & Presskit Image
+                    </span>
+                    {uploading && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-400">
+                        <Loader2 size={13} className="animate-spin" /> Uploading image...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={producerFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUpload(file, (url) => updateProducer({ bgImageUrl: url }));
+                      }}
+                      className="hidden"
+                      id="producer-img-upload-input"
+                    />
+                    <label
+                      htmlFor="producer-img-upload-input"
+                      className={`inline-flex items-center gap-2 rounded-full border border-teal-500/40 bg-teal-500/10 px-4 py-2 text-xs font-bold text-teal-400 hover:bg-teal-500/20 cursor-pointer transition-colors ${
+                        uploading ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      <CloudUpload size={14} /> Upload Image
+                    </label>
+                    <span className="text-xs text-muted-foreground">or paste Google Drive sharing link below</span>
+                  </div>
+
+                  <Input
+                    value={prod.bgImageUrl || ""}
+                    placeholder="https://drive.google.com/file/d/... or /kryso-dj-music-producer-bg.png"
+                    onChange={(e) => updateProducer({ bgImageUrl: e.target.value })}
+                    className="bg-background border-border text-foreground text-sm font-normal font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: You can paste any Google Drive link directly here. It will be converted into high-performance CDN stream automatically.
+                  </p>
+                </div>
+
+                {/* Description */}
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Main Section Description
+                  <Textarea
+                    rows={3}
+                    value={prod.description || ""}
+                    placeholder="From raw acoustic sessions to high-octane electronic drops..."
+                    onChange={(e) => updateProducer({ description: e.target.value })}
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+              </div>
+
+              {/* Industry Credentials: Record Labels, TV Channels & Artists */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="border-b border-border/70 pb-3">
+                  <h3 className="font-display font-bold text-foreground text-base">
+                    Record Labels, TV Channels & Artist Supporters
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated lists of labels, broadcasting networks, and collaborating headliners.
+                  </p>
+                </div>
+
+                {/* Record Labels */}
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Record Labels (Comma-separated)
+                  <Input
+                    value={(prod.recordLabels || defaultKrysoProducerData.recordLabels).join(", ")}
+                    placeholder="Harmour Records, LLF Records, Zee Music, Play Life Records"
+                    onChange={(e) =>
+                      updateProducer({
+                        recordLabels: e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+
+                {/* TV Channels */}
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  TV Channels (Comma-separated)
+                  <Input
+                    value={(prod.tvFeatures || defaultKrysoProducerData.tvFeatures).join(", ")}
+                    placeholder="MTV, Vh1, 9XM, ZOOM, ZEE"
+                    onChange={(e) =>
+                      updateProducer({
+                        tvFeatures: e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+
+                {/* Music Supported By */}
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Artists Supported By (Comma-separated)
+                  <Input
+                    value={(prod.artistSupporters || defaultKrysoProducerData.artistSupporters).join(", ")}
+                    placeholder="NICKY ROMERO, TIMMY TRUMPET, BLASTERJAXX, F-TAMPA, QUINTINO, DIVINE"
+                    onChange={(e) =>
+                      updateProducer({
+                        artistSupporters: e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Button
+                  type="submit"
+                  className="h-11 rounded-full px-8 font-extrabold bg-teal-500 hover:bg-teal-400 text-black shadow-lg shadow-teal-500/25 cursor-pointer"
+                >
+                  Save DJ / Producer Section
+                </Button>
+                {saved && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-400">
+                    <CheckCheck size={16} /> {saveTarget || "Saved! Changes are live on website."}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Live Realtime Preview (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-teal-400">Realtime Producer Card</p>
+                <span className="text-xs text-muted-foreground">Live Visual Preview</span>
+              </div>
+
+              <div className="rounded-3xl border border-teal-500/30 bg-zinc-950 p-5 sm:p-6 shadow-2xl space-y-4">
+                <div className="relative isolate aspect-[4/5] overflow-hidden rounded-2xl border border-teal-500/30 bg-zinc-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={formatImageUrl(prod.bgImageUrl) || "/kryso-dj-music-producer-bg.png"}
+                    alt={prod.title || "Kryso DJ / Producer"}
+                    className="size-full object-cover object-center"
+                    onError={(e) => {
+                      e.currentTarget.src = "/kryso-dj-music-producer-bg.png";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-[11px] font-black uppercase text-teal-300">
+                      <Disc3 size={12} /> {prod.badge || "OFFICIAL PRESSKIT"}
+                    </span>
+                    <p className="text-lg font-black text-white">{prod.title || "Kryso DJ / Music Producer"}</p>
+                    <p className="text-xs text-zinc-300 line-clamp-2">{prod.description || defaultKrysoProducerData.description}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                  <p className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">Record Labels:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(prod.recordLabels || defaultKrysoProducerData.recordLabels).map((label, idx) => (
+                      <span key={idx} className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-zinc-200">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                  <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">TV Channels:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(prod.tvFeatures || defaultKrysoProducerData.tvFeatures).map((tv, idx) => (
+                      <span key={idx} className="px-2.5 py-1 rounded-md bg-amber-950/40 border border-amber-800/60 text-[11px] font-bold text-amber-300">
+                        {tv}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 1.75 KRYSO TECHRIDER & CONTACT MANAGER               */}
+      {/* ---------------------------------------------------- */}
+      {managerTab === "techrider" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-400">
+                <Sliders size={14} /> KRYSO TECHRIDER & CONTACT MANAGER
+              </div>
+              <h1 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-foreground">
+                Techrider & Contact Section
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage stage technical rider gear specs, booking phone, email, website, social channels, and poster image (Google Drive link or upload).
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/#techrider"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-secondary transition-colors"
+              >
+                <Eye size={14} /> View Live Section <ExternalLink size={12} />
+              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetTechriderDefaults}
+                className="rounded-full text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <Undo2 size={14} className="mr-1.5" /> Reset Defaults
+              </Button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveTechrider} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Editor (7 cols) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Section Headers & Poster Image */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="border-b border-border/70 pb-3">
+                  <h3 className="font-display font-bold text-foreground text-base">
+                    Section Header & Press Artwork
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Customize titles and upload or link the official press visual from Google Drive.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Section Badge
+                    <Input
+                      value={tr.badge || ""}
+                      placeholder="STAGE SPECIFICATIONS & BOOKING INQUIRIES"
+                      onChange={(e) => updateTechrider({ badge: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Section Title
+                    <Input
+                      value={tr.sectionTitle || ""}
+                      placeholder="Techrider & Contact"
+                      onChange={(e) => updateTechrider({ sectionTitle: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+                </div>
+
+                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Section Subtitle
+                  <Textarea
+                    rows={2}
+                    value={tr.sectionSubtitle || ""}
+                    placeholder="Official stage technical requirements, DJ gear checklist..."
+                    onChange={(e) => updateTechrider({ sectionSubtitle: e.target.value })}
+                    className="bg-background border-border text-foreground text-sm font-normal"
+                  />
+                </label>
+
+                {/* Poster Image Upload / Drive Link */}
+                <div className="space-y-3 rounded-xl border border-border/80 bg-background/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <ImageIcon size={14} className="text-teal-400" /> Stage Spec Poster Image
+                    </span>
+                    {uploading && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-400">
+                        <Loader2 size={13} className="animate-spin" /> Uploading image...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={techriderFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUpload(file, (url) => updateTechrider({ posterImageUrl: url }));
+                      }}
+                      className="hidden"
+                      id="techrider-img-upload-input"
+                    />
+                    <label
+                      htmlFor="techrider-img-upload-input"
+                      className={`inline-flex items-center gap-2 rounded-full border border-teal-500/40 bg-teal-500/10 px-4 py-2 text-xs font-bold text-teal-400 hover:bg-teal-500/20 cursor-pointer transition-colors ${
+                        uploading ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      <CloudUpload size={14} /> Upload Poster Image
+                    </label>
+                    <span className="text-xs text-muted-foreground">or paste Google Drive sharing link below</span>
+                  </div>
+
+                  <Input
+                    value={tr.posterImageUrl || ""}
+                    placeholder="https://drive.google.com/file/d/... or /kryso-techrider-contact.png"
+                    onChange={(e) => updateTechrider({ posterImageUrl: e.target.value })}
+                    className="bg-background border-border text-foreground text-sm font-normal font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: Any Google Drive photo link pasted here will automatically display on the live site.
+                  </p>
+                </div>
+              </div>
+
+              {/* Stage Technical Requirements [TECHRIDER] */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                  <div>
+                    <h3 className="font-display font-bold text-foreground text-base">
+                      [TECHRIDER] Stage Technical Requirements
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Manage each gear spec, deck, mixer, microphone, and in-ear monitor requirement.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddTechriderItem}
+                    className="rounded-full text-xs font-bold border-teal-500/40 text-teal-400 hover:bg-teal-500/10 cursor-pointer"
+                  >
+                    <Plus size={13} className="mr-1" /> Add Spec Item
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {(tr.techriderItems || defaultKrysoTechriderData.techriderItems).map((item, idx) => (
+                    <div key={item.id || idx} className="p-3.5 rounded-xl bg-background/60 border border-border/80 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-mono font-bold text-teal-400">Spec #{idx + 1}</span>
+                        {(tr.techriderItems || defaultKrysoTechriderData.techriderItems).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTechriderItem(item.id)}
+                            className="text-xs text-destructive hover:underline cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <Input
+                          value={item.category || ""}
+                          placeholder="Category (e.g. DJ Mixer)"
+                          onChange={(e) => handleUpdateTechriderItem(item.id, { category: e.target.value })}
+                          className="bg-card border-border text-foreground text-xs font-semibold"
+                        />
+                        <Input
+                          value={item.spec || ""}
+                          placeholder="Gear Spec (e.g. 1 X PIONEER DJM 900 NEXUS NX2)"
+                          onChange={(e) => handleUpdateTechriderItem(item.id, { spec: e.target.value })}
+                          className="sm:col-span-2 bg-card border-border text-foreground text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bookings & Direct Channels [CONTACT] */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="border-b border-border/70 pb-3">
+                  <h3 className="font-display font-bold text-foreground text-base">
+                    [CONTACT] Bookings & Representation
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Phone numbers, booking email, website, and social channel handles.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Booking Phone / WhatsApp
+                    <Input
+                      value={tr.bookingPhone || ""}
+                      placeholder="+91 9767378750"
+                      onChange={(e) => updateTechrider({ bookingPhone: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Booking Email
+                    <Input
+                      value={tr.bookingEmail || ""}
+                      placeholder="krysomusic@gmail.com"
+                      onChange={(e) => updateTechrider({ bookingEmail: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Official Website URL
+                    <Input
+                      value={tr.websiteUrl || ""}
+                      placeholder="https://www.krysomusic.com"
+                      onChange={(e) => updateTechrider({ websiteUrl: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Facebook Profile URL
+                    <Input
+                      value={tr.facebookUrl || ""}
+                      placeholder="https://facebook.com/krysomusic"
+                      onChange={(e) => updateTechrider({ facebookUrl: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-2">
+                    SoundCloud Profile URL
+                    <Input
+                      value={tr.soundcloudUrl || ""}
+                      placeholder="https://soundcloud.com/kyrso_music"
+                      onChange={(e) => updateTechrider({ soundcloudUrl: e.target.value })}
+                      className="bg-background border-border text-foreground text-sm font-normal"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Button
+                  type="submit"
+                  className="h-11 rounded-full px-8 font-extrabold bg-teal-500 hover:bg-teal-400 text-black shadow-lg shadow-teal-500/25 cursor-pointer"
+                >
+                  Save Techrider & Contact
+                </Button>
+                {saved && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-400">
+                    <CheckCheck size={16} /> {saveTarget || "Saved! Changes are live on website."}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Live Realtime Preview (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-teal-400">Realtime Techrider Poster</p>
+                <span className="text-xs text-muted-foreground">Live Visual Preview</span>
+              </div>
+
+              <div className="rounded-3xl border border-teal-500/30 bg-zinc-950 p-5 sm:p-6 shadow-2xl space-y-4">
+                <div className="relative isolate aspect-[4/5] overflow-hidden rounded-2xl border border-teal-500/30 bg-zinc-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={formatImageUrl(tr.posterImageUrl) || "/kryso-techrider-contact.png"}
+                    alt={tr.posterTitle || "Kryso Techrider & Contact"}
+                    className="size-full object-cover object-center"
+                    onError={(e) => {
+                      e.currentTarget.src = "/kryso-techrider-contact.png";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4 space-y-1.5">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-500/40 text-[11px] font-black uppercase text-teal-300">
+                      <Sparkles size={12} /> {tr.posterSubtitle || "Headliner Rider 2026"}
+                    </span>
+                    <p className="text-lg font-black text-white">{tr.posterTitle || "KRYSO • LIVE ON STAGE"}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                  <p className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">Tech Specs List:</p>
+                  <div className="space-y-1.5">
+                    {(tr.techriderItems || defaultKrysoTechriderData.techriderItems).map((it, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                        <span className="font-semibold text-zinc-400">{it.category}</span>
+                        <span className="font-mono text-zinc-100 font-bold truncate max-w-[200px]">{it.spec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-zinc-800 text-xs">
+                  <p className="text-[11px] font-bold text-primary uppercase tracking-wider">Bookings & Direct:</p>
+                  <p className="text-zinc-300 font-bold">Phone: <span className="text-white">{tr.bookingPhone}</span></p>
+                  <p className="text-zinc-300 font-bold">Email: <span className="text-teal-400">{tr.bookingEmail}</span></p>
+                </div>
+              </div>
+            </div>
+          </form>
         </div>
       )}
 
@@ -1084,7 +1907,7 @@ export function SpotlightManager() {
                 Downloads & Media Assets
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Add images and videos. When visitors tap any item on the website, it redirects directly to Google Drive.
+                Add press photos, posters, and video sets. Visitors can tap photos to download, and watch videos directly on the website with a direct download option.
               </p>
             </div>
 
@@ -1375,10 +2198,10 @@ export function SpotlightManager() {
                     </span>
                   </div>
 
-                  <div className="absolute inset-0 grid place-items-center bg-black/30 backdrop-blur-xs opacity-90">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-black uppercase tracking-wider shadow-xl">
-                      <Download size={14} />
-                      <span>Open in Drive</span>
+                  <div className="absolute inset-0 grid place-items-center bg-black/40 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-black uppercase tracking-wider shadow-xl transform scale-90 group-hover:scale-100 transition-all">
+                      {activeDownload.type === "video" ? <Play size={14} className="fill-current" /> : <Download size={14} />}
+                      <span>{activeDownload.type === "video" ? "Play Video" : "Download"}</span>
                       <ExternalLink size={12} />
                     </span>
                   </div>
@@ -1402,7 +2225,7 @@ export function SpotlightManager() {
                   <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs font-bold text-primary">
                     <span className="flex items-center gap-1.5">
                       <Download size={13} />
-                      <span>Download via Drive</span>
+                      <span>Download</span>
                     </span>
                     <ExternalLink size={13} />
                   </div>

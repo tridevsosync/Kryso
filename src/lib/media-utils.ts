@@ -90,6 +90,21 @@ export function formatDownloadUrl(url?: string | null, filename?: string): strin
   return `/api/download?url=${encodeURIComponent(resolved)}&filename=${encodeURIComponent(name)}`;
 }
 
+/**
+ * Formats a video URL. If it's a Google Drive link, routes through our dedicated
+ * streaming proxy `/api/video-stream?id=${driveId}` so that the browser HTML5
+ * video player can stream smoothly at full 1080p quality with no iframe/control overlays.
+ */
+export function formatVideoUrl(url?: string | null): string {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  const driveId = extractGoogleDriveId(trimmed);
+  if (driveId) {
+    return `/api/video-stream?id=${driveId}`;
+  }
+  return trimmed;
+}
+
 export type VideoSourceType = "drive" | "youtube" | "video";
 
 export interface VideoSourceInfo {
@@ -101,9 +116,8 @@ export interface VideoSourceInfo {
 
 /**
  * Resolves video sources for optimized playback.
- * - Google Drive links are converted to Google's direct preview iframe stream,
- *   putting ZERO load or CDN bandwidth on Vercel.
- * - YouTube links are converted to standard embedded players.
+ * - Google Drive links are routed to `/api/video-stream` for direct 1080p HTML5 playback with zero controls/icons.
+ * - YouTube links are converted to embedded players.
  * - Direct video URLs (.mp4, .webm, local) are returned for native HTML5 video playback.
  */
 export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
@@ -112,25 +126,25 @@ export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
   }
   const trimmed = url.trim();
 
-  // 1. Google Drive URLs
-  const driveId = extractGoogleDriveId(trimmed);
-  if (driveId) {
-    return {
-      type: "drive",
-      src: `https://drive.google.com/file/d/${driveId}/preview?autoplay=1`,
-      driveId,
-    };
-  }
-
-  // 2. YouTube URLs
+  // 1. YouTube URLs
   const ytMatch = trimmed.match(
     /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
   );
   if (ytMatch && ytMatch[1]) {
     return {
       type: "youtube",
-      src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&enablejsapi=1&controls=1&rel=0`,
+      src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${ytMatch[1]}&iv_load_policy=3&showinfo=0`,
       youtubeId: ytMatch[1],
+    };
+  }
+
+  // 2. Google Drive URLs
+  const driveId = extractGoogleDriveId(trimmed);
+  if (driveId) {
+    return {
+      type: "video",
+      src: `/api/video-stream?id=${driveId}`,
+      driveId,
     };
   }
 
@@ -140,4 +154,5 @@ export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
     src: trimmed,
   };
 }
+
 
