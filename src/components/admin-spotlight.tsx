@@ -31,6 +31,21 @@ import {
   Tv,
   Flame,
   CheckCircle2,
+  Volume2,
+  VolumeX,
+  Calendar,
+  Ticket,
+  MapPin,
+  Clock,
+  ArrowUp,
+  ArrowDown,
+  Layers,
+  Tag,
+  ToggleLeft,
+  ToggleRight,
+  FileText,
+  PlusCircle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +58,8 @@ import {
   defaultKrysoDownloads,
   defaultKrysoProducerData,
   defaultKrysoTechriderData,
+  defaultKrysoShowsData,
+  defaultKrysoUpcomingEvents,
   type KrysoPageImage,
   type KrysoPageConfig,
   type KrysoBiography,
@@ -50,16 +67,25 @@ import {
   type KrysoProducerData,
   type KrysoTechriderData,
   type KrysoTechriderItem,
+  type KrysoShowsData,
+  type KrysoUpcomingEvent,
+  type KrysoInternationalShow,
 } from "@/data/catalog";
 import {
   defaultAcademySpotlightImages,
   type AcademySpotlightImage,
 } from "@/components/academy-spotlight";
-import { formatImageUrl, getVideoSourceInfo } from "@/lib/media-utils";
+import {
+  formatImageUrl,
+  formatVideoUrl,
+  getVideoSourceInfo,
+  extractGoogleDriveId,
+  getDrivePreviewUrl,
+} from "@/lib/media-utils";
 
 export function SpotlightManager() {
   const [managerTab, setManagerTab] = useState<
-    "kryso" | "producer" | "techrider" | "biography" | "downloads" | "academy"
+    "kryso" | "producer" | "techrider" | "biography" | "downloads" | "shows" | "academy"
   >("kryso");
 
   // 1. KRYSO Page (3 Images & Video)
@@ -72,6 +98,7 @@ export function SpotlightManager() {
     defaultKrysoPageConfig
   );
   const [activeKrysoImgIndex, setActiveKrysoImgIndex] = useState(0);
+  const [adminMuted, setAdminMuted] = useState(true);
 
   // 2. KRYSO DJ / Producer
   const [producer, setProducer] = useStored<KrysoProducerData>(
@@ -98,7 +125,22 @@ export function SpotlightManager() {
   );
   const [activeDownloadIndex, setActiveDownloadIndex] = useState(0);
 
-  // 6. Academy Spotlight Images
+  // 6. KRYSO Shows, Festivals & Upcoming Events
+  const [shows, setShows] = useStored<KrysoShowsData>(
+    "admin-kryso-shows",
+    defaultKrysoShowsData
+  );
+  const [activeEventIndex, setActiveEventIndex] = useState(0);
+  const [newIndiaShowText, setNewIndiaShowText] = useState("");
+  const [newIntlVenue, setNewIntlVenue] = useState("");
+  const [newIntlCity, setNewIntlCity] = useState("");
+  const [newIntlCountry, setNewIntlCountry] = useState("");
+  const [newIntlFlag, setNewIntlFlag] = useState("🌐");
+  const [newArtistName, setNewArtistName] = useState("");
+  const [bulkIndiaText, setBulkIndiaText] = useState("");
+  const [showBulkIndiaModal, setShowBulkIndiaModal] = useState(false);
+
+  // 7. Academy Spotlight Images
   const [academyImages, setAcademyImages] = useStored<AcademySpotlightImage[]>(
     "admin-academy-spotlight-images",
     defaultAcademySpotlightImages
@@ -116,8 +158,10 @@ export function SpotlightManager() {
   const academyFileInputRef = useRef<HTMLInputElement | null>(null);
   const bioFileInputRef = useRef<HTMLInputElement | null>(null);
   const downloadFileInputRef = useRef<HTMLInputElement | null>(null);
+  const showsFileInputRef = useRef<HTMLInputElement | null>(null);
+  const eventPosterFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load Kryso page images, config, biography, downloads & Academy images from MongoDB
+  // Load Kryso page images, config, biography, downloads, shows & Academy images from MongoDB
   useEffect(() => {
     fetch("/api/collections?name=kryso_page_images")
       .then((res) => res.json())
@@ -185,7 +229,17 @@ export function SpotlightManager() {
         }
       })
       .catch(() => {});
-  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setAcademyImages, setProducer, setTechrider]);
+
+    fetch("/api/collections?name=kryso_shows")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remoteShows = data.items[0];
+          if (remoteShows) setShows((prev) => ({ ...prev, ...remoteShows }));
+        }
+      })
+      .catch(() => {});
+  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setAcademyImages, setProducer, setTechrider, setShows]);
 
   // Upload image handler
   const handleUpload = async (file: File, onSuccess: (url: string) => void) => {
@@ -219,6 +273,8 @@ export function SpotlightManager() {
       if (academyFileInputRef.current) academyFileInputRef.current.value = "";
       if (bioFileInputRef.current) bioFileInputRef.current.value = "";
       if (downloadFileInputRef.current) downloadFileInputRef.current.value = "";
+      if (showsFileInputRef.current) showsFileInputRef.current.value = "";
+      if (eventPosterFileInputRef.current) eventPosterFileInputRef.current.value = "";
     }
   };
 
@@ -620,6 +676,218 @@ export function SpotlightManager() {
   };
 
   // -------------------------------------------------------------
+  // KRYSO SHOWS & UPCOMING EVENTS HANDLERS
+  // -------------------------------------------------------------
+  const sh = shows || defaultKrysoShowsData;
+  const currentEvents = sh.upcomingEvents || defaultKrysoUpcomingEvents;
+  const safeEventIndex = Math.min(activeEventIndex, Math.max(0, currentEvents.length - 1));
+  const activeEvent = currentEvents[safeEventIndex] || defaultKrysoUpcomingEvents[0];
+
+  const updateShows = (fields: Partial<KrysoShowsData>) => {
+    setSaved(false);
+    setShows((prev) => ({ ...(prev || defaultKrysoShowsData), ...fields }));
+  };
+
+  const toggleUpcomingEventsEnabled = () => {
+    setSaved(false);
+    const newEnabled = sh.upcomingEventsEnabled === false ? true : false;
+    updateShows({ upcomingEventsEnabled: newEnabled });
+    setSaveTarget(
+      newEnabled
+        ? "Upcoming Events slot ENABLED and live on website! Remember to save changes."
+        : "Upcoming Events slot DISABLED (hidden) on website. Remember to save changes."
+    );
+  };
+
+  const handleAddUpcomingEvent = () => {
+    setSaved(false);
+    const newEvent: KrysoUpcomingEvent = {
+      id: `event-${Date.now()}`,
+      title: "New Tour Date / Concert Gig",
+      date: "DEC 20, 2026",
+      day: "SAT",
+      time: "09:00 PM",
+      venue: "Mainstage Arena",
+      city: "Mumbai, India",
+      category: "Concert Tour",
+      ticketUrl: "https://insider.in",
+      ticketLabel: "Get Tickets",
+      status: "tickets_available",
+      posterUrl: "/kryso-shows.jpg",
+      isEnabled: true,
+    };
+    const nextList = [newEvent, ...(sh.upcomingEvents || defaultKrysoUpcomingEvents)];
+    updateShows({ upcomingEvents: nextList });
+    setActiveEventIndex(0);
+    setSaveTarget("New upcoming event slot created! Remember to save changes.");
+  };
+
+  const handleDeleteUpcomingEvent = (indexToDelete: number) => {
+    if (currentEvents.length <= 1) {
+      alert("At least one event item must remain (you can disable it if not active).");
+      return;
+    }
+    if (confirm(`Delete event "${currentEvents[indexToDelete]?.title}"?`)) {
+      setSaved(false);
+      const nextList = currentEvents.filter((_, idx) => idx !== indexToDelete);
+      updateShows({ upcomingEvents: nextList });
+      setActiveEventIndex((prev) => Math.max(0, prev - 1));
+      setSaveTarget("Event deleted. Remember to save changes!");
+    }
+  };
+
+  const handleUpdateActiveEvent = (fields: Partial<KrysoUpcomingEvent>) => {
+    setSaved(false);
+    const nextList = [...currentEvents];
+    if (nextList[safeEventIndex]) {
+      nextList[safeEventIndex] = { ...nextList[safeEventIndex], ...fields };
+      updateShows({ upcomingEvents: nextList });
+    }
+  };
+
+  const handleToggleEventEnabled = (indexToToggle: number) => {
+    setSaved(false);
+    const nextList = [...currentEvents];
+    if (nextList[indexToToggle]) {
+      nextList[indexToToggle] = {
+        ...nextList[indexToToggle],
+        isEnabled: nextList[indexToToggle].isEnabled === false ? true : false,
+      };
+      updateShows({ upcomingEvents: nextList });
+    }
+  };
+
+  const handleMoveEvent = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === currentEvents.length - 1) return;
+    setSaved(false);
+    const nextList = [...currentEvents];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const temp = nextList[index];
+    nextList[index] = nextList[targetIndex];
+    nextList[targetIndex] = temp;
+    updateShows({ upcomingEvents: nextList });
+    setActiveEventIndex(targetIndex);
+  };
+
+  const handleAddIndiaShow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newIndiaShowText.trim()) return;
+    setSaved(false);
+    const nextList = [...(sh.indiaShows || defaultKrysoShowsData.indiaShows), newIndiaShowText.trim()];
+    updateShows({ indiaShows: nextList });
+    setNewIndiaShowText("");
+    setSaveTarget("India festival/show added! Remember to save.");
+  };
+
+  const handleDeleteIndiaShow = (indexToDelete: number) => {
+    setSaved(false);
+    const nextList = (sh.indiaShows || defaultKrysoShowsData.indiaShows).filter((_, i) => i !== indexToDelete);
+    updateShows({ indiaShows: nextList });
+  };
+
+  const handleBulkSaveIndiaShows = () => {
+    if (!bulkIndiaText.trim()) return;
+    const showsArray = bulkIndiaText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (showsArray.length === 0) return;
+    setSaved(false);
+    updateShows({ indiaShows: showsArray });
+    setShowBulkIndiaModal(false);
+    setSaveTarget(`Imported ${showsArray.length} India shows! Remember to save.`);
+  };
+
+  const handleAddIntlShow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newIntlVenue.trim()) return;
+    setSaved(false);
+    const newShow: KrysoInternationalShow = {
+      venue: newIntlVenue.trim(),
+      country: newIntlCountry.trim() || "USA",
+      city: newIntlCity.trim() || undefined,
+      flag: newIntlFlag.trim() || "🌐",
+    };
+    const nextList = [...(sh.internationalShows || defaultKrysoShowsData.internationalShows), newShow];
+    updateShows({ internationalShows: nextList });
+    setNewIntlVenue("");
+    setNewIntlCity("");
+    setNewIntlCountry("");
+    setNewIntlFlag("🌐");
+    setSaveTarget("International venue added! Remember to save.");
+  };
+
+  const handleDeleteIntlShow = (indexToDelete: number) => {
+    setSaved(false);
+    const nextList = (sh.internationalShows || defaultKrysoShowsData.internationalShows).filter((_, i) => i !== indexToDelete);
+    updateShows({ internationalShows: nextList });
+  };
+
+  const handleAddSharedStage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newArtistName.trim()) return;
+    setSaved(false);
+    const nextList = [...(sh.sharedStageWith || defaultKrysoShowsData.sharedStageWith), newArtistName.trim()];
+    updateShows({ sharedStageWith: nextList });
+    setNewArtistName("");
+    setSaveTarget("Headliner artist added! Remember to save.");
+  };
+
+  const handleDeleteSharedStage = (indexToDelete: number) => {
+    setSaved(false);
+    const nextList = (sh.sharedStageWith || defaultKrysoShowsData.sharedStageWith).filter((_, i) => i !== indexToDelete);
+    updateShows({ sharedStageWith: nextList });
+  };
+
+  const handleSaveShows = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaved(false);
+
+    try {
+      const res = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "kryso_shows",
+          items: [sh],
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSaveTarget("Shows, Festivals & Upcoming Events saved and live on website!");
+      } else {
+        setSaveTarget("Saved locally to browser cache");
+      }
+    } catch {
+      setSaveTarget("Saved locally to browser cache");
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3500);
+  };
+
+  const handleResetShows = async () => {
+    if (confirm("Reset all Shows, Festivals & Upcoming Events back to default values?")) {
+      setShows(defaultKrysoShowsData);
+      setActiveEventIndex(0);
+      setSaved(true);
+      setSaveTarget("Shows & Tour Calendar restored to defaults!");
+
+      try {
+        await fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "kryso_shows",
+            items: [defaultKrysoShowsData],
+          }),
+        });
+      } catch {}
+    }
+  };
+
+  // -------------------------------------------------------------
   // ACADEMY IMAGES HANDLERS
   // -------------------------------------------------------------
   const safeAcademyImgIndex = Math.min(activeAcademyImgIndex, Math.max(0, academyImages.length - 1));
@@ -790,6 +1058,21 @@ export function SpotlightManager() {
         <button
           type="button"
           onClick={() => {
+            setManagerTab("shows");
+            setSaved(false);
+          }}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+            managerTab === "shows"
+              ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+          }`}
+        >
+          <Flame size={15} /> KRYSO Shows & Events
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
             setManagerTab("academy");
             setSaved(false);
           }}
@@ -948,25 +1231,153 @@ export function SpotlightManager() {
               {/* Video Playback Settings Card */}
               <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
                 <div className="border-b border-border/70 pb-3">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5">
+                    <Video size={12} /> Google Drive Direct Video Stream
+                  </div>
                   <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
-                    <Video size={16} className="text-primary" /> Auto Video Playback & Repeat
+                    Auto Video Playback & Google Drive Streaming
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    This video automatically plays in crystal clear 1080p HD (with no control icons) after the image slideshow, and automatically repeats the photo slideshow once the video ends.
+                    Paste any direct Google Drive share link or video URL. Our streaming engine directly proxies and streams the video in 1080p HD with zero-click native autoplay!
                   </p>
                 </div>
 
-                <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Video File Path / URL
-                  <Input
-                    value={krysoConfig?.videoUrl || ""}
-                    placeholder="https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/ or /Kryso KJSC FInal cut.mp4"
-                    onChange={(e) =>
-                      setKrysoConfig((prev) => ({ ...prev, videoUrl: e.target.value }))
-                    }
-                    className="bg-background border-border text-foreground text-sm font-normal font-mono"
-                  />
-                </label>
+                <div className="space-y-3">
+                  <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Google Drive Video URL / File Path
+                    <Input
+                      value={krysoConfig?.videoUrl || ""}
+                      placeholder="https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/view?usp=sharing"
+                      onChange={(e) =>
+                        setKrysoConfig((prev) => ({ ...prev, videoUrl: e.target.value }))
+                      }
+                      className="bg-background border-border text-foreground text-sm font-normal font-mono"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Autoplay Timing Mode
+                      </label>
+                      <select
+                        value={krysoConfig?.timerSeconds ?? 10}
+                        onChange={(e) =>
+                          setKrysoConfig((prev) => ({
+                            ...prev,
+                            timerSeconds: parseInt(e.target.value, 10),
+                            autoPlayVideo: true,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      >
+                        <option value="0">⚡ Autoplay Video Immediately on Load (0s)</option>
+                        <option value="5">⏱️ Show Photos for 5s, then Autoplay Video</option>
+                        <option value="10">⏱️ Show Photos for 10s, then Autoplay Video</option>
+                        <option value="15">⏱️ Show Photos for 15s, then Autoplay Video</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Video Loop Behavior
+                      </label>
+                      <select
+                        value={krysoConfig?.loopVideo !== false ? "loop" : "repeat-photos"}
+                        onChange={(e) =>
+                          setKrysoConfig((prev) => ({
+                            ...prev,
+                            loopVideo: e.target.value === "loop",
+                          }))
+                        }
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      >
+                        <option value="loop">🔁 Continuous Video Loop</option>
+                        <option value="repeat-photos">🔄 Return to Photos When Video Ends</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Realtime Video Stream Tester Preview */}
+                  {krysoConfig?.videoUrl && (
+                    <div className="mt-3 rounded-xl border border-border/80 bg-background/60 p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                          <Film size={12} /> Google Drive Live Video Stream (Autoplay HD)
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">
+                          {formatVideoUrl(krysoConfig.videoUrl)}
+                        </span>
+                      </div>
+
+                      {/* Clean Borderless Autoplaying Video Preview without Control Bars */}
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-border/60">
+                        <video
+                          key={`stream-${krysoConfig.videoUrl}-${adminMuted}`}
+                          ref={(el) => {
+                            if (el) {
+                              el.defaultMuted = adminMuted;
+                              el.muted = adminMuted;
+                              const p = el.play();
+                              if (p !== undefined) {
+                                p.catch(() => {
+                                  if (el) {
+                                    el.muted = true;
+                                    setAdminMuted(true);
+                                    el.play().catch(() => {});
+                                  }
+                                });
+                              }
+                            }
+                          }}
+                          src={formatVideoUrl(krysoConfig.videoUrl)}
+                          autoPlay
+                          playsInline
+                          muted={adminMuted}
+                          loop
+                          controls={false}
+                          disablePictureInPicture
+                          disableRemotePlayback
+                          className="size-full object-cover pointer-events-none"
+                          onLoadedMetadata={(e) => {
+                            e.currentTarget.defaultMuted = adminMuted;
+                            e.currentTarget.muted = adminMuted;
+                            e.currentTarget.play().catch(() => {});
+                          }}
+                          onCanPlay={(e) => {
+                            e.currentTarget.defaultMuted = adminMuted;
+                            e.currentTarget.muted = adminMuted;
+                            e.currentTarget.play().catch(() => {});
+                          }}
+                        />
+
+                        {/* ONLY MUTE / UNMUTE BUTTON IN BOTTOM RIGHT */}
+                        <button
+                          type="button"
+                          onClick={() => setAdminMuted(!adminMuted)}
+                          className="absolute bottom-3 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-[11px] font-bold backdrop-blur-md border border-white/20 shadow-xl transition-all hover:scale-105 cursor-pointer select-none"
+                        >
+                          {adminMuted ? (
+                            <>
+                              <VolumeX size={13} className="text-orange-400 animate-pulse" />
+                              <span>Unmute Sound</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 size={13} className="text-emerald-400" />
+                              <span>Sound On</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Google Drive permission info notice */}
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-[11px] text-muted-foreground leading-relaxed">
+                        <span className="font-bold text-primary">💡 Google Drive Note:</span> For smooth streaming, make sure your Google Drive video file&apos;s <strong>General access</strong> is set to <strong>&quot;Anyone with the link&quot;</strong> ➔ <strong>&quot;Viewer&quot;</strong>.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Save Button */}
@@ -2246,7 +2657,840 @@ export function SpotlightManager() {
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* 4. ACADEMY SECTION SPOTLIGHT (IMAGES ONLY)           */}
+      {/* 4. KRYSO SHOWS, FESTIVALS & UPCOMING EVENTS          */}
+      {/* ---------------------------------------------------- */}
+      {managerTab === "shows" && (
+        <div className="space-y-8">
+          {/* Header Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                <Flame size={14} className="text-primary animate-pulse" /> KRYSO SHOWS & TOUR DATES
+              </div>
+              <h1 className="mt-2 font-display text-2xl sm:text-3xl font-extrabold text-foreground">
+                Shows, Festivals & Upcoming Events
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage your upcoming concert tour dates, ticketing links, past festival marquee slots, and international venue residencies.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/#shows"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all shadow-xs"
+                title="Open live Shows section on website"
+              >
+                <Eye size={14} />
+                <span>View Live Shows</span>
+                <ExternalLink size={12} />
+              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetShows}
+                className="rounded-full border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+              >
+                <Undo2 size={13} className="mr-1.5" />
+                Reset Defaults
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveShows}
+                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/25 cursor-pointer"
+              >
+                <CheckCheck size={14} className="mr-1.5" />
+                Save Shows to Database
+              </Button>
+            </div>
+          </div>
+
+          {/* Status Save Notification */}
+          {saved && (
+            <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4 text-xs font-bold text-primary flex items-center justify-between animate-in fade-in-50">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                {saveTarget || "Changes saved and live on website!"}
+              </span>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 1. UPCOMING EVENTS SLOT (ENABLE / DISABLE & EVENT MANAGER)       */}
+          {/* ================================================================ */}
+          <div className="rounded-3xl border-2 border-primary/40 bg-card p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+            <div className="pointer-events-none absolute -top-12 -right-12 size-40 rounded-full bg-primary/10 blur-2xl" />
+
+            {/* Master Enable/Disable Toggle Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-secondary/80 border border-border">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Calendar size={18} className="text-primary" />
+                  <h3 className="font-display text-base sm:text-lg font-bold text-foreground">
+                    Upcoming Events / Tour Calendar Slot
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Toggle this slot on or off anytime. When disabled, the website cleanly hides upcoming tour dates while keeping past festivals visible.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-black uppercase tracking-wider ${
+                    sh.upcomingEventsEnabled !== false
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  <span
+                    className={`size-2 rounded-full ${
+                      sh.upcomingEventsEnabled !== false ? "bg-emerald-400 animate-ping" : "bg-muted-foreground"
+                    }`}
+                  />
+                  <span>{sh.upcomingEventsEnabled !== false ? "SLOT ACTIVE (LIVE ON SITE)" : "SLOT DISABLED (HIDDEN)"}</span>
+                </span>
+
+                <Button
+                  type="button"
+                  variant={sh.upcomingEventsEnabled !== false ? "default" : "outline"}
+                  onClick={toggleUpcomingEventsEnabled}
+                  className="rounded-full text-xs font-extrabold cursor-pointer"
+                >
+                  {sh.upcomingEventsEnabled !== false ? "Disable Slot" : "Enable Slot"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Upcoming Events Slot Header Config */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Tag size={13} className="text-primary" /> Slot Badge Text
+                </label>
+                <Input
+                  value={sh.upcomingEventsBadge || ""}
+                  onChange={(e) => updateShows({ upcomingEventsBadge: e.target.value })}
+                  placeholder="TOUR & GIG CALENDAR 2026"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-primary" /> Slot Main Heading
+                </label>
+                <Input
+                  value={sh.upcomingEventsHeading || ""}
+                  onChange={(e) => updateShows({ upcomingEventsHeading: e.target.value })}
+                  placeholder="UPCOMING SHOWS & FESTIVAL DATES"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <FileText size={13} className="text-primary" /> Subtitle / Booking Prompt
+                </label>
+                <Input
+                  value={sh.upcomingEventsSubtext || ""}
+                  onChange={(e) => updateShows({ upcomingEventsSubtext: e.target.value })}
+                  placeholder="Catch Kryso live on stage..."
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Event Items Navigation & Add Action */}
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+                    <Ticket size={15} className="text-primary" />
+                    Manage Events ({currentEvents.length} Gigs)
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Select an event below to edit details, toggle active state, or add new tour dates.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddUpcomingEvent}
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-md shadow-primary/20 shrink-0 cursor-pointer"
+                >
+                  <Plus size={14} className="mr-1" />
+                  Add New Event / Gig
+                </Button>
+              </div>
+
+              {/* Event Selector Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                {currentEvents.map((ev, idx) => {
+                  const isSelected = idx === safeEventIndex;
+                  const isEnabled = ev.isEnabled !== false;
+
+                  return (
+                    <button
+                      key={ev.id || idx}
+                      type="button"
+                      onClick={() => setActiveEventIndex(idx)}
+                      className={`flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25"
+                          : "bg-secondary/70 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <span
+                        className={`size-2 rounded-full ${
+                          isEnabled ? (isSelected ? "bg-white" : "bg-emerald-400") : "bg-rose-400 opacity-60"
+                        }`}
+                        title={isEnabled ? "Enabled on site" : "Disabled (Hidden)"}
+                      />
+                      <span className="font-mono text-[11px] opacity-80">{ev.date || `Gig #${idx + 1}`}</span>
+                      <span className="max-w-[140px] truncate">{ev.title || `Event #${idx + 1}`}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Event Editor Form */}
+              {activeEvent && (
+                <div className="rounded-2xl border border-primary/30 bg-secondary/30 p-5 sm:p-6 space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/80">
+                    <div className="flex items-center gap-2.5">
+                      <span className="size-8 rounded-xl bg-primary/15 text-primary grid place-items-center font-bold text-xs">
+                        #{safeEventIndex + 1}
+                      </span>
+                      <div>
+                        <h5 className="font-display text-sm font-bold text-foreground">
+                          Editing: {activeEvent.title || "Untitled Event"}
+                        </h5>
+                        <p className="text-[11px] text-muted-foreground font-mono">
+                          ID: {activeEvent.id}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant={activeEvent.isEnabled !== false ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleToggleEventEnabled(safeEventIndex)}
+                        className="rounded-full text-xs font-bold cursor-pointer h-8"
+                      >
+                        {activeEvent.isEnabled !== false ? "Active on Site" : "Hidden (Disabled)"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={safeEventIndex === 0}
+                        onClick={() => handleMoveEvent(safeEventIndex, "up")}
+                        className="rounded-full size-8 p-0 cursor-pointer"
+                        title="Move Up"
+                      >
+                        <ArrowUp size={13} />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={safeEventIndex === currentEvents.length - 1}
+                        onClick={() => handleMoveEvent(safeEventIndex, "down")}
+                        className="rounded-full size-8 p-0 cursor-pointer"
+                        title="Move Down"
+                      >
+                        <ArrowDown size={13} />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUpcomingEvent(safeEventIndex)}
+                        className="rounded-full text-xs font-bold cursor-pointer h-8"
+                      >
+                        <Trash2 size={13} className="mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Inputs Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Event Title */}
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Event / Tour Title</label>
+                      <Input
+                        value={activeEvent.title}
+                        onChange={(e) => handleUpdateActiveEvent({ title: e.target.value })}
+                        placeholder="e.g. Kryso Live — Neon Horizon Tour"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Category Tag</label>
+                      <Input
+                        value={activeEvent.category || ""}
+                        onChange={(e) => handleUpdateActiveEvent({ category: e.target.value })}
+                        placeholder="e.g. Arena Concert, Music Festival, Club Tour"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Date */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Event Date (Formatted)</label>
+                      <Input
+                        value={activeEvent.date}
+                        onChange={(e) => handleUpdateActiveEvent({ date: e.target.value })}
+                        placeholder="e.g. NOV 14, 2026"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Day of Week */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Day Badge</label>
+                      <Input
+                        value={activeEvent.day || ""}
+                        onChange={(e) => handleUpdateActiveEvent({ day: e.target.value })}
+                        placeholder="e.g. SAT, FRI, SUN"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Time */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Show Timing</label>
+                      <Input
+                        value={activeEvent.time || ""}
+                        onChange={(e) => handleUpdateActiveEvent({ time: e.target.value })}
+                        placeholder="e.g. 08:30 PM Onwards"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Venue */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Venue Name</label>
+                      <Input
+                        value={activeEvent.venue}
+                        onChange={(e) => handleUpdateActiveEvent({ venue: e.target.value })}
+                        placeholder="e.g. Odeon Amphitheatre"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* City & Country */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">City & State/Country</label>
+                      <Input
+                        value={activeEvent.city}
+                        onChange={(e) => handleUpdateActiveEvent({ city: e.target.value })}
+                        placeholder="e.g. Mumbai, India"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Status Select */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Ticket Status</label>
+                      <select
+                        value={activeEvent.status || "tickets_available"}
+                        onChange={(e) =>
+                          handleUpdateActiveEvent({
+                            status: e.target.value as KrysoUpcomingEvent["status"],
+                          })
+                        }
+                        className="w-full h-9 rounded-xl border border-border bg-card px-3 text-xs text-foreground font-medium focus:outline-hidden focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="tickets_available">🎟️ Tickets Available</option>
+                        <option value="selling_fast">🔥 Selling Fast (Flashing Alert)</option>
+                        <option value="announcing_soon">✨ Announcing Soon / Early Bird</option>
+                        <option value="sold_out">🚫 Sold Out</option>
+                        <option value="free_entry">🎉 Free Entry / RSVP</option>
+                      </select>
+                    </div>
+
+                    {/* Ticket URL */}
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span>Ticket / Booking Link</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          BookMyShow, Insider, Dice, Zomato Live, etc.
+                        </span>
+                      </label>
+                      <Input
+                        value={activeEvent.ticketUrl || ""}
+                        onChange={(e) => handleUpdateActiveEvent({ ticketUrl: e.target.value })}
+                        placeholder="https://insider.in/..."
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium font-mono"
+                      />
+                    </div>
+
+                    {/* Ticket Button Label */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Button Label</label>
+                      <Input
+                        value={activeEvent.ticketLabel || ""}
+                        onChange={(e) => handleUpdateActiveEvent({ ticketLabel: e.target.value })}
+                        placeholder="e.g. Get Tickets, Book Passes, RSVP"
+                        className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                      />
+                    </div>
+
+                    {/* Event Poster / Artwork */}
+                    <div className="sm:col-span-3 space-y-1.5">
+                      <label className="text-xs font-bold text-foreground">Event Poster Artwork (Optional)</label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={activeEvent.posterUrl || ""}
+                          onChange={(e) => handleUpdateActiveEvent({ posterUrl: e.target.value })}
+                          placeholder="/kryso-shows.jpg or https://..."
+                          className="rounded-xl border-border bg-card text-xs text-foreground font-medium flex-1"
+                        />
+                        <input
+                          ref={eventPosterFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleUpload(file, (url) => handleUpdateActiveEvent({ posterUrl: url }));
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploading}
+                          onClick={() => eventPosterFileInputRef.current?.click()}
+                          className="rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                        >
+                          <CloudUpload size={13} className="mr-1" />
+                          Upload
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 2. SECTION HEADER & BACKGROUND ARTWORK                           */}
+          {/* ================================================================ */}
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-5 shadow-lg">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                <Flame size={16} className="text-primary" /> Shows Section Titles & Background
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Customize the section banner headings and background atmosphere.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Section Badge</label>
+                <Input
+                  value={sh.badge || ""}
+                  onChange={(e) => updateShows({ badge: e.target.value })}
+                  placeholder="LIVE CONCERTS & TOURS"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Title Prefix</label>
+                <Input
+                  value={sh.title || ""}
+                  onChange={(e) => updateShows({ title: e.target.value })}
+                  placeholder="KRYSO"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Title Highlight (Orange)</label>
+                <Input
+                  value={sh.titleHighlight || ""}
+                  onChange={(e) => updateShows({ titleHighlight: e.target.value })}
+                  placeholder="SHOWS"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <label className="text-xs font-bold text-foreground">Subtitle</label>
+                <Input
+                  value={sh.subtitle || ""}
+                  onChange={(e) => updateShows({ subtitle: e.target.value })}
+                  placeholder="Electrifying marquee festival stages..."
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Background Artwork */}
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <label className="text-xs font-bold text-foreground">Section Background Artwork / Backdrop</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={sh.bgImageUrl || ""}
+                  onChange={(e) => updateShows({ bgImageUrl: e.target.value })}
+                  placeholder="/kryso-shows.jpg or Cloudinary / Drive link"
+                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium flex-1"
+                />
+                <input
+                  ref={showsFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleUpload(file, (url) => updateShows({ bgImageUrl: url }));
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => showsFileInputRef.current?.click()}
+                  className="rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                >
+                  <CloudUpload size={13} className="mr-1" />
+                  Upload
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 3. INDIA FESTIVALS & MARQUEE SHOWS LIST                          */}
+          {/* ================================================================ */}
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                  <span className="text-lg">🇮🇳</span> India Festivals & Marquee Shows
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  List of iconic festivals, galas, and concert tours performed across India ({sh.indiaShows?.length || 0} shows).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setBulkIndiaText((sh.indiaShows || defaultKrysoShowsData.indiaShows).join("\n"));
+                    setShowBulkIndiaModal(true);
+                  }}
+                  className="rounded-full text-xs font-bold cursor-pointer"
+                >
+                  <FileText size={13} className="mr-1" />
+                  Bulk Import / Edit
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Add Single Show Form */}
+            <form onSubmit={handleAddIndiaShow} className="flex items-center gap-2">
+              <Input
+                value={newIndiaShowText}
+                onChange={(e) => setNewIndiaShowText(e.target.value)}
+                placeholder="Enter new festival or show name (e.g. Sunburn Festival, NH7 Weekender)"
+                className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium flex-1"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shrink-0 cursor-pointer"
+              >
+                <Plus size={14} className="mr-1" />
+                Add Show
+              </Button>
+            </form>
+
+            {/* Bulk Edit Modal / Drawer */}
+            {showBulkIndiaModal && (
+              <div className="p-4 rounded-2xl border border-primary/40 bg-secondary/50 space-y-3 animate-in fade-in-50">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground">
+                    Bulk Edit India Shows (One festival/show per line):
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowBulkIndiaModal(false)}
+                    className="size-7 p-0 rounded-full text-xs"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                <Textarea
+                  rows={8}
+                  value={bulkIndiaText}
+                  onChange={(e) => setBulkIndiaText(e.target.value)}
+                  placeholder="Paste list of shows here..."
+                  className="font-mono text-xs rounded-xl bg-card border-border"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowBulkIndiaModal(false)}
+                    className="rounded-full text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleBulkSaveIndiaShows}
+                    className="rounded-full bg-primary text-primary-foreground font-bold text-xs"
+                  >
+                    Apply Bulk List
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Shows Badge Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[360px] overflow-y-auto p-1">
+              {(sh.indiaShows || defaultKrysoShowsData.indiaShows).map((showName, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary/60 hover:bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-all group"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="truncate">{showName}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteIndiaShow(idx)}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0 p-1 cursor-pointer"
+                    title="Remove show"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 4. INTERNATIONAL VENUES & RESIDENCIES                            */}
+          {/* ================================================================ */}
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-lg">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                <Globe size={18} className="text-primary" /> International Venues & Residencies
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Global clubs, concert halls, and festival appearances outside India ({sh.internationalShows?.length || 0} venues).
+              </p>
+            </div>
+
+            {/* Quick Add Form */}
+            <form onSubmit={handleAddIntlShow} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 p-4 rounded-2xl bg-secondary/50 border border-border">
+              <div className="sm:col-span-4 space-y-1">
+                <label className="text-[11px] font-bold text-foreground">Venue / Club Name</label>
+                <Input
+                  value={newIntlVenue}
+                  onChange={(e) => setNewIntlVenue(e.target.value)}
+                  placeholder="e.g. Chelsea Music Hall"
+                  className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="sm:col-span-3 space-y-1">
+                <label className="text-[11px] font-bold text-foreground">City</label>
+                <Input
+                  value={newIntlCity}
+                  onChange={(e) => setNewIntlCity(e.target.value)}
+                  placeholder="e.g. New York, Dubai"
+                  className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="sm:col-span-3 space-y-1">
+                <label className="text-[11px] font-bold text-foreground">Country</label>
+                <Input
+                  value={newIntlCountry}
+                  onChange={(e) => setNewIntlCountry(e.target.value)}
+                  placeholder="e.g. USA, UAE, Spain"
+                  className="rounded-xl border-border bg-card text-xs text-foreground font-medium"
+                />
+              </div>
+
+              <div className="sm:col-span-1 space-y-1">
+                <label className="text-[11px] font-bold text-foreground">Flag</label>
+                <Input
+                  value={newIntlFlag}
+                  onChange={(e) => setNewIntlFlag(e.target.value)}
+                  placeholder="🇺🇸"
+                  className="rounded-xl border-border bg-card text-xs text-foreground font-medium text-center"
+                />
+              </div>
+
+              <div className="sm:col-span-1 flex items-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="w-full rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 cursor-pointer"
+                >
+                  <Plus size={14} />
+                </Button>
+              </div>
+            </form>
+
+            {/* International Shows List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(sh.internationalShows || defaultKrysoShowsData.internationalShows).map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-border bg-secondary/60 hover:bg-secondary transition-all"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-xl">{item.flag || "🌐"}</span>
+                    <div className="min-w-0">
+                      <p className="font-display text-xs sm:text-sm font-bold text-foreground truncate">
+                        {item.venue}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {item.city ? `${item.city} • ` : ""}{item.country}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteIntlShow(idx)}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0 p-1 cursor-pointer"
+                    title="Remove international venue"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 5. SHARED THE STAGE WITH (HEADLINERS & ARTISTS)                  */}
+          {/* ================================================================ */}
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-lg">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                <Users size={18} className="text-primary" /> Shared The Stage With (Headliners & Artists)
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                World-renowned DJs and artists Kryso has shared the concert stage and festival rosters with.
+              </p>
+            </div>
+
+            {/* Quick Add Artist */}
+            <form onSubmit={handleAddSharedStage} className="flex items-center gap-2">
+              <Input
+                value={newArtistName}
+                onChange={(e) => setNewArtistName(e.target.value)}
+                placeholder="Enter artist / DJ name (e.g. Solomun, Black Coffee, Martin Garrix)"
+                className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium flex-1"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shrink-0 cursor-pointer"
+              >
+                <Plus size={14} className="mr-1" />
+                Add Artist
+              </Button>
+            </form>
+
+            {/* Artist Tag Pills */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {(sh.sharedStageWith || defaultKrysoShowsData.sharedStageWith).map((artist, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/80 hover:bg-secondary px-3.5 py-1.5 text-xs font-bold text-foreground transition-all"
+                >
+                  <span className="size-1.5 rounded-full bg-primary" />
+                  <span>{artist}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSharedStage(idx)}
+                    className="text-muted-foreground hover:text-destructive transition-colors ml-0.5 cursor-pointer"
+                    title="Remove artist"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* ================================================================ */}
+          {/* 6. BOTTOM SAVE & RESET CONTROLS                                  */}
+          {/* ================================================================ */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl border border-primary/40 bg-card shadow-xl">
+            <div className="space-y-0.5">
+              <p className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-primary" /> Save Changes to Database
+              </p>
+              <p className="text-xs text-muted-foreground">
+                All changes sync automatically to MongoDB and the live Kryso homepage.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetShows}
+                className="rounded-full border-border bg-secondary/60 hover:bg-secondary text-xs cursor-pointer"
+              >
+                Reset Defaults
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveShows}
+                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs px-6 shadow-lg shadow-primary/25 cursor-pointer"
+              >
+                <CheckCheck size={15} className="mr-1.5" />
+                Save All Shows & Events
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 5. ACADEMY SECTION SPOTLIGHT (IMAGES ONLY)           */}
       {/* ---------------------------------------------------- */}
       {managerTab === "academy" && (
         <div className="space-y-6">

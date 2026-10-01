@@ -26,6 +26,12 @@ import {
   Phone,
   Mail,
   CheckCircle2,
+  Volume2,
+  VolumeX,
+  Calendar,
+  Ticket,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteShell } from "@/components/kryso-site";
@@ -60,9 +66,11 @@ export function HomeClient() {
   const [downloadFilter, setDownloadFilter] = useState<"all" | "image" | "video">("all");
   const [activeVideoModal, setActiveVideoModal] = useState<KrysoDownloadItem | null>(null);
 
-  const totalTimerSeconds = config?.timerSeconds && config.timerSeconds > 0 ? config.timerSeconds : 10;
-  const [showVideo, setShowVideo] = useState(false);
+  const totalTimerSeconds = config?.timerSeconds !== undefined && config.timerSeconds >= 0 ? config.timerSeconds : 10;
+  const shouldStartWithVideo = totalTimerSeconds === 0 || (config?.autoPlayVideo && totalTimerSeconds === 0);
+  const [showVideo, setShowVideo] = useState(shouldStartWithVideo);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -85,7 +93,12 @@ export function HomeClient() {
       .then((data) => {
         if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
           const remoteConfig = data.items[0];
-          if (remoteConfig) setConfig((prev) => ({ ...prev, ...remoteConfig }));
+          if (remoteConfig) {
+            setConfig((prev) => ({ ...prev, ...remoteConfig }));
+            if (remoteConfig.timerSeconds === 0) {
+              setShowVideo(true);
+            }
+          }
         }
       })
       .catch(() => {});
@@ -148,7 +161,7 @@ export function HomeClient() {
 
   // Rotate images evenly during the image showcase period (e.g. every ~3.33s for 3 images in 10s)
   useEffect(() => {
-    if (showVideo || displayImages.length === 0) return;
+    if (showVideo || displayImages.length === 0 || totalTimerSeconds === 0) return;
 
     const rotationIntervalMs = Math.max(1500, Math.floor((totalTimerSeconds / displayImages.length) * 1000));
     const interval = setInterval(() => {
@@ -158,9 +171,13 @@ export function HomeClient() {
     return () => clearInterval(interval);
   }, [showVideo, displayImages.length, totalTimerSeconds]);
 
-  // Switch to video exactly after photos timer (totalTimerSeconds)
+  // Switch to video exactly after photos timer (if totalTimerSeconds > 0)
   useEffect(() => {
     if (showVideo) return;
+    if (totalTimerSeconds <= 0) {
+      setShowVideo(true);
+      return;
+    }
 
     const timer = setTimeout(() => {
       setShowVideo(true);
@@ -169,31 +186,52 @@ export function HomeClient() {
     return () => clearTimeout(timer);
   }, [showVideo, totalTimerSeconds]);
 
-  // Fallback timer for embedded YouTube iframe to return to photos
+  // Fallback timer for embedded YouTube / external iframe to return to photos if loop is disabled
   useEffect(() => {
     if (!showVideo) return;
-    if (videoSource.type === "youtube") {
+    if (config?.loopVideo !== false) return;
+    if (videoSource.type === "youtube" || videoSource.type === "drive") {
       const timer = setTimeout(() => {
         setShowVideo(false);
         setCurrentImageIndex(0);
       }, 60000);
       return () => clearTimeout(timer);
     }
-  }, [showVideo, videoSource.type]);
+  }, [showVideo, videoSource.type, config?.loopVideo]);
 
-  // Auto-play the video at 1080p seamlessly with no controls
+  // Auto-play native video seamlessly on mount & when showVideo is triggered
   useEffect(() => {
     if (showVideo && videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.muted = true;
+      videoRef.current.defaultMuted = isMuted;
+      videoRef.current.muted = isMuted;
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          console.warn("Autoplay notice:", err);
+          // If browser policy requires muted playback, ensure muted and retry
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            videoRef.current.play().catch(() => {});
+          }
         });
       }
     }
-  }, [showVideo]);
+  }, [showVideo, isMuted]);
+
+  const toggleSound = () => {
+    if (videoRef.current) {
+      const nextMuted = !videoRef.current.muted;
+      videoRef.current.muted = nextMuted;
+      setIsMuted(nextMuted);
+    }
+  };
+
+  const [useDrivePreview, setUseDrivePreview] = useState(false);
+
+  // Reset drive preview fallback when video URL changes
+  useEffect(() => {
+    setUseDrivePreview(false);
+  }, [activeVideoUrl]);
 
   return (
     <SiteShell>
@@ -228,6 +266,18 @@ export function HomeClient() {
               );
             })}
 
+            {/* Top Controls: Play Video quick button */}
+            <button
+              onClick={() => {
+                setShowVideo(true);
+              }}
+              aria-label="Play Live Video"
+              className="absolute top-4 right-4 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-black/70 hover:bg-black/90 text-white text-xs font-bold backdrop-blur-md border border-orange-500/50 hover:border-orange-500 transition-all shadow-lg cursor-pointer hover:scale-105 group"
+            >
+              <Play size={13} className="fill-orange-400 text-orange-400 group-hover:scale-110 transition-transform" />
+              <span>Watch Live Video</span>
+            </button>
+
             {/* Bottom Subtle Indicator Dots */}
             <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
               {displayImages.map((_, idx) => (
@@ -242,35 +292,83 @@ export function HomeClient() {
           </div>
         ) : (
           <div className="relative size-full bg-black">
-            {videoSource.type === "youtube" ? (
-              <iframe
-                src={videoSource.src}
-                className="size-full border-0"
-                allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *; accelerometer; gyroscope"
-                allowFullScreen
-                title={config?.videoTitle || "KRYSO Live Showcase"}
-              />
-            ) : (
-              <video
-                ref={videoRef}
-                src={encodeURI(videoSource.src)}
-                className="size-full object-cover"
-                autoPlay
-                playsInline
-                muted
-                preload="auto"
-                onEnded={() => {
+            {/* Top Controls: Back to Photos button */}
+            <button
+              onClick={() => {
+                setShowVideo(false);
+                setCurrentImageIndex(0);
+              }}
+              aria-label="Back to Photos"
+              className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white/90 hover:text-white text-xs font-semibold backdrop-blur-md border border-white/20 transition-all shadow-lg cursor-pointer hover:scale-105"
+            >
+              <ImageIcon size={14} className="text-orange-400" /> Back to Photos
+            </button>
+
+            {/* Native Fullscreen Video Player without any control bar */}
+            <video
+              ref={(el) => {
+                videoRef.current = el;
+                if (el) {
+                  el.defaultMuted = isMuted;
+                  el.muted = isMuted;
+                  const p = el.play();
+                  if (p !== undefined) {
+                    p.catch(() => {
+                      if (el) {
+                        el.muted = true;
+                        setIsMuted(true);
+                        el.play().catch(() => {});
+                      }
+                    });
+                  }
+                }
+              }}
+              src={videoSource.src}
+              className="size-full object-cover pointer-events-none"
+              autoPlay
+              playsInline
+              muted={isMuted}
+              loop={config?.loopVideo !== false}
+              preload="auto"
+              controls={false}
+              disablePictureInPicture
+              disableRemotePlayback
+              onLoadedMetadata={(e) => {
+                e.currentTarget.defaultMuted = isMuted;
+                e.currentTarget.muted = isMuted;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlay={(e) => {
+                e.currentTarget.defaultMuted = isMuted;
+                e.currentTarget.muted = isMuted;
+                e.currentTarget.play().catch(() => {});
+              }}
+              onEnded={() => {
+                if (config?.loopVideo === false) {
                   setShowVideo(false);
                   setCurrentImageIndex(0);
-                }}
-                onError={() => {
-                  setTimeout(() => {
-                    setShowVideo(false);
-                    setCurrentImageIndex(0);
-                  }, 3000);
-                }}
-              />
-            )}
+                }
+              }}
+            />
+
+            {/* ONLY MUTE / UNMUTE BUTTON IN BOTTOM RIGHT */}
+            <button
+              onClick={toggleSound}
+              aria-label={isMuted ? "Unmute sound" : "Mute sound"}
+              className="absolute bottom-5 right-5 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-bold backdrop-blur-md border border-white/20 shadow-2xl transition-all hover:scale-105 cursor-pointer select-none"
+            >
+              {isMuted ? (
+                <>
+                  <VolumeX size={16} className="text-orange-400 animate-pulse" />
+                  <span>Unmute Sound</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 size={16} className="text-emerald-400" />
+                  <span>Sound On</span>
+                </>
+              )}
+            </button>
           </div>
         )}
       </section>
@@ -656,368 +754,7 @@ export function HomeClient() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 4. KRYSO SHOWS & FESTIVALS SECTION                                 */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="relative isolate bg-[#030712] text-white py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
-        {/* Stage Concert Atmosphere & Orange/Navy Glow Lights */}
-        <div className="pointer-events-none absolute top-0 left-1/4 size-[600px] rounded-full bg-blue-600/10 blur-[180px] -z-10" />
-        <div className="pointer-events-none absolute bottom-0 right-1/4 size-[500px] rounded-full bg-orange-500/10 blur-[160px] -z-10" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/20 via-transparent to-black -z-10" />
-
-        <div className="page-shell">
-          {/* Section Header */}
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-12 sm:mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-400">
-              <Flame size={14} className="animate-pulse text-orange-500" />
-              <span>LIVE CONCERTS & TOURS</span>
-            </div>
-
-            <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white drop-shadow-lg">
-              KRYSO <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">SHOWS</span>
-            </h2>
-
-            <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed font-medium">
-              Electrifying marquee festival stages across India and iconic international venues worldwide.
-            </p>
-          </div>
-
-          {/* Main Grid: INDIA (Left) & INTERNATIONAL + SHARED STAGE (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-            {/* 1. INDIA FESTIVALS & MARQUEE SHOWS (Left 7 Cols) */}
-            <div className="lg:col-span-7 rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
-              {/* Subtle orange gradient accent */}
-              <div className="pointer-events-none absolute -top-24 -left-24 size-48 rounded-full bg-orange-500/15 blur-3xl" />
-
-              <div className="flex items-center justify-between gap-4 pb-6 border-b border-blue-900/50 mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🇮🇳</span>
-                  <div>
-                    <h3 className="font-display text-2xl font-black tracking-wider uppercase text-white">
-                      INDIA
-                    </h3>
-                    <p className="text-xs text-blue-200/70 font-semibold">Festivals, Arenas & Marquee Galas</p>
-                  </div>
-                </div>
-                <span className="rounded-full bg-orange-500/15 border border-orange-500/30 px-3 py-1 text-xs font-bold text-orange-300">
-                  {shows?.indiaShows?.length || defaultKrysoShowsData.indiaShows.length} Shows
-                </span>
-              </div>
-
-              {/* India Shows Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {(shows?.indiaShows || defaultKrysoShowsData.indiaShows).map((showName, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2.5 rounded-xl border border-blue-900/40 bg-[#070F1E]/80 hover:bg-orange-500/10 hover:border-orange-500/40 px-3.5 py-2.5 transition-all text-xs sm:text-sm font-semibold text-blue-100 group/item"
-                  >
-                    <span className="size-1.5 rounded-full bg-orange-500 shrink-0 group-hover/item:scale-150 group-hover/item:bg-orange-400 transition-all shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-                    <span className="truncate">{showName}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. INTERNATIONAL & SHARED STAGE (Right 5 Cols) */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* INTERNATIONAL VENUES */}
-              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-7 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
-                <div className="flex items-center justify-between gap-4 pb-4 border-b border-blue-900/50 mb-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="size-9 rounded-xl bg-orange-500/15 text-orange-400 grid place-items-center border border-orange-500/30">
-                      <Globe size={18} />
-                    </div>
-                    <div>
-                      <h3 className="font-display text-lg sm:text-xl font-black tracking-wider uppercase text-white">
-                        INTERNATIONAL
-                      </h3>
-                      <p className="text-xs text-blue-200/70 font-semibold">Global Clubs & Concert Venues</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  {(shows?.internationalShows || defaultKrysoShowsData.internationalShows).map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-blue-900/40 bg-[#070F1E]/80 hover:bg-orange-500/10 hover:border-orange-500/40 px-3.5 py-2.5 transition-all group/intl"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-base">{item.flag || "🌐"}</span>
-                        <span className="text-xs sm:text-sm font-semibold text-blue-100 truncate group-hover/intl:text-white">
-                          {item.venue}
-                        </span>
-                      </div>
-                      <span className="shrink-0 rounded-md bg-[#070F1E] border border-blue-800/60 px-2 py-0.5 text-[10px] font-bold text-orange-300 uppercase tracking-wider">
-                        {item.country}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* SHARED THE STAGE WITH */}
-              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-7 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
-                <div className="flex items-center gap-2.5 pb-4 border-b border-blue-900/50 mb-5">
-                  <div className="size-9 rounded-xl bg-orange-500/15 text-orange-400 grid place-items-center border border-orange-500/30">
-                    <Users size={18} />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg sm:text-xl font-black tracking-wider uppercase text-white">
-                      SHARED THE STAGE WITH
-                    </h3>
-                    <p className="text-xs text-blue-200/70 font-semibold">World-Renowned Headliners & DJs</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {(shows?.sharedStageWith || defaultKrysoShowsData.sharedStageWith).map((artist, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-blue-800/60 bg-[#070F1E]/80 hover:bg-orange-500/20 hover:border-orange-500/60 px-3.5 py-1.5 text-xs font-bold text-blue-100 transition-all hover:scale-105 shadow-xs"
-                    >
-                      <span className="size-1.5 rounded-full bg-orange-400 animate-ping" />
-                      <span>{artist}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* 5. KRYSO TECHRIDER & BOOKINGS CONTACT SECTION                     */}
-      {/* ------------------------------------------------------------------ */}
-      <section id="techrider" className="relative isolate bg-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
-        {/* Ambient background glow matching navy and warm orange lights */}
-        <div className="pointer-events-none absolute top-12 left-10 size-[500px] rounded-full bg-blue-600/10 blur-[160px] -z-10" />
-        <div className="pointer-events-none absolute bottom-10 right-10 size-[450px] rounded-full bg-orange-500/10 blur-[150px] -z-10" />
-
-        <div className="page-shell space-y-12">
-          {/* Section Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-blue-900/40">
-            <div className="max-w-2xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-orange-400">
-                <Sliders size={13} />
-                <span>{techrider?.badge || defaultKrysoTechriderData.badge}</span>
-              </div>
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-                {techrider?.sectionTitle?.includes("&") ? (
-                  <>
-                    {techrider.sectionTitle.split("&")[0]}& <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">{techrider.sectionTitle.split("&")[1]?.trim()}</span>
-                  </>
-                ) : (
-                  <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">{techrider?.sectionTitle || defaultKrysoTechriderData.sectionTitle}</span>
-                )}
-              </h2>
-              <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed">
-                {techrider?.sectionSubtitle || defaultKrysoTechriderData.sectionSubtitle}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <a
-                href={techrider?.bookingPhone ? `tel:${techrider.bookingPhone.replace(/\s+/g, "")}` : "tel:+919767378750"}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-sm transition-transform hover:scale-105 shadow-lg shadow-orange-500/25"
-              >
-                <Phone size={16} />
-                <span>Book Kryso Now</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Main Grid: Left image poster card + Right specs & contacts */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left: Presskit Visual Card */}
-            <div className="lg:col-span-5 relative group">
-              <div className="relative overflow-hidden rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 shadow-2xl backdrop-blur-md">
-                <div className="relative aspect-[4/5] sm:aspect-[3/4] w-full overflow-hidden">
-                  <Image
-                    src={formatImageUrl(techrider?.posterImageUrl || defaultKrysoTechriderData.posterImageUrl)}
-                    alt={techrider?.posterTitle || "Kryso Techrider & Contact Press Card"}
-                    fill
-                    unoptimized
-                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
-                    sizes="(max-width: 768px) 100vw, 40vw"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050811] via-[#050811]/30 to-transparent" />
-
-                  {/* Top Badge */}
-                  <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-[#0B152B]/90 backdrop-blur-md px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-orange-400 shadow-md">
-                    <Sparkles size={12} className="text-orange-400" />
-                    <span>Official Press Spec</span>
-                  </div>
-
-                  {/* Bottom Image Overlay Details */}
-                  <div className="absolute bottom-4 left-4 right-4 p-4 rounded-2xl bg-[#0B152B]/90 backdrop-blur-md border border-blue-900/60 space-y-1.5">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-orange-400">{techrider?.posterSubtitle || defaultKrysoTechriderData.posterSubtitle}</p>
-                    <p className="text-lg font-black text-white leading-snug">{techrider?.posterTitle || defaultKrysoTechriderData.posterTitle}</p>
-                    <div className="flex items-center justify-between text-xs text-blue-200/80 pt-1">
-                      <span>Pro Audio & Visual Rider</span>
-                      <span className="text-orange-400 font-bold">Standard Stage Setup</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Techrider & Contact Cards */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Card 1: [TECHRIDER] Stage Technical Requirements */}
-              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-md relative overflow-hidden shadow-xl">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-blue-900/50">
-                  <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-inner">
-                      <Sliders size={20} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">[TECHRIDER]</span>
-                      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{techrider?.techriderTitle || defaultKrysoTechriderData.techriderTitle}</h3>
-                    </div>
-                  </div>
-                  <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300">
-                    <CheckCircle2 size={13} className="text-orange-400" />
-                    Mandatory
-                  </span>
-                </div>
-
-                {/* Tech Specs Items */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {(techrider?.techriderItems && techrider.techriderItems.length > 0
-                    ? techrider.techriderItems
-                    : defaultKrysoTechriderData.techriderItems
-                  ).map((item, idx) => {
-                    const isWide = idx >= 2 || item.spec.length > 30;
-                    return (
-                      <div
-                        key={item.id || idx}
-                        className={`p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/40 transition-all flex items-start gap-3.5 group ${
-                          isWide ? "sm:col-span-2" : ""
-                        }`}
-                      >
-                        <div className="size-8 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center text-orange-400 shrink-0 font-mono font-black text-xs group-hover:scale-110 transition-transform">
-                          {String(idx + 1).padStart(2, "0")}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">{item.category}</p>
-                          <p className="text-sm font-black text-white tracking-wide">{item.spec}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Card 2: [CONTACT] Bookings & Direct Channels */}
-              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-md relative overflow-hidden shadow-xl">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-blue-900/50">
-                  <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-inner">
-                      <Phone size={20} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">[CONTACT]</span>
-                      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{techrider?.contactTitle || defaultKrysoTechriderData.contactTitle}</h3>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400">
-                    Available Worldwide
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Phone / Bookings */}
-                  <a
-                    href={techrider?.bookingPhone ? `tel:${techrider.bookingPhone.replace(/\s+/g, "")}` : "tel:+919767378750"}
-                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">FOR BOOKINGS</p>
-                      <p className="text-base font-extrabold text-white group-hover:text-orange-400 transition-colors">
-                        {techrider?.bookingPhone || defaultKrysoTechriderData.bookingPhone}
-                      </p>
-                    </div>
-                    <div className="size-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-400 group-hover:text-black flex items-center justify-center transition-all">
-                      <Phone size={14} />
-                    </div>
-                  </a>
-
-                  {/* Email */}
-                  <a
-                    href={techrider?.bookingEmail ? `mailto:${techrider.bookingEmail}` : "mailto:krysomusic@gmail.com"}
-                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
-                  >
-                    <div className="space-y-1 truncate pr-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">EMAIL INQUIRIES</p>
-                      <p className="text-sm sm:text-base font-extrabold text-white group-hover:text-orange-400 transition-colors truncate">
-                        {techrider?.bookingEmail || defaultKrysoTechriderData.bookingEmail}
-                      </p>
-                    </div>
-                    <div className="size-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-400 group-hover:text-black flex items-center justify-center transition-all shrink-0">
-                      <Mail size={14} />
-                    </div>
-                  </a>
-
-                  {/* Official Website */}
-                  <a
-                    href={techrider?.websiteUrl || defaultKrysoTechriderData.websiteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-amber-400/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
-                  >
-                    <div className="space-y-1 truncate pr-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">OFFICIAL WEBSITE</p>
-                      <p className="text-sm sm:text-base font-extrabold text-white group-hover:text-amber-400 transition-colors truncate">
-                        {techrider?.websiteUrl?.replace(/^https?:\/\//i, "").toUpperCase() || "WWW.KRYSOMUSIC.COM"}
-                      </p>
-                    </div>
-                    <div className="size-8 rounded-full bg-amber-500/10 group-hover:bg-amber-400 text-amber-400 group-hover:text-black flex items-center justify-center transition-all shrink-0">
-                      <Globe size={14} />
-                    </div>
-                  </a>
-
-                  {/* Social Handles (Facebook / Soundcloud) */}
-                  <div className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">SOCIAL PROFILES</p>
-                      <div className="flex items-center gap-3 pt-0.5">
-                        <a
-                          href={techrider?.facebookUrl || defaultKrysoTechriderData.facebookUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-bold text-blue-100 hover:text-orange-400 transition-colors inline-flex items-center gap-1"
-                        >
-                          <span>FACEBOOK/KRYSO</span>
-                          <ExternalLink size={10} />
-                        </a>
-                        <span className="text-blue-500/50">•</span>
-                        <a
-                          href={techrider?.soundcloudUrl || defaultKrysoTechriderData.soundcloudUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-bold text-blue-100 hover:text-orange-400 transition-colors inline-flex items-center gap-1"
-                        >
-                          <span>SOUNDCLOUD</span>
-                          <ExternalLink size={10} />
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* 6. KRYSO MEDIA & PRESS DOWNLOADS SECTION (GOOGLE DRIVE REDIRECT)  */}
+      {/* 4. KRYSO MEDIA & PRESS DOWNLOADS SECTION (GOOGLE DRIVE REDIRECT)  */}
       {/* ------------------------------------------------------------------ */}
       <section id="downloads" className="relative isolate bg-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
         {/* Ambient background glows */}
@@ -1293,6 +1030,19 @@ export function HomeClient() {
               {/* Video Stream Player */}
               <div className="relative aspect-video w-full bg-black overflow-hidden flex items-center justify-center">
                 <video
+                  ref={(el) => {
+                    if (el) {
+                      el.playsInline = true;
+                      el.defaultMuted = false;
+                      const p = el.play();
+                      if (p !== undefined) {
+                        p.catch(() => {
+                          el.muted = true;
+                          el.play().catch(() => {});
+                        });
+                      }
+                    }
+                  }}
                   src={formatVideoUrl(activeVideoModal.driveUrl)}
                   controls
                   autoPlay
@@ -1339,6 +1089,529 @@ export function HomeClient() {
           </div>
         )}
       </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 5. KRYSO SHOWS & FESTIVALS SECTION                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="relative isolate bg-[#030712] text-white py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+        {/* Stage Concert Atmosphere & Orange/Navy Glow Lights */}
+        <div className="pointer-events-none absolute top-0 left-1/4 size-[600px] rounded-full bg-blue-600/10 blur-[180px] -z-10" />
+        <div className="pointer-events-none absolute bottom-0 right-1/4 size-[500px] rounded-full bg-orange-500/10 blur-[160px] -z-10" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/20 via-transparent to-black -z-10" />
+
+        <div className="page-shell space-y-12 sm:space-y-16">
+          {/* Section Header */}
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-orange-400">
+              <Flame size={14} className="animate-pulse text-orange-500" />
+              <span>{shows?.badge || defaultKrysoShowsData.badge || "LIVE CONCERTS & TOURS"}</span>
+            </div>
+
+            <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white drop-shadow-lg">
+              {shows?.title || defaultKrysoShowsData.title}{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
+                {shows?.titleHighlight || defaultKrysoShowsData.titleHighlight || "SHOWS"}
+              </span>
+            </h2>
+
+            <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed font-medium">
+              {shows?.subtitle || defaultKrysoShowsData.subtitle}
+            </p>
+          </div>
+
+          {/* ================================================================ */}
+          {/* UPCOMING EVENTS SLOT (ENABLE / DISABLE ANYTIME VIA ADMIN PANEL)   */}
+          {/* ================================================================ */}
+          {shows?.upcomingEventsEnabled !== false && (() => {
+            const rawEvents = shows?.upcomingEvents || defaultKrysoShowsData.upcomingEvents || [];
+            const activeEvents = rawEvents.filter((ev) => ev.isEnabled !== false);
+
+            if (activeEvents.length === 0) return null;
+
+            return (
+              <div className="rounded-3xl border border-orange-500/40 bg-gradient-to-b from-[#0B152B]/95 via-[#070F1E]/90 to-[#030712] p-6 sm:p-8 lg:p-10 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+                {/* Ambient glow accent */}
+                <div className="pointer-events-none absolute -top-20 -right-20 size-72 rounded-full bg-orange-500/15 blur-[120px]" />
+                <div className="pointer-events-none absolute -bottom-20 -left-20 size-72 rounded-full bg-blue-600/15 blur-[120px]" />
+
+                {/* Upcoming Events Header */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-blue-900/60 mb-8">
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-orange-500/15 border border-orange-500/30 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-orange-400">
+                      <Calendar size={13} className="text-orange-400" />
+                      <span>{shows?.upcomingEventsBadge || defaultKrysoShowsData.upcomingEventsBadge || "TOUR & GIG CALENDAR 2026"}</span>
+                    </div>
+
+                    <h3 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
+                      {shows?.upcomingEventsHeading || defaultKrysoShowsData.upcomingEventsHeading || "UPCOMING SHOWS & FESTIVAL DATES"}
+                    </h3>
+
+                    <p className="text-xs sm:text-sm text-blue-200/80 max-w-2xl leading-relaxed">
+                      {shows?.upcomingEventsSubtext || defaultKrysoShowsData.upcomingEventsSubtext}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/20 border border-orange-500/40 px-3.5 py-1.5 text-xs font-black text-orange-400">
+                      <span className="size-2 rounded-full bg-orange-400 animate-ping" />
+                      <span>{activeEvents.length} Active Gigs</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Upcoming Events Cards List */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                  {activeEvents.map((event) => {
+                    const isSoldOut = event.status === "sold_out";
+                    const isSellingFast = event.status === "selling_fast";
+                    const isComingSoon = event.status === "announcing_soon";
+                    const isFreeEntry = event.status === "free_entry";
+
+                    return (
+                      <div
+                        key={event.id}
+                        className="group flex flex-col sm:flex-row items-stretch gap-4 sm:gap-5 rounded-2xl border border-blue-900/60 bg-[#070F1E]/90 hover:bg-[#0B152B] hover:border-orange-500/60 p-4 sm:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
+                      >
+                        {/* Left: Date Block */}
+                        <div className="flex sm:flex-col items-center justify-between sm:justify-center rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-transparent border border-orange-500/30 p-3 sm:p-4 text-center sm:min-w-[110px] shrink-0">
+                          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-400">
+                            {event.day || "LIVE"}
+                          </span>
+                          <span className="font-display text-lg sm:text-2xl font-black text-white tracking-tight leading-tight my-0.5">
+                            {event.date}
+                          </span>
+                          {event.time && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-200/70 sm:mt-1">
+                              <Clock size={10} className="text-orange-400" />
+                              <span>{event.time}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Middle: Event Details */}
+                        <div className="flex flex-1 flex-col justify-between min-w-0 space-y-3">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {event.category && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-900/60 border border-blue-800/80 text-[10px] font-bold uppercase tracking-wider text-blue-200">
+                                  {event.category}
+                                </span>
+                              )}
+
+                              {/* Status Badges */}
+                              {isSellingFast && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/50 text-[10px] font-black uppercase tracking-wider text-orange-400 animate-pulse">
+                                  <Flame size={10} className="fill-current text-orange-500" />
+                                  <span>Selling Fast</span>
+                                </span>
+                              )}
+                              {isSoldOut && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-[10px] font-black uppercase tracking-wider text-rose-300">
+                                  <span>Sold Out</span>
+                                </span>
+                              )}
+                              {isComingSoon && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-[10px] font-black uppercase tracking-wider text-purple-300">
+                                  <Sparkles size={10} />
+                                  <span>Coming Soon</span>
+                                </span>
+                              )}
+                              {isFreeEntry && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                                  <span>Free Entry</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <h4 className="font-display text-base sm:text-lg font-bold text-white group-hover:text-orange-400 transition-colors leading-snug">
+                              {event.title}
+                            </h4>
+
+                            <div className="flex items-center gap-1.5 text-xs text-blue-200/80">
+                              <MapPin size={13} className="text-orange-400 shrink-0" />
+                              <span className="font-medium truncate">
+                                {event.venue}{event.city ? ` • ${event.city}` : ""}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Right / Bottom Action */}
+                          <div className="pt-2 sm:pt-0 flex items-center justify-between gap-3">
+                            {isSoldOut ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-950/60 border border-blue-900/60 text-blue-400/60 px-4 py-2 text-xs font-bold cursor-not-allowed opacity-75"
+                              >
+                                <span>Sold Out</span>
+                              </button>
+                            ) : event.ticketUrl ? (
+                              <a
+                                href={event.ticketUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-orange-500 hover:bg-orange-400 text-black font-extrabold px-5 py-2 text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 transition-all hover:scale-105 cursor-pointer"
+                              >
+                                <Ticket size={13} />
+                                <span>{event.ticketLabel || "Get Tickets"}</span>
+                                <ExternalLink size={11} />
+                              </a>
+                            ) : (
+                              <Link
+                                href="/contact"
+                                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-blue-800/80 bg-[#0B152B]/80 hover:bg-blue-900/60 text-white px-4 py-2 text-xs font-bold transition-colors"
+                              >
+                                <span>Inquire / RSVP</span>
+                                <ArrowRight size={12} className="text-orange-400" />
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ================================================================ */}
+          {/* PAST FESTIVALS & GLOBAL RESIDENCIES GRID                         */}
+          {/* ================================================================ */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            {/* 1. INDIA FESTIVALS & MARQUEE SHOWS (Left 7 Cols) */}
+            <div className="lg:col-span-7 rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
+              {/* Subtle orange gradient accent */}
+              <div className="pointer-events-none absolute -top-24 -left-24 size-48 rounded-full bg-orange-500/15 blur-3xl" />
+
+              <div className="flex items-center justify-between gap-4 pb-6 border-b border-blue-900/50 mb-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇮🇳</span>
+                  <div>
+                    <h3 className="font-display text-2xl font-black tracking-wider uppercase text-white">
+                      {shows?.indiaSectionTitle || defaultKrysoShowsData.indiaSectionTitle || "INDIA FESTIVALS & SHOWS"}
+                    </h3>
+                    <p className="text-xs text-blue-200/70 font-semibold">Festivals, Arenas & Marquee Galas</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-orange-500/15 border border-orange-500/30 px-3 py-1 text-xs font-bold text-orange-300">
+                  {shows?.indiaShows?.length || defaultKrysoShowsData.indiaShows.length} Shows
+                </span>
+              </div>
+
+              {/* India Shows Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {(shows?.indiaShows || defaultKrysoShowsData.indiaShows).map((showName, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2.5 rounded-xl border border-blue-900/40 bg-[#070F1E]/80 hover:bg-orange-500/10 hover:border-orange-500/40 px-3.5 py-2.5 transition-all text-xs sm:text-sm font-semibold text-blue-100 group/item"
+                  >
+                    <span className="size-1.5 rounded-full bg-orange-500 shrink-0 group-hover/item:scale-150 group-hover/item:bg-orange-400 transition-all shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                    <span className="truncate">{showName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. INTERNATIONAL & SHARED STAGE (Right 5 Cols) */}
+            <div className="lg:col-span-5 space-y-6">
+              {/* INTERNATIONAL VENUES */}
+              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-7 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-blue-900/50 mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-9 rounded-xl bg-orange-500/15 text-orange-400 grid place-items-center border border-orange-500/30">
+                      <Globe size={18} />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-lg sm:text-xl font-black tracking-wider uppercase text-white">
+                        {shows?.internationalSectionTitle || defaultKrysoShowsData.internationalSectionTitle || "INTERNATIONAL"}
+                      </h3>
+                      <p className="text-xs text-blue-200/70 font-semibold">Global Clubs & Concert Venues</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {(shows?.internationalShows || defaultKrysoShowsData.internationalShows).map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-blue-900/40 bg-[#070F1E]/80 hover:bg-orange-500/10 hover:border-orange-500/40 px-3.5 py-2.5 transition-all group/intl"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-base">{item.flag || "🌐"}</span>
+                        <span className="text-xs sm:text-sm font-semibold text-blue-100 truncate group-hover/intl:text-white">
+                          {item.venue}
+                        </span>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-[#070F1E] border border-blue-800/60 px-2 py-0.5 text-[10px] font-bold text-orange-300 uppercase tracking-wider">
+                        {item.country}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SHARED THE STAGE WITH */}
+              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-7 backdrop-blur-xl shadow-2xl relative overflow-hidden group hover:border-orange-500/50 transition-all duration-500">
+                <div className="flex items-center gap-2.5 pb-4 border-b border-blue-900/50 mb-5">
+                  <div className="size-9 rounded-xl bg-orange-500/15 text-orange-400 grid place-items-center border border-orange-500/30">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg sm:text-xl font-black tracking-wider uppercase text-white">
+                      {shows?.sharedStageTitle || defaultKrysoShowsData.sharedStageTitle || "SHARED THE STAGE WITH"}
+                    </h3>
+                    <p className="text-xs text-blue-200/70 font-semibold">World-Renowned Headliners & DJs</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {(shows?.sharedStageWith || defaultKrysoShowsData.sharedStageWith).map((artist, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-blue-800/60 bg-[#070F1E]/80 hover:bg-orange-500/20 hover:border-orange-500/60 px-3.5 py-1.5 text-xs font-bold text-blue-100 transition-all hover:scale-105 shadow-xs"
+                    >
+                      <span className="size-1.5 rounded-full bg-orange-400 animate-ping" />
+                      <span>{artist}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 6. KRYSO TECHRIDER & BOOKINGS CONTACT SECTION                     */}
+      {/* ------------------------------------------------------------------ */}
+      <section id="techrider" className="relative isolate bg-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+        {/* Ambient background glow matching navy and warm orange lights */}
+        <div className="pointer-events-none absolute top-12 left-10 size-[500px] rounded-full bg-blue-600/10 blur-[160px] -z-10" />
+        <div className="pointer-events-none absolute bottom-10 right-10 size-[450px] rounded-full bg-orange-500/10 blur-[150px] -z-10" />
+
+        <div className="page-shell space-y-12">
+          {/* Section Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-blue-900/40">
+            <div className="max-w-2xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-orange-400">
+                <Sliders size={13} />
+                <span>{techrider?.badge || defaultKrysoTechriderData.badge}</span>
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+                {techrider?.sectionTitle?.includes("&") ? (
+                  <>
+                    {techrider.sectionTitle.split("&")[0]}& <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">{techrider.sectionTitle.split("&")[1]?.trim()}</span>
+                  </>
+                ) : (
+                  <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">{techrider?.sectionTitle || defaultKrysoTechriderData.sectionTitle}</span>
+                )}
+              </h2>
+              <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed">
+                {techrider?.sectionSubtitle || defaultKrysoTechriderData.sectionSubtitle}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <a
+                href={techrider?.bookingPhone ? `tel:${techrider.bookingPhone.replace(/\s+/g, "")}` : "tel:+919767378750"}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-sm transition-transform hover:scale-105 shadow-lg shadow-orange-500/25"
+              >
+                <Phone size={16} />
+                <span>Book Kryso Now</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Main Grid: Left image poster card + Right specs & contacts */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left: Presskit Visual Card */}
+            <div className="lg:col-span-5 relative group">
+              <div className="relative overflow-hidden rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 shadow-2xl backdrop-blur-md">
+                <div className="relative aspect-[4/5] sm:aspect-[3/4] w-full overflow-hidden">
+                  <Image
+                    src={formatImageUrl(techrider?.posterImageUrl || defaultKrysoTechriderData.posterImageUrl)}
+                    alt={techrider?.posterTitle || "Kryso Techrider & Contact Press Card"}
+                    fill
+                    unoptimized
+                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#050811] via-[#050811]/30 to-transparent" />
+
+                  {/* Top Badge */}
+                  <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-[#0B152B]/90 backdrop-blur-md px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-orange-400 shadow-md">
+                    <Sparkles size={12} className="text-orange-400" />
+                    <span>Official Press Spec</span>
+                  </div>
+
+                  {/* Bottom Image Overlay Details */}
+                  <div className="absolute bottom-4 left-4 right-4 p-4 rounded-2xl bg-[#0B152B]/90 backdrop-blur-md border border-blue-900/60 space-y-1.5">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-orange-400">{techrider?.posterSubtitle || defaultKrysoTechriderData.posterSubtitle}</p>
+                    <p className="text-lg font-black text-white leading-snug">{techrider?.posterTitle || defaultKrysoTechriderData.posterTitle}</p>
+                    <div className="flex items-center justify-between text-xs text-blue-200/80 pt-1">
+                      <span>Pro Audio & Visual Rider</span>
+                      <span className="text-orange-400 font-bold">Standard Stage Setup</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Techrider & Contact Cards */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Card 1: [TECHRIDER] Stage Technical Requirements */}
+              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-md relative overflow-hidden shadow-xl">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-blue-900/50">
+                  <div className="flex items-center gap-3">
+                    <div className="size-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-inner">
+                      <Sliders size={20} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">[TECHRIDER]</span>
+                      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{techrider?.techriderTitle || defaultKrysoTechriderData.techriderTitle}</h3>
+                    </div>
+                  </div>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300">
+                    <CheckCircle2 size={13} className="text-orange-400" />
+                    Mandatory
+                  </span>
+                </div>
+
+                {/* Tech Specs Items */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {(techrider?.techriderItems && techrider.techriderItems.length > 0
+                    ? techrider.techriderItems
+                    : defaultKrysoTechriderData.techriderItems
+                  ).map((item, idx) => {
+                    const isWide = idx >= 2 || item.spec.length > 30;
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className={`p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/40 transition-all flex items-start gap-3.5 group ${
+                          isWide ? "sm:col-span-2" : ""
+                        }`}
+                      >
+                        <div className="size-8 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center text-orange-400 shrink-0 font-mono font-black text-xs group-hover:scale-110 transition-transform">
+                          {String(idx + 1).padStart(2, "0")}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">{item.category}</p>
+                          <p className="text-sm font-black text-white tracking-wide">{item.spec}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Card 2: [CONTACT] Bookings & Direct Channels */}
+              <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/90 p-6 sm:p-8 backdrop-blur-md relative overflow-hidden shadow-xl">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-blue-900/50">
+                  <div className="flex items-center gap-3">
+                    <div className="size-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-inner">
+                      <Phone size={20} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">[CONTACT]</span>
+                      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">{techrider?.contactTitle || defaultKrysoTechriderData.contactTitle}</h3>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400">
+                    Available Worldwide
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Phone / Bookings */}
+                  <a
+                    href={techrider?.bookingPhone ? `tel:${techrider.bookingPhone.replace(/\s+/g, "")}` : "tel:+919767378750"}
+                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">FOR BOOKINGS</p>
+                      <p className="text-base font-extrabold text-white group-hover:text-orange-400 transition-colors">
+                        {techrider?.bookingPhone || defaultKrysoTechriderData.bookingPhone}
+                      </p>
+                    </div>
+                    <div className="size-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-400 group-hover:text-black flex items-center justify-center transition-all">
+                      <Phone size={14} />
+                    </div>
+                  </a>
+
+                  {/* Email */}
+                  <a
+                    href={techrider?.bookingEmail ? `mailto:${techrider.bookingEmail}` : "mailto:krysomusic@gmail.com"}
+                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-orange-500/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
+                  >
+                    <div className="space-y-1 truncate pr-2">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">EMAIL INQUIRIES</p>
+                      <p className="text-sm sm:text-base font-extrabold text-white group-hover:text-orange-400 transition-colors truncate">
+                        {techrider?.bookingEmail || defaultKrysoTechriderData.bookingEmail}
+                      </p>
+                    </div>
+                    <div className="size-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-400 group-hover:text-black flex items-center justify-center transition-all shrink-0">
+                      <Mail size={14} />
+                    </div>
+                  </a>
+
+                  {/* Official Website */}
+                  <a
+                    href={techrider?.websiteUrl || defaultKrysoTechriderData.websiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 hover:border-amber-400/50 hover:bg-[#070F1E] transition-all flex items-center justify-between group"
+                  >
+                    <div className="space-y-1 truncate pr-2">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">OFFICIAL WEBSITE</p>
+                      <p className="text-sm sm:text-base font-extrabold text-white group-hover:text-amber-400 transition-colors truncate">
+                        {techrider?.websiteUrl?.replace(/^https?:\/\//i, "").toUpperCase() || "WWW.KRYSOMUSIC.COM"}
+                      </p>
+                    </div>
+                    <div className="size-8 rounded-full bg-amber-500/10 group-hover:bg-amber-400 text-amber-400 group-hover:text-black flex items-center justify-center transition-all shrink-0">
+                      <Globe size={14} />
+                    </div>
+                  </a>
+
+                  {/* Social Handles (Facebook / Soundcloud) */}
+                  <div className="p-4 rounded-2xl bg-[#070F1E]/80 border border-blue-900/50 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-blue-200/70">SOCIAL PROFILES</p>
+                      <div className="flex items-center gap-3 pt-0.5">
+                        <a
+                          href={techrider?.facebookUrl || defaultKrysoTechriderData.facebookUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-bold text-blue-100 hover:text-orange-400 transition-colors inline-flex items-center gap-1"
+                        >
+                          <span>FACEBOOK/KRYSO</span>
+                          <ExternalLink size={10} />
+                        </a>
+                        <span className="text-blue-500/50">•</span>
+                        <a
+                          href={techrider?.soundcloudUrl || defaultKrysoTechriderData.soundcloudUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-bold text-blue-100 hover:text-orange-400 transition-colors inline-flex items-center gap-1"
+                        >
+                          <span>SOUNDCLOUD</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </SiteShell>
   );
 }
+

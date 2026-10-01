@@ -293,7 +293,7 @@ export type SpotlightSlide = {
 export const defaultSpotlightSlides: SpotlightSlide[] = [
   {
     id: "dj-pro-producer",
-    title: "Identify Yourself as PRO DJ & Music Producer",
+    title: "Get Identified as a PRO DJ & Music Producer",
     description:
       "Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.",
     primaryBtnText: "View all courses",
@@ -329,6 +329,7 @@ export type KrysoPageConfig = {
   videoUrl: string;
   timerSeconds: number;
   autoPlayVideo: boolean;
+  loopVideo?: boolean;
   videoTitle?: string;
 };
 
@@ -360,6 +361,7 @@ export const defaultKrysoPageConfig: KrysoPageConfig = {
   videoUrl: "https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/view?usp=sharing",
   timerSeconds: 10,
   autoPlayVideo: true,
+  loopVideo: true,
   videoTitle: "KRYSO Live Concert & Studio Showcase",
 };
 
@@ -401,19 +403,132 @@ export const defaultKrysoBiography: KrysoBiography = {
   instagramUrl: "https://www.instagram.com/_krysomusic",
 };
 
-export type KrysoShowsData = {
+export type KrysoUpcomingEvent = {
+  id: string;
   title: string;
+  date: string; // e.g., "NOV 14, 2026"
+  day?: string; // e.g., "SAT"
+  time?: string; // e.g., "08:30 PM"
+  venue: string; // e.g., "Odeon Amphitheatre"
+  city: string; // e.g., "Mumbai, India"
+  category?: string; // e.g., "Arena Concert", "Festival Mainstage", "Club Night"
+  ticketUrl?: string; // booking / ticketing link
+  ticketLabel?: string; // e.g., "Get Tickets", "Book Passes", "RSVP"
+  status?: "tickets_available" | "selling_fast" | "sold_out" | "free_entry" | "announcing_soon";
+  posterUrl?: string; // optional event artwork
+  isEnabled?: boolean; // individual event toggle
+};
+
+export type KrysoInternationalShow = {
+  venue: string;
+  country: string;
+  flag?: string;
+  city?: string;
+  year?: string;
+};
+
+export type KrysoShowsData = {
+  badge?: string;
+  title: string;
+  titleHighlight?: string;
   subtitle?: string;
   bgImageUrl?: string;
+  
+  // Upcoming Events Slot
+  upcomingEventsEnabled?: boolean;
+  upcomingEventsBadge?: string;
+  upcomingEventsHeading?: string;
+  upcomingEventsSubtext?: string;
+  upcomingEvents: KrysoUpcomingEvent[];
+
+  // India Shows & Festivals
+  indiaSectionTitle?: string;
   indiaShows: string[];
-  internationalShows: Array<{ venue: string; country: string; flag?: string }>;
+
+  // International Tour Residencies
+  internationalSectionTitle?: string;
+  internationalShows: KrysoInternationalShow[];
+
+  // Shared Stage With
+  sharedStageTitle?: string;
   sharedStageWith: string[];
 };
 
+export const defaultKrysoUpcomingEvents: KrysoUpcomingEvent[] = [
+  {
+    id: "event-1",
+    title: "Kryso Live — Neon Horizon Arena Tour",
+    date: "NOV 14, 2026",
+    day: "SAT",
+    time: "08:30 PM",
+    venue: "Odeon Amphitheatre",
+    city: "Mumbai, India",
+    category: "Arena Concert",
+    ticketUrl: "https://insider.in",
+    ticketLabel: "Get Tickets",
+    status: "selling_fast",
+    posterUrl: "/kryso-shows.jpg",
+    isEnabled: true,
+  },
+  {
+    id: "event-2",
+    title: "Bass & Beats Festival Mainstage",
+    date: "DEC 05, 2026",
+    day: "FRI",
+    time: "10:00 PM",
+    venue: "Sky High Arena",
+    city: "Pune, India",
+    category: "Music Festival",
+    ticketUrl: "https://in.bookmyshow.com",
+    ticketLabel: "Buy Passes",
+    status: "tickets_available",
+    posterUrl: "/kryso-dj-music-producer-bg.png",
+    isEnabled: true,
+  },
+  {
+    id: "event-3",
+    title: "Midnight Frequencies Club Showcase",
+    date: "DEC 24, 2026",
+    day: "WED",
+    time: "09:30 PM",
+    venue: "Chelsea Music Hall",
+    city: "New York, USA",
+    category: "International Club Tour",
+    ticketUrl: "https://dice.fm",
+    ticketLabel: "Reserve Tickets",
+    status: "tickets_available",
+    posterUrl: "/kryso-hero.jpg",
+    isEnabled: true,
+  },
+  {
+    id: "event-4",
+    title: "NYE 2027 Mega Countdown Concert",
+    date: "DEC 31, 2026",
+    day: "THU",
+    time: "08:00 PM",
+    venue: "Grand Palm Beach Arena",
+    city: "Goa, India",
+    category: "New Year Festival",
+    ticketUrl: "https://insider.in",
+    ticketLabel: "VIP & Passes",
+    status: "announcing_soon",
+    posterUrl: "/kryso-shows.jpg",
+    isEnabled: true,
+  },
+];
+
 export const defaultKrysoShowsData: KrysoShowsData = {
-  title: "SHOWS",
-  subtitle: "Concerts, Festivals & International Tours",
+  badge: "LIVE CONCERTS & TOURS",
+  title: "KRYSO",
+  titleHighlight: "SHOWS",
+  subtitle: "Electrifying marquee festival stages across India and iconic international venues worldwide.",
   bgImageUrl: "/kryso-shows.jpg",
+  upcomingEventsEnabled: true,
+  upcomingEventsBadge: "TOUR & GIG CALENDAR 2026",
+  upcomingEventsHeading: "UPCOMING SHOWS & FESTIVAL DATES",
+  upcomingEventsSubtext: "Catch Kryso live on stage across clubs, arenas, and festival mainstages. Book your passes before venues sell out.",
+  upcomingEvents: defaultKrysoUpcomingEvents,
+  indiaSectionTitle: "INDIA FESTIVALS & SHOWS",
   indiaShows: [
     "Zomaland Festival",
     "ICW Festival",
@@ -440,16 +555,18 @@ export const defaultKrysoShowsData: KrysoShowsData = {
     "Royal Enfield",
     "EO Jaisalmer",
   ],
+  internationalSectionTitle: "INTERNATIONAL VENUES & RESIDENCIES",
   internationalShows: [
-    { venue: "Chelsea Music Hall, New York", country: "USA", flag: "🇺🇸" },
-    { venue: "ICY Club, Dubai", country: "UAE", flag: "🇦🇪" },
-    { venue: "Techno & Chill x Boatriders, Dubai", country: "UAE", flag: "🇦🇪" },
-    { venue: "Prince Bandroom, Melbourne", country: "Australia", flag: "🇦🇺" },
-    { venue: "The Underground, Sydney", country: "Australia", flag: "🇦🇺" },
-    { venue: "IWA Fest, Melilla", country: "Spain", flag: "🇪🇸" },
-    { venue: "Hï Ibiza", country: "Spain", flag: "🇪🇸" },
-    { venue: "Fridas Pier, Stuttgart", country: "Germany", flag: "🇩🇪" },
+    { venue: "Chelsea Music Hall, New York", country: "USA", flag: "🇺🇸", city: "New York" },
+    { venue: "ICY Club, Dubai", country: "UAE", flag: "🇦🇪", city: "Dubai" },
+    { venue: "Techno & Chill x Boatriders, Dubai", country: "UAE", flag: "🇦🇪", city: "Dubai" },
+    { venue: "Prince Bandroom, Melbourne", country: "Australia", flag: "🇦🇺", city: "Melbourne" },
+    { venue: "The Underground, Sydney", country: "Australia", flag: "🇦🇺", city: "Sydney" },
+    { venue: "IWA Fest, Melilla", country: "Spain", flag: "🇪🇸", city: "Melilla" },
+    { venue: "Hï Ibiza", country: "Spain", flag: "🇪🇸", city: "Ibiza" },
+    { venue: "Fridas Pier, Stuttgart", country: "Germany", flag: "🇩🇪", city: "Stuttgart" },
   ],
+  sharedStageTitle: "SHARED THE STAGE WITH",
   sharedStageWith: [
     "Solomun",
     "Black Coffee",

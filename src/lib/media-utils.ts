@@ -9,6 +9,7 @@
  * Supports:
  * - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
  * - https://drive.google.com/file/d/FILE_ID/view
+ * - https://drive.google.com/file/d/FILE_ID/preview
  * - https://drive.google.com/file/d/FILE_ID
  * - https://drive.google.com/open?id=FILE_ID
  * - https://drive.google.com/uc?id=FILE_ID
@@ -17,14 +18,17 @@
  * - https://docs.google.com/file/d/FILE_ID
  * - https://lh3.googleusercontent.com/d/FILE_ID
  * - https://drive.google.com/thumbnail?id=FILE_ID
+ * - /api/image-stream?id=FILE_ID
+ * - /api/video-stream?id=FILE_ID
+ * - /api/audio-stream?id=FILE_ID
  */
 export function extractGoogleDriveId(url?: string | null): string | null {
   if (!url || typeof url !== "string") return null;
   const trimmed = url.trim();
 
-  // 0. Handle internal proxy URLs /api/audio-stream?id=...
-  const audioStreamMatch = trimmed.match(/\/api\/audio-stream\?id=([a-zA-Z0-9_-]+)/i);
-  if (audioStreamMatch && audioStreamMatch[1]) return audioStreamMatch[1];
+  // 0. Handle internal proxy URLs /api/(audio|video|image)-stream?id=...
+  const streamMatch = trimmed.match(/\/api\/(?:audio|video|image)-stream\?id=([a-zA-Z0-9_-]+)/i);
+  if (streamMatch && streamMatch[1]) return streamMatch[1];
 
   // Check if it looks like a Google Drive / Google Docs / Google User Content URL
   const isGoogleDomain =
@@ -42,7 +46,11 @@ export function extractGoogleDriveId(url?: string | null): string | null {
     const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/i);
     if (dMatch && dMatch[1]) return dMatch[1];
 
-    // 3. id=([a-zA-Z0-9_-]+)
+    // 3. /folders/([a-zA-Z0-9_-]+)
+    const foldersMatch = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/i);
+    if (foldersMatch && foldersMatch[1]) return foldersMatch[1];
+
+    // 4. id=([a-zA-Z0-9_-]+)
     const idParamMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
     if (idParamMatch && idParamMatch[1]) return idParamMatch[1];
   }
@@ -51,16 +59,16 @@ export function extractGoogleDriveId(url?: string | null): string | null {
 }
 
 /**
- * Formats an image URL. If it's a Google Drive link, converts it to
- * the high-performance Google User Content CDN link: `https://lh3.googleusercontent.com/d/${fileId}`
- * which works reliably in <Image />, <img> tags, and background CSS without CORS issues.
+ * Formats an image URL. If it's a Google Drive link, routes through our dedicated
+ * streaming proxy `/api/image-stream?id=${driveId}` which streams the high-resolution
+ * image data with full CORS, caching, and no 429 rate limits or CORP blocking.
  */
 export function formatImageUrl(url?: string | null): string {
   if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
   const driveId = extractGoogleDriveId(trimmed);
   if (driveId) {
-    return `https://lh3.googleusercontent.com/d/${driveId}`;
+    return `/api/image-stream?id=${driveId}`;
   }
   return trimmed;
 }
@@ -93,7 +101,7 @@ export function formatDownloadUrl(url?: string | null, filename?: string): strin
 /**
  * Formats a video URL. If it's a Google Drive link, routes through our dedicated
  * streaming proxy `/api/video-stream?id=${driveId}` so that the browser HTML5
- * video player can stream smoothly at full 1080p quality with no iframe/control overlays.
+ * video player can stream smoothly at full 1080p quality with direct native autoplay.
  */
 export function formatVideoUrl(url?: string | null): string {
   if (!url || typeof url !== "string") return "";
@@ -105,20 +113,28 @@ export function formatVideoUrl(url?: string | null): string {
   return trimmed;
 }
 
+export function getDrivePreviewUrl(urlOrId?: string | null): string {
+  if (!urlOrId || typeof urlOrId !== "string") return "";
+  const driveId = extractGoogleDriveId(urlOrId) || urlOrId.trim();
+  return `https://drive.google.com/file/d/${driveId}/preview`;
+}
+
 export type VideoSourceType = "drive" | "youtube" | "video";
 
 export interface VideoSourceInfo {
   type: VideoSourceType;
   src: string;
   driveId?: string;
+  previewSrc?: string;
   youtubeId?: string;
 }
 
 /**
- * Resolves video sources for optimized playback.
- * - Google Drive links are routed to `/api/video-stream` for direct 1080p HTML5 playback with zero controls/icons.
- * - YouTube links are converted to embedded players.
- * - Direct video URLs (.mp4, .webm, local) are returned for native HTML5 video playback.
+ * Resolves video sources for optimized autoplay playback.
+ * - Google Drive links route through /api/video-stream for seamless zero-click HTML5 autoplay at 1080p,
+ *   with fallback to Google Drive preview iframe.
+ * - YouTube links are converted to autoplaying embedded players.
+ * - Direct video URLs (.mp4, .webm, Cloudinary, local) are returned for native HTML5 video autoplay.
  */
 export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
   if (!url || typeof url !== "string") {
@@ -138,7 +154,7 @@ export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
     };
   }
 
-  // 2. Google Drive URLs
+  // 2. Google Drive URLs -> Direct Native HTML5 Video Stream (clean, zero player bars, pure autoplay)
   const driveId = extractGoogleDriveId(trimmed);
   if (driveId) {
     return {
@@ -154,5 +170,3 @@ export function getVideoSourceInfo(url?: string | null): VideoSourceInfo {
     src: trimmed,
   };
 }
-
-

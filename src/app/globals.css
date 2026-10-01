@@ -202,3 +202,69 @@ audio::-webkit-media-controls-enclosure {
   }
 }
 
+/* ========================================================================== */
+/* WONDERFUL FREE DEMO BUTTON ANIMATIONS                                      */
+/* ========================================================================== */
+@keyframes demo-shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  45%, 100% {
+    transform: translateX(300%) skewX(-20deg);
+  }
+}
+
+@keyframes phone-ring {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  10%, 30% {
+    transform: rotate(-18deg) scale(1.15);
+  }
+  20%, 40% {
+    transform: rotate(18deg) scale(1.15);
+  }
+  50% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes demo-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 16px rgba(240, 90, 20, 0.45), 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(255, 106, 32, 0.85), 0 0 12px rgba(255, 180, 50, 0.65), 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-demo-shimmer {
+  animation: demo-shimmer 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-phone-ring {
+  animation: phone-ring 2.2s ease-in-out infinite;
+}
+
+.animate-demo-pulse {
+  animation: demo-pulse-glow 2.4s ease-in-out infinite;
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradient-flow 3.5s ease infinite;
+}
+
+

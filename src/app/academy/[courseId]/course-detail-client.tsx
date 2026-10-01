@@ -1011,10 +1011,24 @@ export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
                             <div className="overflow-hidden transition-all duration-300 ease-out md:max-h-0 md:opacity-0 md:-translate-y-1 md:pointer-events-none group-hover:max-h-16 group-hover:opacity-100 group-hover:translate-y-0 group-hover:mt-2.5 group-hover:pointer-events-auto max-md:max-h-16 max-md:opacity-100 max-md:mt-2.5">
                               <a
                                 href="tel:9767378750"
-                                className="w-full flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f05a14] via-[#ff6a20] to-[#f05a14] bg-[length:200%_auto] hover:bg-right px-4 py-2.5 text-xs font-black text-white uppercase tracking-wider shadow-lg shadow-orange-500/25 transition-all duration-300 hover:brightness-110 active:scale-95 cursor-pointer"
+                                className="relative group/demo w-full flex items-center justify-center gap-2 rounded-full overflow-hidden bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#fb923c] animate-gradient-flow px-4 py-2.5 text-xs font-black text-white uppercase tracking-wider shadow-lg animate-demo-pulse hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer border border-orange-400/40"
                               >
-                                <PhoneCall size={14} className="animate-bounce shrink-0" />
-                                <span>Book Your Free Demo Today</span>
+                                {/* Sweeping metallic light sheen */}
+                                <span className="pointer-events-none absolute inset-0 -top-1 -bottom-1 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-demo-shimmer -z-0" />
+
+                                {/* Live Ringing Phone Icon with Pulsing Radar Aura */}
+                                <span className="relative flex items-center justify-center size-5 rounded-full bg-white/25 border border-white/40 shrink-0 z-10 shadow-xs">
+                                  <span className="absolute size-full rounded-full bg-white/40 animate-ping" />
+                                  <PhoneCall size={11} className="text-white animate-phone-ring" />
+                                </span>
+
+                                {/* Button Text */}
+                                <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] font-extrabold tracking-wide">
+                                  Book Your Free Demo Today
+                                </span>
+
+                                {/* Sparkle Icon */}
+                                <Sparkles size={13} className="text-amber-200 animate-pulse shrink-0 z-10" />
                               </a>
                             </div>
                           </div>
