@@ -101,8 +101,6 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     { label: "KRYSO", to: "/" },
     { label: "Music", to: "/music" },
     { label: "Academy", to: "/academy" },
-    { label: "Techrider", to: "/#techrider" },
-    { label: "Downloads", to: "/#downloads" },
     { label: "Contact", to: "/contact" },
   ];
 
@@ -249,22 +247,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* 3. Right: Quick Actions (Enquiry + Live Call Studio) */}
+          {/* 3. Right: Live Call Studio */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Quick Enquiry CTA (Desktop) */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCourse("");
-                setCourseError(false);
-                setEnquiryOpen(true);
-              }}
-              className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary px-3.5 h-9 sm:h-10 font-extrabold text-xs tracking-wider uppercase transition-all hover:scale-105 cursor-pointer shadow-xs"
-            >
-              <Sparkles size={13} className="text-primary animate-spin" style={{ animationDuration: "6s" }} />
-              <span>Enquire</span>
-            </button>
-
             {/* Live Studio Call Button */}
             <a
               href={`tel:${phoneClean}`}
@@ -319,20 +303,6 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="pt-2 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileOpen(false);
-                  setSelectedCourse("");
-                  setCourseError(false);
-                  setEnquiryOpen(true);
-                }}
-                className="w-full flex items-center justify-center gap-2 h-11 rounded-full border border-primary/40 bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider hover:bg-primary/20 transition-all cursor-pointer"
-              >
-                <Sparkles size={14} className="animate-spin" style={{ animationDuration: "6s" }} />
-                <span>Quick Course Enquiry</span>
-              </button>
-
               <a
                 href={`tel:${phoneClean}`}
                 onClick={() => setMobileOpen(false)}
@@ -346,180 +316,189 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         )}
       </header>
       <main>{children}</main>
-      <footer className="border-t border-border bg-card text-card-foreground">
-        <div className="page-shell section-space grid gap-8 sm:gap-12 grid-cols-1 sm:grid-cols-2 lg:grid-cols-12">
-          <div className="sm:col-span-2 lg:col-span-6">
-            <Link href="/" className="inline-block py-1 group" aria-label="KRYSO home">
-              <Image
-                src="/kryso-logo.png"
-                alt="KRYSO"
-                width={130}
-                height={45}
-                className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
-              />
-            </Link>
-            <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-              {settings.footerDescription || settings.tagline || "Learn Music and Enjoy Music"}. Concert-grade sound, original releases & world-class mentorship.
-            </p>
-            {/* Social Icons Row */}
-            <div className="mt-5 flex flex-wrap items-center gap-2.5 text-muted-foreground">
-              {/* 1. WhatsApp */}
-              <a
-                href="https://wa.me/918767828945?text=Hello%20Kryso%2C%20I%20would%20like%20to%20connect!"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="size-9 rounded-full border border-border bg-background grid place-items-center hover:border-[#25D366] hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all hover:scale-110"
-                aria-label="WhatsApp"
-                title="Chat on WhatsApp (8767828945)"
-              >
-                <WhatsAppIcon size={16} />
-              </a>
+      <footer className="relative isolate bg-[#030712] text-white border-t border-blue-900/50 overflow-hidden">
+        {/* Subtle Ambient Navy & Orange Glow in Footer */}
+        <div className="pointer-events-none absolute top-0 left-1/4 size-96 rounded-full bg-blue-600/10 blur-3xl -z-10" />
+        <div className="pointer-events-none absolute bottom-0 right-10 size-80 rounded-full bg-orange-500/10 blur-3xl -z-10" />
 
-              {/* 2. Instagram */}
-              <a
-                href={settings.instagramUrl || "https://www.instagram.com/_krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="size-9 rounded-full border border-border bg-background grid place-items-center hover:border-pink-500 hover:text-pink-500 hover:bg-pink-500/10 transition-all hover:scale-110"
-                aria-label="Instagram"
-                title="Instagram (@_krysomusic)"
-              >
-                <Instagram size={16} />
-              </a>
-
-              {/* 3. Spotify */}
-              <a
-                href={settings.spotifyUrl || "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH?si=UYIN8MgpRB27qtHnLqlKqw&utm_source=copy-link&nd=1&dlsi=271aaa25a7344871"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="size-9 rounded-full border border-border bg-background grid place-items-center hover:border-[#1DB954] hover:text-[#1DB954] hover:bg-[#1DB954]/10 transition-all hover:scale-110"
-                aria-label="Spotify"
-                title="Listen on Spotify"
-              >
-                <SpotifyIcon size={16} />
-              </a>
-
-              {/* 4. YouTube */}
-              <a
-                href={settings.youtubeUrl || "https://www.youtube.com/@krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="size-9 rounded-full border border-border bg-background grid place-items-center hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 transition-all hover:scale-110"
-                aria-label="YouTube"
-                title="YouTube (@krysomusic)"
-              >
-                <Youtube size={16} />
-              </a>
-
-              {/* 5. Facebook */}
-              <a
-                href={settings.facebookUrl || "https://www.facebook.com/krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="size-9 rounded-full border border-border bg-background grid place-items-center hover:border-blue-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all hover:scale-110"
-                aria-label="Facebook"
-                title="Facebook"
-              >
-                <Facebook size={16} />
-              </a>
-            </div>
-          </div>
-
-          {/* Explore Links */}
-          <div className="sm:col-span-1 lg:col-span-3">
-            <p className="eyebrow">Explore</p>
-            <div className="mt-4 grid gap-3 text-sm text-muted-foreground">
-              <Link href="/" className="hover:text-primary transition-colors">
-                KRYSO Showcase
+        <div className="page-shell py-12 sm:py-16">
+          <div className="grid gap-10 sm:gap-12 grid-cols-1 md:grid-cols-2 lg:grid-cols-12">
+            {/* Col 1: Brand & Bio Story */}
+            <div className="lg:col-span-5 space-y-4">
+              <Link href="/" className="inline-block py-1 group" aria-label="KRYSO home">
+                <Image
+                  src="/kryso-logo.png"
+                  alt="KRYSO"
+                  width={140}
+                  height={49}
+                  priority
+                  className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+                />
               </Link>
-              <Link href="/music" className="hover:text-primary transition-colors">
-                Music tracks & releases
-              </Link>
-              <Link href="/academy" className="hover:text-primary transition-colors">
-                Music classes & academy
-              </Link>
-              <Link href="/#downloads" className="hover:text-primary transition-colors">
-                Media & downloads
-              </Link>
-              <Link href="/contact" className="hover:text-primary transition-colors">
-                Contact & studio visits
-              </Link>
-            </div>
-          </div>
-
-          {/* Say hello / Contact */}
-          <div className="sm:col-span-1 lg:col-span-3">
-            <p className="eyebrow">Say hello</p>
-            <div className="mt-4 grid gap-3 text-sm text-muted-foreground">
-              <a
-                href="https://wa.me/918767828945?text=Hello%20Kryso%20Music%20Academy%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses!"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-[#25D366] transition-colors"
-              >
-                <WhatsAppIcon size={14} className="text-[#25D366] shrink-0" /> WhatsApp: 8767828945
-              </a>
-              <a
-                href="tel:9767378750"
-                className="flex items-center gap-2 hover:text-primary transition-colors"
-              >
-                <Phone size={14} className="text-primary shrink-0" /> Call: 9767378750
-              </a>
-              {settings.email && (
-                <a href={`mailto:${settings.email}`} className="flex items-center gap-2 hover:text-primary transition-colors truncate">
-                  <Mail size={14} className="text-primary shrink-0" /> {settings.email}
-                </a>
-              )}
-              <p className="flex items-center gap-2">
-                <MapPin size={14} className="text-primary shrink-0" /> {settings.address || "Pune, Maharashtra, India"}
+              <p className="max-w-md text-xs sm:text-sm leading-relaxed text-blue-200/80">
+                {settings.footerDescription || `${settings.tagline || "Learn Music and Enjoy Music"}. Concert-grade sound, original releases, and world-class studio training in Pune.`}
               </p>
+
+              {/* Social Streaming Row */}
+              <div className="pt-2 flex flex-wrap items-center gap-2.5">
+                {/* 1. Spotify */}
+                <a
+                  href={settings.spotifyUrl || "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-blue-900/60 bg-[#0B152B]/80 grid place-items-center text-blue-200 hover:border-[#1DB954] hover:text-[#1DB954] hover:bg-[#1DB954]/10 transition-all hover:scale-110 shadow-xs"
+                  aria-label="Spotify"
+                  title="Listen on Spotify"
+                >
+                  <SpotifyIcon size={16} />
+                </a>
+
+                {/* 2. Instagram */}
+                <a
+                  href={settings.instagramUrl || "https://www.instagram.com/_krysomusic"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-blue-900/60 bg-[#0B152B]/80 grid place-items-center text-blue-200 hover:border-pink-500 hover:text-pink-500 hover:bg-pink-500/10 transition-all hover:scale-110 shadow-xs"
+                  aria-label="Instagram"
+                  title="Instagram (@_krysomusic)"
+                >
+                  <Instagram size={16} />
+                </a>
+
+                {/* 3. YouTube */}
+                <a
+                  href={settings.youtubeUrl || "https://www.youtube.com/@krysomusic"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-blue-900/60 bg-[#0B152B]/80 grid place-items-center text-blue-200 hover:border-red-500 hover:text-red-500 hover:bg-red-500/10 transition-all hover:scale-110 shadow-xs"
+                  aria-label="YouTube"
+                  title="YouTube (@krysomusic)"
+                >
+                  <Youtube size={16} />
+                </a>
+
+                {/* 4. Facebook */}
+                <a
+                  href={settings.facebookUrl || "https://www.facebook.com/krysomusic"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-blue-900/60 bg-[#0B152B]/80 grid place-items-center text-blue-200 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all hover:scale-110 shadow-xs"
+                  aria-label="Facebook"
+                  title="Facebook"
+                >
+                  <Facebook size={16} />
+                </a>
+
+                {/* 5. WhatsApp */}
+                <a
+                  href={`https://wa.me/${(settings.altPhone || settings.phone || "919767378750").replace(/[^0-9]/g, "")}?text=Hello%20Kryso%2C%20I%20would%20like%20to%20connect!`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="size-9 rounded-full border border-blue-900/60 bg-[#0B152B]/80 grid place-items-center text-blue-200 hover:border-[#25D366] hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all hover:scale-110 shadow-xs"
+                  aria-label="WhatsApp"
+                  title="Chat on WhatsApp"
+                >
+                  <WhatsAppIcon size={16} />
+                </a>
+              </div>
+            </div>
+
+            {/* Col 2: Navigation / Explore */}
+            <div className="lg:col-span-3 space-y-3">
+              <p className="text-xs font-black uppercase tracking-widest text-orange-400">
+                Explore Kryso
+              </p>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-blue-200/80">
+                <li>
+                  <Link href="/" className="hover:text-orange-400 transition-colors inline-block">
+                    Official Spotlight & Press
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/music" className="hover:text-orange-400 transition-colors inline-block">
+                    Music Tracks & Audio Releases
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/academy" className="hover:text-orange-400 transition-colors inline-block">
+                    Kryso Music Academy & Courses
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#techrider" className="hover:text-orange-400 transition-colors inline-block">
+                    Stage Techrider Specifications
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#downloads" className="hover:text-orange-400 transition-colors inline-block">
+                    Media & Press Downloads
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-orange-400 transition-colors inline-block">
+                    Contact & Bookings
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Contact & Direct Inquiries */}
+            <div className="lg:col-span-4 space-y-3">
+              <p className="text-xs font-black uppercase tracking-widest text-orange-400">
+                Connect & Bookings
+              </p>
+              <div className="space-y-2.5 text-xs sm:text-sm text-blue-200/80">
+                <a
+                  href={`tel:${(settings.phone || "+91 97673 78750").replace(/[^0-9+]/g, "")}`}
+                  className="flex items-center gap-2.5 hover:text-orange-400 transition-colors group"
+                >
+                  <span className="size-7 rounded-lg bg-orange-500/15 text-orange-400 grid place-items-center shrink-0 group-hover:bg-orange-500 group-hover:text-black transition-colors">
+                    <Phone size={13} />
+                  </span>
+                  <span>Primary: <strong className="text-white">{settings.phone || "+91 97673 78750"}</strong></span>
+                </a>
+
+                {settings.altPhone && (
+                  <a
+                    href={`tel:${settings.altPhone.replace(/[^0-9+]/g, "")}`}
+                    className="flex items-center gap-2.5 hover:text-orange-400 transition-colors group"
+                  >
+                    <span className="size-7 rounded-lg bg-orange-500/15 text-orange-400 grid place-items-center shrink-0 group-hover:bg-orange-500 group-hover:text-black transition-colors">
+                      <Phone size={13} />
+                    </span>
+                    <span>Studio: <strong className="text-white">{settings.altPhone}</strong></span>
+                  </a>
+                )}
+
+                <a
+                  href={`mailto:${settings.email || "krysomusic@gmail.com"}`}
+                  className="flex items-center gap-2.5 hover:text-orange-400 transition-colors truncate group"
+                >
+                  <span className="size-7 rounded-lg bg-orange-500/15 text-orange-400 grid place-items-center shrink-0 group-hover:bg-orange-500 group-hover:text-black transition-colors">
+                    <Mail size={13} />
+                  </span>
+                  <span className="truncate">{settings.email || "krysomusic@gmail.com"}</span>
+                </a>
+
+                <div className="flex items-start gap-2.5 pt-1">
+                  <span className="size-7 rounded-lg bg-orange-500/15 text-orange-400 grid place-items-center shrink-0 mt-0.5">
+                    <MapPin size={13} />
+                  </span>
+                  <span className="leading-snug">{settings.address || "Pune, Maharashtra, India"}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="border-t border-border/50">
-          <div className="page-shell flex flex-col sm:flex-row items-center justify-between gap-4 py-5 text-xs text-muted-foreground text-center sm:text-left">
+
+        {/* Bottom Copyright & Admin Access Bar */}
+        <div className="border-t border-blue-900/50 bg-[#070F1E]/80">
+          <div className="page-shell flex flex-col sm:flex-row items-center justify-between gap-3 py-4 text-xs text-blue-200/70 text-center sm:text-left">
             <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
-            <div className="flex flex-wrap justify-center sm:justify-end items-center gap-3 sm:gap-4">
-              <a
-                href="https://wa.me/918767828945"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#25D366] transition-colors"
-              >
-                WhatsApp
-              </a>
-              <a
-                href={settings.instagramUrl || "https://www.instagram.com/_krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-pink-500 transition-colors"
-              >
-                Instagram
-              </a>
-              <a
-                href={settings.spotifyUrl || "https://open.spotify.com/artist/25uQC0WgX9Kmk64XiiF7UH"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#1DB954] transition-colors"
-              >
-                Spotify
-              </a>
-              <a
-                href={settings.youtubeUrl || "https://www.youtube.com/@krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-red-500 transition-colors"
-              >
-                YouTube
-              </a>
-              <a
-                href={settings.facebookUrl || "https://www.facebook.com/krysomusic"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-blue-500 transition-colors"
-              >
-                Facebook
-              </a>
+            <div className="flex items-center gap-4">
+              <Link href="/admin" className="hover:text-orange-400 text-blue-300 font-semibold transition-colors">
+                Admin Console →
+              </Link>
             </div>
           </div>
         </div>

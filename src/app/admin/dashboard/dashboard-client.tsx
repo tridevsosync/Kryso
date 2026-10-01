@@ -43,6 +43,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { CollectionManager } from "@/components/admin-collection";
 import {
   ADMIN_SESSION_KEY,
+  ENQUIRIES_KEY,
+  deleteEnquiryRemote,
+  markEnquiryReadRemote,
+  type Enquiry,
   readStored,
   useStored,
   writeStored,
@@ -51,6 +55,7 @@ import { siteSettings, teachers, defaultSyllabusModules, defaultStudioGearItems 
 import { SpotlightManager } from "@/components/admin-spotlight";
 import { MusicTrackManager } from "@/components/admin-music-tracks";
 import { SpotifyIcon } from "@/components/spotify-icon";
+import { WhatsAppIcon } from "@/components/kryso-site";
 
 export const sections = [
   "Dashboard",
@@ -63,19 +68,6 @@ export const sections = [
 ] as const;
 
 export type Section = (typeof sections)[number];
-
-const seedCategories = [
-  "Guitar",
-  "Piano",
-  "Keyboard",
-  "Drum",
-  "Violin",
-  "Flute",
-  "Harmonium",
-  "Tabla",
-  "Ukulele",
-  "Accessories",
-].map((name, index) => ({ id: `c${index + 1}`, name, type: "Product category" }));
 
 export function AdminDashboardClient() {
   const router = useRouter();
@@ -344,13 +336,21 @@ export function AdminDashboardClient() {
 function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
   const [storedTracks] = useStored<unknown[]>("admin-music-tracks-v1", []);
   const [storedCourses] = useStored<unknown[]>("admin-courses-v3", []);
+  const [enquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
+
+  const unreadCount = enquiries.filter((e) => !e.read).length;
 
   const cards: Array<{ label: string; value: number | string; section: Section; desc: string }> = [
     { label: "Hero spotlight", value: "6 Modules", section: "Hero spotlight", desc: "Spotlight, DJ Producer, Techrider & Downloads" },
     { label: "Music", value: storedTracks.length, section: "Music", desc: "Tracks & releases" },
     { label: "Academy", value: storedCourses.length, section: "Academy", desc: "Published courses" },
     { label: "Teacher", value: teachers.length, section: "Teacher", desc: "Mentors & instructors" },
-    { label: "Contact", value: "Pune", section: "Contact", desc: "Studio hours & location" },
+    {
+      label: "Contact",
+      value: enquiries.length > 0 ? `${enquiries.length} Messages` : "0 Messages",
+      section: "Contact",
+      desc: unreadCount > 0 ? `${unreadCount} new unread submissions` : "Contact inquiries & studio info",
+    },
     { label: "Setting", value: "Active", section: "Setting", desc: "Branding & copy config" },
   ];
 
@@ -376,94 +376,19 @@ function Overview({ onOpen }: { onOpen: (section: Section) => void }) {
 }
 
 // ----------------------------------------------------
-// 2. Music Section (Products & Categories)
+// 2. Music Section (Music Tracks & Releases)
 // ----------------------------------------------------
 function MusicSection() {
-  const [tab, setTab] = useState<"tracks" | "products" | "categories">("tracks");
-  const [storedTracks] = useStored<unknown[]>("admin-music-tracks-v1", []);
-  const [storedProducts] = useStored<unknown[]>("admin-products-v3", []);
-  const [storedCategories] = useStored<unknown[]>("admin-categories-v3", []);
-
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 mb-6">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Music Management</h1>
-          <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
-            Manage music tracks, audio streaming links, social lock gating, and instruments.
-          </p>
-        </div>
-        <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto max-w-full shrink-0">
-          <button
-            onClick={() => setTab("tracks")}
-            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-              tab === "tracks"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Music Tracks ({storedTracks.length})
-          </button>
-          <button
-            onClick={() => setTab("products")}
-            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-              tab === "products"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Instruments ({storedProducts.length})
-          </button>
-          <button
-            onClick={() => setTab("categories")}
-            className={`rounded-md px-3 sm:px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-              tab === "categories"
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Categories ({storedCategories.length})
-          </button>
-        </div>
+      <div className="flex flex-col gap-2 border-b border-border pb-4 mb-6">
+        <h1 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">Music Management</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          Manage music tracks, audio streaming links, social lock gating, and official audio releases.
+        </p>
       </div>
 
-      {tab === "tracks" && <MusicTrackManager />}
-
-      {tab === "products" && (
-        <CollectionManager
-          title="Instruments & Gear"
-          description="Instruments and accessories in the music shop."
-          storageKey="admin-products-v3"
-          apiCollection="music_products"
-          folder="kryso/music"
-          seed={[]}
-          filterKey="category"
-          fields={[
-            { key: "name", label: "Product Name" },
-            { key: "imageUrl", label: "Product Image", type: "image" },
-            { key: "category", label: "Category" },
-            { key: "price", label: "Price (₹)", type: "number" },
-            { key: "rating", label: "Rating (1 to 5)", type: "number" },
-            { key: "tag", label: "Tag / Badge (e.g. Best seller, Stage)" },
-            { key: "description", label: "Description", type: "textarea" },
-          ]}
-        />
-      )}
-
-      {tab === "categories" && (
-        <CollectionManager
-          title="Instrument Categories"
-          description="Product categories used across the music catalog."
-          storageKey="admin-categories-v3"
-          apiCollection="music_categories"
-          seed={[]}
-          filterKey="type"
-          fields={[
-            { key: "name", label: "Category Name" },
-            { key: "type", label: "Type" },
-          ]}
-        />
-      )}
+      <MusicTrackManager />
     </div>
   );
 }
@@ -810,13 +735,39 @@ function TeacherSection() {
 }
 
 // ----------------------------------------------------
-// 5. Contact Section
+// 5. Contact Section (Contact Form Submissions & Studio Details)
 // ----------------------------------------------------
 function ContactSection() {
+  const [tab, setTab] = useState<"messages" | "studio">("messages");
+  const [enquiries, setEnquiries] = useStored<Enquiry[]>(ENQUIRIES_KEY, []);
+  const [search, setSearch] = useState("");
+  const [filterKind, setFilterKind] = useState<"all" | "contact" | "course" | "unread">("all");
+  const [loading, setLoading] = useState(false);
+
   const [settings, setSettings] = useStored("admin-settings", siteSettings);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [syncedMongo, setSyncedMongo] = useState(false);
+
+  // Sync enquiries from MongoDB on mount or when refreshed
+  const fetchEnquiries = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/enquiries");
+      const data = await res.json();
+      if (data?.enquiries && Array.isArray(data.enquiries)) {
+        setEnquiries(data.enquiries);
+      }
+    } catch {
+      // Keep local state
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchEnquiries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync settings from MongoDB collection on load
   useEffect(() => {
@@ -834,6 +785,20 @@ function ContactSection() {
       .catch(() => {});
   }, [setSettings]);
 
+  const handleToggleRead = async (enquiry: Enquiry) => {
+    const nextRead = !enquiry.read;
+    const updated = enquiries.map((e) => (e.id === enquiry.id ? { ...e, read: nextRead } : e));
+    setEnquiries(updated);
+    await markEnquiryReadRemote(enquiry.id, nextRead);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    const updated = enquiries.filter((e) => e.id !== id);
+    setEnquiries(updated);
+    await deleteEnquiryRemote(id);
+  };
+
   const contactFields = [
     { key: "phone" as const, label: "Primary Phone Number", placeholder: "+91 87678 28945" },
     { key: "altPhone" as const, label: "Alternate / WhatsApp Phone", placeholder: "+91 97673 78750" },
@@ -843,15 +808,13 @@ function ContactSection() {
     { key: "footerText" as const, label: "Footer Copyright / Text", placeholder: "© 2026 Kryso Music Academy. All music, all heart." },
   ];
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
 
-    // Save to local storage
     setSettings(settings);
 
-    // Save to MongoDB collection 'site_settings'
     try {
       await fetch("/api/collections", {
         method: "POST",
@@ -875,77 +838,376 @@ function ContactSection() {
     setTimeout(() => setSaved(false), 4000);
   };
 
+  const unreadCount = enquiries.filter((e) => !e.read).length;
+
+  const filteredEnquiries = enquiries.filter((item) => {
+    if (filterKind === "unread" && item.read) return false;
+    if (filterKind === "contact" && item.kind !== "contact") return false;
+    if (filterKind === "course" && item.kind !== "course") return false;
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchName = item.name?.toLowerCase().includes(q);
+      const matchPhone = item.phone?.toLowerCase().includes(q);
+      const matchEmail = item.email?.toLowerCase().includes(q);
+      const matchMsg = item.message?.toLowerCase().includes(q);
+      const matchCourse = item.course?.toLowerCase().includes(q);
+      return matchName || matchPhone || matchEmail || matchMsg || matchCourse;
+    }
+
+    return true;
+  });
+
   return (
-    <div className="max-w-3xl">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-6">
+    <div className="space-y-6 max-w-5xl">
+      {/* Header and Sub-tabs */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">Contact & Studio Details</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl font-extrabold text-foreground">Contact & Messages</h1>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 text-xs font-bold text-orange-400 animate-pulse">
+                <span className="size-1.5 rounded-full bg-orange-400" />
+                {unreadCount} New Unread
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure the public contact details shown on the website footer, Contact page, and Enquiry forms.
+            View submissions from the Contact Us form, direct inquiries, and manage studio details.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {syncedMongo && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-400" />
-              Database Synced
-            </span>
-          )}
+
+        <div className="flex rounded-lg bg-secondary p-1 border border-border gap-1 overflow-x-auto shrink-0">
+          <button
+            onClick={() => setTab("messages")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              tab === "messages"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <MessageSquare size={14} />
+            <span>Messages Inbox ({enquiries.length})</span>
+          </button>
+          <button
+            onClick={() => setTab("studio")}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              tab === "studio"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <PhoneCall size={14} />
+            <span>Studio Info & Settings</span>
+          </button>
         </div>
       </div>
 
-      <form className="grid gap-5" onSubmit={handleSave}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {contactFields.map((f) => (
-            <label key={f.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
-              {f.label}
+      {/* ---------------------------------------------------- */}
+      {/* 1. MESSAGES INBOX TAB                                */}
+      {/* ---------------------------------------------------- */}
+      {tab === "messages" && (
+        <div className="space-y-5">
+          {/* Controls Bar */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={settings[f.key] || ""}
-                placeholder={f.placeholder}
-                className="bg-card border-border text-foreground focus-visible:ring-primary"
-                onChange={(e) => {
-                  setSaved(false);
-                  setSettings({ ...settings, [f.key]: e.target.value });
-                }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, phone, email, or message..."
+                className="pl-9 h-10 bg-card border-border text-foreground text-xs focus-visible:ring-primary"
               />
-            </label>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-display text-base font-bold text-foreground">Studio Visit & Timings</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Information displayed for prospective students visiting the Pune studio.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
-            <div className="rounded-lg bg-secondary p-3 border border-border/50">
-              <p className="text-xs text-muted-foreground font-semibold">Studio Hours</p>
-              <p className="mt-1 font-bold text-foreground">Mon – Sat: 10:00 AM – 8:30 PM</p>
-              <p className="text-xs text-muted-foreground">Sunday: Live Masterclasses & Concerts</p>
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-            <div className="rounded-lg bg-secondary p-3 border border-border/50">
-              <p className="text-xs text-muted-foreground font-semibold">Location Zone</p>
-              <p className="mt-1 font-bold text-foreground">{settings.address || "Pune, Maharashtra, India"}</p>
-              <p className="text-xs text-muted-foreground">Concert Hall & Sound Rehearsal Space</p>
+
+            {/* Filter Pills & Refresh */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                onClick={() => setFilterKind("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterKind === "all"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All ({enquiries.length})
+              </button>
+              <button
+                onClick={() => setFilterKind("unread")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterKind === "unread"
+                    ? "bg-orange-500 text-black shadow-xs"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Unread ({unreadCount})
+              </button>
+              <button
+                onClick={() => setFilterKind("contact")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterKind === "contact"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Contact Form
+              </button>
+              <button
+                onClick={() => setFilterKind("course")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterKind === "course"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Course Enquiries
+              </button>
+              <button
+                onClick={fetchEnquiries}
+                disabled={loading}
+                className="size-8 rounded-lg bg-secondary hover:bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0 ml-1"
+                title="Refresh from Database"
+              >
+                <RefreshCw size={13} className={loading ? "animate-spin text-primary" : ""} />
+              </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-4 pt-2">
-          <Button
-            type="submit"
-            disabled={saving}
-            className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
-          >
-            {saving ? "Saving..." : "Save Contact Details"}
-          </Button>
-          {saved && (
-            <span className="text-sm font-semibold text-emerald-400">
-              ✓ Saved successfully to database & live website!
-            </span>
+          {/* Submissions Feed */}
+          {filteredEnquiries.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+              <MessageSquare size={40} className="mx-auto text-muted-foreground/40 mb-3" />
+              <h3 className="font-display text-base font-bold text-foreground">No Messages Found</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                {search
+                  ? "No messages match your search query. Try clearing the search filter."
+                  : "When users fill out the 'Send us a Message' form on the Contact page, their submissions will appear here live."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredEnquiries.map((item) => {
+                const dateFormatted = item.createdAt
+                  ? new Date(item.createdAt).toLocaleString("en-IN", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                  : "Recent";
+
+                const phoneClean = item.phone ? item.phone.replace(/[^0-9]/g, "") : "";
+                const whatsappHref = phoneClean
+                  ? `https://wa.me/${phoneClean.startsWith("91") ? phoneClean : `91${phoneClean}`}?text=${encodeURIComponent(
+                      `Hello ${item.name || ""}, thank you for reaching out to Kryso Music Academy regarding your inquiry!`
+                    )}`
+                  : null;
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border transition-all p-5 sm:p-6 relative overflow-hidden shadow-md ${
+                      !item.read
+                        ? "border-orange-500/50 bg-[#0B152B]/90 shadow-orange-500/5"
+                        : "border-border bg-card/90"
+                    }`}
+                  >
+                    {/* Unread Accent Bar */}
+                    {!item.read && (
+                      <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-orange-500" />
+                    )}
+
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                      {/* Left: User Details & Message */}
+                      <div className="space-y-3 flex-1 min-w-0">
+                        {/* Header: Name, Badges & Date */}
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="font-display text-base sm:text-lg font-extrabold text-foreground">
+                            {item.name || "Anonymous User"}
+                          </span>
+
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              item.kind === "contact"
+                                ? "bg-blue-500/15 border border-blue-500/30 text-blue-300"
+                                : "bg-purple-500/15 border border-purple-500/30 text-purple-300"
+                            }`}
+                          >
+                            {item.kind === "contact" ? "Contact Form" : "Course Enquiry"}
+                          </span>
+
+                          {item.course && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[10px] font-extrabold text-primary">
+                              Course: {item.course}
+                            </span>
+                          )}
+
+                          {!item.read && (
+                            <span className="px-2 py-0.5 rounded-full bg-orange-500 text-black text-[10px] font-black uppercase tracking-widest">
+                              NEW UNREAD
+                            </span>
+                          )}
+
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {dateFormatted}
+                          </span>
+                        </div>
+
+                        {/* Contact Chips */}
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+                          {item.phone && (
+                            <a
+                              href={`tel:${item.phone.replace(/[^0-9+]/g, "")}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-primary transition-colors"
+                            >
+                              <Phone size={12} className="text-primary" />
+                              <span className="font-mono font-bold">{item.phone}</span>
+                            </a>
+                          )}
+
+                          {item.email && (
+                            <a
+                              href={`mailto:${item.email}?subject=Kryso Music Academy Inquiry Reply`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-primary transition-colors"
+                            >
+                              <Mail size={12} className="text-primary" />
+                              <span>{item.email}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Message Content Box */}
+                        <div className="rounded-xl border border-blue-900/40 bg-[#070F1E]/80 p-3.5 sm:p-4 text-xs sm:text-sm text-blue-100/90 leading-relaxed whitespace-pre-wrap">
+                          {item.message || "No message provided."}
+                        </div>
+                      </div>
+
+                      {/* Right: Quick Action Controls */}
+                      <div className="flex lg:flex-col items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/50">
+                        {/* WhatsApp Direct Reply */}
+                        {whatsappHref && (
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-xs transition-transform hover:scale-105 shadow-xs"
+                            title="Reply on WhatsApp"
+                          >
+                            <WhatsAppIcon size={14} />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+
+                        {/* Email Reply */}
+                        {item.email && (
+                          <a
+                            href={`mailto:${item.email}?subject=Regarding your Kryso Music inquiry`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary hover:bg-card border border-border text-xs font-bold text-foreground transition-colors"
+                            title="Reply via Email"
+                          >
+                            <Mail size={13} className="text-primary" />
+                            <span>Email</span>
+                          </a>
+                        )}
+
+                        {/* Mark Read/Unread */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRead(item)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                            item.read
+                              ? "bg-secondary/60 hover:bg-secondary border-border text-muted-foreground hover:text-foreground"
+                              : "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25"
+                          }`}
+                        >
+                          <CheckCircle2 size={13} className={item.read ? "text-muted-foreground" : "text-emerald-400"} />
+                          <span>{item.read ? "Mark Unread" : "Mark Read"}</span>
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          className="size-8 rounded-lg bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground border border-destructive/25 text-destructive grid place-items-center transition-colors cursor-pointer"
+                          title="Delete message"
+                          aria-label="Delete message"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </form>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 2. STUDIO SETTINGS TAB                               */}
+      {/* ---------------------------------------------------- */}
+      {tab === "studio" && (
+        <form className="grid gap-5 max-w-3xl" onSubmit={handleSaveSettings}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {contactFields.map((f) => (
+              <label key={f.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
+                {f.label}
+                <Input
+                  value={settings[f.key] || ""}
+                  placeholder={f.placeholder}
+                  className="bg-card border-border text-foreground focus-visible:ring-primary"
+                  onChange={(e) => {
+                    setSaved(false);
+                    setSettings({ ...settings, [f.key]: e.target.value });
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="font-display text-base font-bold text-foreground">Studio Visit & Timings</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Information displayed for prospective students visiting the Pune studio.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+              <div className="rounded-lg bg-secondary p-3 border border-border/50">
+                <p className="text-xs text-muted-foreground font-semibold">Studio Hours</p>
+                <p className="mt-1 font-bold text-foreground">Mon – Sat: 10:00 AM – 8:30 PM</p>
+                <p className="text-xs text-muted-foreground">Sunday: Live Masterclasses & Concerts</p>
+              </div>
+              <div className="rounded-lg bg-secondary p-3 border border-border/50">
+                <p className="text-xs text-muted-foreground font-semibold">Location Zone</p>
+                <p className="mt-1 font-bold text-foreground">{settings.address || "Pune, Maharashtra, India"}</p>
+                <p className="text-xs text-muted-foreground">Concert Hall & Sound Rehearsal Space</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-2">
+            <Button
+              type="submit"
+              disabled={saving}
+              className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+            >
+              {saving ? "Saving..." : "Save Contact Details"}
+            </Button>
+            {saved && (
+              <span className="text-sm font-semibold text-emerald-400">
+                ✓ Saved successfully to database & live website!
+              </span>
+            )}
+          </div>
+        </form>
+      )}
     </div>
   );
 }
@@ -1305,41 +1567,42 @@ function SettingSection() {
             <h3 className="font-display text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <Eye size={15} className="text-primary" /> Live Footer Preview
             </h3>
-            <div className="rounded-xl border border-border/80 bg-background/90 p-6 text-foreground text-xs space-y-6">
+            <div className="rounded-xl border border-blue-900/60 bg-[#030712] p-6 text-white text-xs space-y-6">
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="lg:col-span-2 space-y-2">
                   <Image src="/kryso-logo.png" alt="KRYSO" width={110} height={38} className="h-6 w-auto object-contain" />
-                  <p className="text-muted-foreground leading-relaxed text-xs max-w-sm">
-                    {settings.footerDescription || `${settings.tagline || "Learn Music and Enjoy Music"}. A concert-grade music academy in Pune where passion meets world-class mentorship.`}
+                  <p className="text-blue-200/80 leading-relaxed text-xs max-w-sm">
+                    {settings.footerDescription || `${settings.tagline || "Learn Music and Enjoy Music"}. Concert-grade sound, original releases, and world-class studio training in Pune.`}
                   </p>
-                  <div className="flex items-center gap-2 pt-2 text-muted-foreground">
-                    {settings.spotifyUrl && <span className="rounded-full border border-border p-1.5"><SpotifyIcon size={13} className="text-emerald-400" /></span>}
-                    {settings.youtubeUrl && <span className="rounded-full border border-border p-1.5"><Youtube size={13} className="text-red-400" /></span>}
-                    {settings.instagramUrl && <span className="rounded-full border border-border p-1.5"><Instagram size={13} className="text-pink-400" /></span>}
-                    {settings.facebookUrl && <span className="rounded-full border border-border p-1.5"><Facebook size={13} className="text-blue-400" /></span>}
+                  <div className="flex items-center gap-2 pt-2 text-blue-200">
+                    {settings.spotifyUrl && <span className="rounded-full border border-blue-900/60 bg-[#0B152B] p-1.5"><SpotifyIcon size={13} className="text-emerald-400" /></span>}
+                    {settings.youtubeUrl && <span className="rounded-full border border-blue-900/60 bg-[#0B152B] p-1.5"><Youtube size={13} className="text-red-400" /></span>}
+                    {settings.instagramUrl && <span className="rounded-full border border-blue-900/60 bg-[#0B152B] p-1.5"><Instagram size={13} className="text-pink-400" /></span>}
+                    {settings.facebookUrl && <span className="rounded-full border border-blue-900/60 bg-[#0B152B] p-1.5"><Facebook size={13} className="text-blue-400" /></span>}
                   </div>
                 </div>
                 <div>
-                  <p className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground mb-2">Explore</p>
-                  <ul className="space-y-1.5 text-muted-foreground">
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-orange-400 mb-2">Explore</p>
+                  <ul className="space-y-1.5 text-blue-200/80">
+                    <li>KRYSO Spotlight & Press</li>
                     <li>Music tracks & releases</li>
                     <li>Music classes & academy</li>
-                    <li>Contact & studio visits</li>
+                    <li>Stage Techrider & Contacts</li>
                   </ul>
                 </div>
                 <div>
-                  <p className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground mb-2">Say hello</p>
-                  <ul className="space-y-1.5 text-muted-foreground">
-                    {settings.phone && <li className="text-foreground">{settings.phone}</li>}
-                    {settings.altPhone && <li className="text-foreground">{settings.altPhone}</li>}
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-orange-400 mb-2">Say hello</p>
+                  <ul className="space-y-1.5 text-blue-200/80">
+                    {settings.phone && <li className="text-white font-bold">{settings.phone}</li>}
+                    {settings.altPhone && <li className="text-white font-bold">{settings.altPhone}</li>}
                     {settings.email && <li>{settings.email}</li>}
                     <li>{settings.address || "Pune, Maharashtra, India"}</li>
                   </ul>
                 </div>
               </div>
-              <div className="border-t border-border/50 pt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+              <div className="border-t border-blue-900/40 pt-3 flex items-center justify-between text-[11px] text-blue-200/70">
                 <span>{settings.footerText || "© 2026 Kryso Music Academy. All music, all heart."}</span>
-                <span>Admin login</span>
+                <span className="text-orange-400 font-semibold">Admin Console →</span>
               </div>
             </div>
           </div>
