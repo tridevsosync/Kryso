@@ -1524,7 +1524,14 @@ export function HomeClient() {
             <img
               src={formatImageUrl(shows.bgImageUrl)}
               alt="Kryso Shows Live Stage Background"
-              className="size-full object-cover object-center opacity-30 filter brightness-95 contrast-110 scale-105"
+              style={{
+                objectPosition: `${shows?.bgPositionX ?? 50}% ${shows?.bgPositionY ?? 50}%`,
+                transform: `scale(${(shows?.bgZoom ?? 100) / 100})`,
+                transformOrigin: `${shows?.bgPositionX ?? 50}% ${shows?.bgPositionY ?? 50}%`,
+                filter: `brightness(${shows?.bgBrightness ?? 95}%) contrast(${shows?.bgContrast ?? 110}%) blur(${shows?.bgBlur ?? 0}px)`,
+                opacity: (shows?.bgOpacity ?? 30) / 100,
+              }}
+              className="size-full object-cover transition-all duration-300"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}

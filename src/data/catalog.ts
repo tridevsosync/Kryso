@@ -499,6 +499,13 @@ export type KrysoShowsData = {
   bgImageUrl?: string;
   bgLinkUrl?: string;
   bgLinkText?: string;
+  bgPositionX?: number; // 0 to 100% horizontal alignment (default: 50)
+  bgPositionY?: number; // 0 to 100% vertical alignment (default: 50)
+  bgZoom?: number; // 100 to 250% scale (default: 100)
+  bgOpacity?: number; // 10 to 100% opacity (default: 30)
+  bgBrightness?: number; // 50 to 150% brightness (default: 95)
+  bgContrast?: number; // 50 to 150% contrast (default: 110)
+  bgBlur?: number; // 0 to 20px blur (default: 0)
   
   // Upcoming Events Slot
   upcomingEventsEnabled?: boolean;
@@ -589,6 +596,13 @@ export const defaultKrysoShowsData: KrysoShowsData = {
   titleHighlight: "SHOWS",
   subtitle: "Electrifying marquee festival stages across India and iconic international venues worldwide.",
   bgImageUrl: "/kryso-shows.jpg",
+  bgPositionX: 50,
+  bgPositionY: 50,
+  bgZoom: 100,
+  bgOpacity: 30,
+  bgBrightness: 95,
+  bgContrast: 110,
+  bgBlur: 0,
   upcomingEventsEnabled: true,
   upcomingEventsBadge: "TOUR & GIG CALENDAR 2026",
   upcomingEventsHeading: "UPCOMING SHOWS & FESTIVAL DATES",

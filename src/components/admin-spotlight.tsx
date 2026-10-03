@@ -46,6 +46,9 @@ import {
   FileText,
   PlusCircle,
   Users,
+  Crop,
+  Maximize2,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3368,7 +3371,7 @@ export function SpotlightManager() {
             </div>
 
             {/* Background Artwork & Optional Section Link */}
-            <div className="space-y-4 pt-4 border-t border-border/60">
+            <div className="space-y-6 pt-4 border-t border-border/60">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Background Image URL / Upload */}
                 <div className="space-y-2">
@@ -3443,37 +3446,305 @@ export function SpotlightManager() {
                 </div>
               </div>
 
-              {/* Background Image Live Preview */}
-              {sh.bgImageUrl && (
-                <div className="flex items-center gap-3 p-3 rounded-2xl border border-border/70 bg-secondary/40">
-                  <div className="relative size-16 sm:size-20 rounded-xl overflow-hidden border border-border bg-black shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={formatImageUrl(sh.bgImageUrl)}
-                      alt="Shows Section Backdrop Preview"
-                      className="size-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = "/kryso-shows.jpg";
-                      }}
-                    />
+              {/* LIVE SHOWS SECTION BACKGROUND FRAMING & CROP PREVIEW */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Maximize2 size={13} className="text-primary" /> Live Shows Section Backdrop Preview (Fixed Frame)
+                  </label>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                    <span>Zoom: {sh.bgZoom ?? 100}%</span>
+                    <span>•</span>
+                    <span>Position: X:{sh.bgPositionX ?? 50}% Y:{sh.bgPositionY ?? 50}%</span>
                   </div>
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-foreground truncate">
-                      Shows Background Image Active
-                    </p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">
-                      {extractGoogleDriveId(sh.bgImageUrl)
-                        ? "Google Drive link formatted automatically for live rendering."
-                        : "Custom background backdrop active for the Shows & Festivals section."}
+                </div>
+
+                {/* Fixed Live Preview Stage */}
+                <div className="relative aspect-[16/6] min-h-[220px] sm:min-h-[250px] w-full rounded-3xl overflow-hidden border-2 border-primary/40 shadow-2xl bg-[#030712] flex items-center justify-center select-none">
+                  {/* Dynamic Adjusted Background Image */}
+                  {sh.bgImageUrl ? (
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={formatImageUrl(sh.bgImageUrl)}
+                        alt="Shows Backdrop Preview"
+                        style={{
+                          objectPosition: `${sh.bgPositionX ?? 50}% ${sh.bgPositionY ?? 50}%`,
+                          transform: `scale(${(sh.bgZoom ?? 100) / 100})`,
+                          transformOrigin: `${sh.bgPositionX ?? 50}% ${sh.bgPositionY ?? 50}%`,
+                          filter: `brightness(${sh.bgBrightness ?? 95}%) contrast(${sh.bgContrast ?? 110}%) blur(${sh.bgBlur ?? 0}px)`,
+                          opacity: (sh.bgOpacity ?? 30) / 100,
+                        }}
+                        className="size-full object-cover transition-all duration-200"
+                        onError={(e) => {
+                          e.currentTarget.src = "/kryso-shows.jpg";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/40 font-bold text-xs uppercase tracking-wider">
+                      No Background Image Set
+                    </div>
+                  )}
+
+                  {/* Dark Stage Atmosphere & Glow Gradients */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/95 via-[#030712]/80 to-[#030712]/95 pointer-events-none" />
+                  <div className="pointer-events-none absolute -top-12 left-1/4 size-48 rounded-full bg-blue-600/20 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-12 right-1/4 size-48 rounded-full bg-orange-500/20 blur-3xl" />
+
+                  {/* Live Shows Header Overlay Text */}
+                  <div className="relative z-10 text-center max-w-xl mx-auto p-4 space-y-2 pointer-events-none">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-orange-400">
+                      <Flame size={12} className="text-orange-500" />
+                      <span>{sh.badge || defaultKrysoShowsData.badge}</span>
+                    </div>
+                    <h4 className="font-display text-xl sm:text-2xl lg:text-3xl font-black uppercase text-white drop-shadow">
+                      {sh.title || "KRYSO"}{" "}
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
+                        {sh.titleHighlight || "SHOWS"}
+                      </span>
+                    </h4>
+                    <p className="text-xs text-blue-200/80 line-clamp-2">
+                      {sh.subtitle || defaultKrysoShowsData.subtitle}
                     </p>
                     {sh.bgLinkUrl && (
-                      <p className="text-[10px] text-primary truncate">
-                        Linked to: {sh.bgLinkUrl}
-                      </p>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-400 bg-orange-500/10 border border-orange-500/30 px-3 py-0.5 rounded-full">
+                        {sh.bgLinkText || "View Tour Highlights / Gallery"} <ExternalLink size={10} />
+                      </span>
                     )}
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* QUICK FRAMING FOCUS PRESETS */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Crop size={13} className="text-primary" /> Quick Framing Focus Presets
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateShows({ bgPositionX: 50, bgPositionY: 50, bgZoom: 100 })}
+                    className={`rounded-xl text-[11px] font-bold h-9 ${
+                      sh.bgPositionX === 50 && sh.bgPositionY === 50 && (sh.bgZoom ?? 100) === 100
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Center Focus
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateShows({ bgPositionX: 50, bgPositionY: 20, bgZoom: 100 })}
+                    className={`rounded-xl text-[11px] font-bold h-9 ${
+                      sh.bgPositionX === 50 && sh.bgPositionY === 20
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Top (Stage Head)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateShows({ bgPositionX: 50, bgPositionY: 80, bgZoom: 100 })}
+                    className={`rounded-xl text-[11px] font-bold h-9 ${
+                      sh.bgPositionX === 50 && sh.bgPositionY === 80
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Bottom (Crowd)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateShows({ bgPositionX: 25, bgPositionY: 50, bgZoom: 100 })}
+                    className={`rounded-xl text-[11px] font-bold h-9 ${
+                      sh.bgPositionX === 25 && sh.bgPositionY === 50
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Left Align
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateShows({ bgPositionX: 75, bgPositionY: 50, bgZoom: 100 })}
+                    className={`rounded-xl text-[11px] font-bold h-9 ${
+                      sh.bgPositionX === 75 && sh.bgPositionY === 50
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    Right Align
+                  </Button>
+                </div>
+              </div>
+
+              {/* FINE-TUNE CROP, ZOOM & COLOR SLIDERS */}
+              <div className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-secondary/40 space-y-5">
+                <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Sliders size={13} className="text-primary" /> Fine-Tune Image Position, Zoom, Opacity & Filters
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateShows({
+                        bgPositionX: 50,
+                        bgPositionY: 50,
+                        bgZoom: 100,
+                        bgOpacity: 30,
+                        bgBrightness: 95,
+                        bgContrast: 110,
+                        bgBlur: 0,
+                      })
+                    }
+                    className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw size={11} /> Reset Adjustments
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Zoom / Scale */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">🔍 Image Zoom (Crop Scale)</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgZoom ?? 100}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="100"
+                      max="240"
+                      step="2"
+                      value={sh.bgZoom ?? 100}
+                      onChange={(e) => updateShows({ bgZoom: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>100% (Fit)</span>
+                      <span>240% (Zoom In)</span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Position (X Offset) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">↔️ Horizontal Position (X Pan)</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgPositionX ?? 50}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={sh.bgPositionX ?? 50}
+                      onChange={(e) => updateShows({ bgPositionX: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>0% (Left)</span>
+                      <span>50% (Center)</span>
+                      <span>100% (Right)</span>
+                    </div>
+                  </div>
+
+                  {/* Vertical Position (Y Offset) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">↕️ Vertical Position (Y Pan)</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgPositionY ?? 50}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={sh.bgPositionY ?? 50}
+                      onChange={(e) => updateShows({ bgPositionY: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>0% (Top)</span>
+                      <span>50% (Middle)</span>
+                      <span>100% (Bottom)</span>
+                    </div>
+                  </div>
+
+                  {/* Background Opacity */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">🌓 Backdrop Opacity</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgOpacity ?? 30}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="2"
+                      value={sh.bgOpacity ?? 30}
+                      onChange={(e) => updateShows({ bgOpacity: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>10% (Dark Ambient)</span>
+                      <span>100% (High Glow)</span>
+                    </div>
+                  </div>
+
+                  {/* Brightness */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">💡 Brightness Filter</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgBrightness ?? 95}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="40"
+                      max="160"
+                      step="5"
+                      value={sh.bgBrightness ?? 95}
+                      onChange={(e) => updateShows({ bgBrightness: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>40% (Dim)</span>
+                      <span>160% (Bright)</span>
+                    </div>
+                  </div>
+
+                  {/* Background Blur */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-foreground">🌫️ Background Blur</span>
+                      <span className="font-mono text-primary font-bold">{sh.bgBlur ?? 0}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="12"
+                      step="1"
+                      value={sh.bgBlur ?? 0}
+                      onChange={(e) => updateShows({ bgBlur: Number(e.target.value) })}
+                      className="w-full accent-primary h-1.5 rounded-lg cursor-pointer bg-secondary"
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>0px (Sharp)</span>
+                      <span>12px (Smooth Blur)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
