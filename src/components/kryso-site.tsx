@@ -205,15 +205,15 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <header
         className={`sticky top-0 z-40 transition-all duration-300 ${
           scrolled
-            ? "bg-background/85 backdrop-blur-2xl border-b border-border/80 shadow-[0_8px_30px_rgba(0,0,0,0.4)] py-2 sm:py-2.5"
-            : "bg-background/70 backdrop-blur-xl border-b border-border/60 py-3 sm:py-3.5"
+            ? "bg-[#030712]/90 backdrop-blur-2xl border-b border-orange-500/30 shadow-[0_8px_32px_rgba(0,0,0,0.6)] py-2 sm:py-2.5"
+            : "bg-[#030712]/75 backdrop-blur-xl border-b border-border/70 py-3 sm:py-3.5"
         }`}
       >
-        {/* Subtle Ambient Glowing Accent Line at Bottom of Navbar */}
-        <div className="absolute bottom-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/40 to-transparent pointer-events-none" />
+        {/* Subtle Glowing Laser Ambient Accent Line at Bottom of Navbar */}
+        <div className="absolute bottom-0 inset-x-0 h-[1.5px] animate-navbar-laser pointer-events-none opacity-85" />
 
         <div className="page-shell flex items-center justify-between gap-3 sm:gap-6">
-          {/* 1. Left: Brand Logo */}
+          {/* 1. Left: Brand Logo with dynamic neon glow */}
           <Link href="/" className="flex items-center gap-3 shrink-0 py-0.5 group" aria-label="KRYSO home">
             <div className="relative">
               <Image
@@ -222,81 +222,93 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 width={140}
                 height={49}
                 priority
-                className="h-7 sm:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-7 sm:h-9 w-auto object-contain transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-[0_0_14px_rgba(249,115,22,0.7)]"
               />
             </div>
           </Link>
 
-          {/* 2. Center: Floating Frosted Glass Capsule Navigation */}
-          <nav className="hidden md:flex items-center p-1.5 rounded-full bg-secondary/60 border border-border/80 backdrop-blur-md shadow-inner gap-1">
+          {/* 2. Center: Floating Frosted Glass Capsule Navigation with smooth animations */}
+          <nav className="hidden md:flex items-center p-1.5 rounded-full bg-secondary/70 border border-border/80 backdrop-blur-xl shadow-lg shadow-black/20 gap-1.5 relative overflow-hidden group/nav">
+            {/* Ambient light shimmer effect across capsule */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent opacity-0 group-hover/nav:opacity-100 transition-opacity duration-500 -z-0" />
+
             {links.map((link) => {
               const isActive = link.to === "/" ? pathname === "/" : link.to.startsWith("/#") ? false : pathname.startsWith(link.to);
               return (
                 <Link
                   key={link.to}
                   href={link.to}
-                  className={`relative px-4 py-1.5 rounded-full text-xs lg:text-sm font-bold tracking-wide transition-all duration-300 cursor-pointer ${
+                  className={`relative px-4 py-1.5 rounded-full text-xs lg:text-sm font-extrabold tracking-wide transition-all duration-300 cursor-pointer select-none ${
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                      ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-black shadow-lg shadow-orange-500/30 scale-105 animate-nav-active-pill z-10 font-black"
+                      : "text-muted-foreground hover:text-white hover:bg-white/10 hover:shadow-[0_0_12px_rgba(249,115,22,0.15)] hover:scale-105"
                   }`}
                 >
-                  {link.label}
+                  <span className="relative z-10">{link.label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-amber-300 blur-[2px] -z-10" />
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* 3. Right: Live Call Studio */}
+          {/* 3. Right: Live Call Studio with Border Glow */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Live Studio Call Button */}
             <a
               href={`tel:${phoneClean}`}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary via-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 text-primary-foreground px-3.5 sm:px-5 h-9 sm:h-10 font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.03] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer"
+              className="relative overflow-hidden group/call inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-black px-3.5 sm:px-5 h-9 sm:h-10 font-black shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.04] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer border border-orange-300/60 animate-border-glow-call"
               title={`Call Studio: ${phoneDisplay}`}
               aria-label={`Call Studio: ${phoneDisplay}`}
             >
-              <span className="relative flex size-2 shrink-0">
-                <span className="animate-ping absolute inline-flex size-full rounded-full bg-white opacity-75"></span>
+              {/* Sweeping metallic light sheen */}
+              <span className="pointer-events-none absolute inset-0 -top-1 -bottom-1 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-demo-shimmer -z-0" />
+
+              <span className="relative flex size-2 shrink-0 z-10">
+                <span className="animate-ping absolute inline-flex size-full rounded-full bg-white opacity-90"></span>
                 <span className="relative inline-flex rounded-full size-2 bg-white"></span>
               </span>
-              <Phone size={13} className="shrink-0" />
-              <span className="hidden sm:inline font-mono tracking-tight">{phoneDisplay}</span>
-              <span className="sm:hidden font-bold">Call</span>
+              <Phone size={13} className="shrink-0 z-10 group-hover/call:animate-phone-ring" />
+              <span className="hidden sm:inline font-mono font-extrabold tracking-tight z-10">{phoneDisplay}</span>
+              <span className="sm:hidden font-bold z-10">Call</span>
             </a>
 
-            {/* Mobile Hamburger Toggle Button */}
+            {/* Mobile Hamburger Toggle Button with smooth rotation transition */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-foreground hover:bg-secondary size-9 rounded-full border border-border/80 cursor-pointer"
+              className={`md:hidden text-foreground hover:bg-secondary size-9 rounded-full border border-border/80 cursor-pointer transition-transform duration-300 ${
+                mobileOpen ? "rotate-90 bg-secondary" : "rotate-0"
+              }`}
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               onClick={() => setMobileOpen((v) => !v)}
             >
-              {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+              {mobileOpen ? <X size={19} className="text-orange-400" /> : <Menu size={19} />}
             </Button>
           </div>
         </div>
 
-        {/* 4. Mobile Navigation Dropdown Sheet */}
+        {/* 4. Mobile Navigation Dropdown Sheet with Staggered Entrance */}
         {mobileOpen && (
-          <div className="page-shell mt-3 border-t border-border/80 bg-background/95 backdrop-blur-2xl py-4 md:hidden animate-in fade-in-50 slide-in-from-top-3 duration-200 rounded-b-3xl shadow-2xl space-y-3">
+          <div className="page-shell mt-3 border-t border-orange-500/30 bg-[#030712]/95 backdrop-blur-2xl py-4 md:hidden animate-in fade-in-50 slide-in-from-top-4 duration-300 rounded-b-3xl shadow-2xl shadow-black/60 space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              {links.map((link) => {
+              {links.map((link, idx) => {
                 const isActive = link.to === "/" ? pathname === "/" : link.to.startsWith("/#") ? false : pathname.startsWith(link.to);
                 return (
                   <Link
                     onClick={() => setMobileOpen(false)}
                     key={link.to}
                     href={link.to}
-                    className={`flex items-center justify-between rounded-2xl px-4 py-3 font-bold text-xs sm:text-sm transition-all border ${
+                    style={{ animationDelay: `${idx * 40}ms` }}
+                    className={`flex items-center justify-between rounded-2xl px-4 py-3 font-extrabold text-xs sm:text-sm transition-all border duration-300 animate-in fade-in-50 slide-in-from-left-2 ${
                       isActive
-                        ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
-                        : "bg-secondary/60 text-foreground border-border/60 hover:bg-secondary hover:text-primary"
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-black border-orange-300 shadow-md shadow-orange-500/25 animate-border-glow-orange font-black"
+                        : "bg-secondary/60 text-foreground border-border/60 hover:bg-secondary hover:border-orange-500/40 hover:text-orange-400"
                     }`}
                   >
                     <span>{link.label}</span>
-                    <ArrowUpRight size={14} className="opacity-60" />
+                    <ArrowUpRight size={14} className={isActive ? "text-black" : "opacity-60"} />
                   </Link>
                 );
               })}
@@ -306,7 +318,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               <a
                 href={`tel:${phoneClean}`}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 h-11 rounded-full bg-gradient-to-r from-primary to-amber-500 font-bold text-primary-foreground shadow-lg shadow-primary/25 text-xs sm:text-sm hover:opacity-95 transition-all cursor-pointer font-mono"
+                className="flex items-center justify-center gap-2 h-11 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 font-extrabold text-black shadow-lg shadow-orange-500/25 text-xs sm:text-sm hover:opacity-95 transition-all cursor-pointer font-mono border border-orange-300/60 animate-border-glow-call"
               >
                 <Phone size={15} />
                 <span>Call Studio: {phoneDisplay}</span>

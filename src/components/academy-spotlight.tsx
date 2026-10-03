@@ -5,7 +5,8 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { useStored } from "@/lib/kryso-storage";
 import { formatImageUrl } from "@/lib/media-utils";
-import defaultHeroImage from "@/assets/dj-producer-hero.png";
+
+const defaultHeroImage = "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg";
 
 export interface AcademySpotlightImage {
   id: string;
@@ -16,9 +17,9 @@ export interface AcademySpotlightImage {
 
 export const defaultAcademySpotlightImages: AcademySpotlightImage[] = [
   {
-    id: "img-dj-denim",
-    url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
-    alt: "Pro DJ Music Producer in Denim Jacket",
+    id: "img-dj-console-main",
+    url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
+    alt: "Pro DJ Music Production & Live Decks",
     caption: "Tomorrowland Certified DJ & Producer",
   },
   {
@@ -101,7 +102,7 @@ export function AcademySpotlight() {
     e.preventDefault();
     window.dispatchEvent(
       new CustomEvent("kryso:open-enquiry", {
-        detail: { course: "PRO DJ & MUSIC PRODUCTION" },
+        detail: { course: "PRO. DJ & MUSIC PRODUCTION" },
       })
     );
   };
@@ -152,12 +153,12 @@ export function AcademySpotlight() {
                 {/* Badge */}
                 <div className="mb-3 sm:mb-4 inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-primary">
                   <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-                  <span>PRO DJ & MUSIC PRODUCTION</span>
+                  <span>PRO. DJ & MUSIC PRODUCTION</span>
                 </div>
 
                 {/* Title */}
                 <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-extrabold leading-[1.15] sm:leading-[1.12] tracking-tight text-foreground">
-                  Get Identified as a <span className="text-primary font-black">PRO DJ</span> & Music Producer
+                  Get Identified as a <span className="text-primary font-black">PRO. DJ</span> & Music Producer
                 </h1>
 
                 {/* Description */}
@@ -173,7 +174,7 @@ export function AcademySpotlight() {
                 <button
                   type="button"
                   onClick={handleScrollToCourses}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] text-center cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] text-center cursor-pointer animate-border-glow-orange border border-orange-300/60"
                 >
                   View all courses <ArrowRight size={16} />
                 </button>
@@ -181,9 +182,9 @@ export function AcademySpotlight() {
                 <button
                   type="button"
                   onClick={handleOpenEnquiry}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center cursor-pointer animate-border-glow-secondary border border-orange-400/60"
                 >
-                  enquiry <ArrowRight size={16} />
+                  Enquiry <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -205,6 +206,7 @@ export function AcademySpotlight() {
                   alt="Pro DJ Music Producer"
                   fill
                   priority
+                  unoptimized
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="absolute inset-0 size-full object-cover object-center transition-all duration-700 brightness-95 contrast-110"
                 />

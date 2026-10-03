@@ -269,7 +269,10 @@ export type MusicTrack = {
   downloadUrl?: string; // Direct ZIP file / download package link (Google Drive, Dropbox, etc.)
   audioFiles?: TrackAudioItem[]; // Legacy multi audio tracks bundle
   isLocked: boolean; // Lock button / status
+  isTop?: boolean; // When selected as Top, shown in Download section
   genre?: string;
+  bpm?: string;
+  key?: string;
   spotifyUrl?: string;
   youtubeUrl?: string;
   instagramUrl?: string;
@@ -277,6 +280,61 @@ export type MusicTrack = {
   downloadCount?: number;
   createdAt?: string;
 };
+
+export const defaultMusicTracks: MusicTrack[] = [
+  {
+    id: "track-1",
+    name: "Aaja Mahi (Festival Mix)",
+    singer: "Kryso & Deep Jandu",
+    imageUrl: "/kryso-hero.jpg",
+    audioUrl: "https://res.cloudinary.com/tridevsosync/video/upload/v1790597850/kryso/sample-audio.mp3",
+    downloadUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    genre: "Festival Bass / EDM",
+    isLocked: false,
+    isTop: true,
+    downloadCount: 1420,
+    createdAt: "2026-01-15T00:00:00.000Z",
+  },
+  {
+    id: "track-2",
+    name: "Bombay Nightlife",
+    singer: "Kryso",
+    imageUrl: "/kryso-dj-music-producer-bg.png",
+    audioUrl: "https://res.cloudinary.com/tridevsosync/video/upload/v1790597850/kryso/sample-audio.mp3",
+    downloadUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    genre: "Tech House / Club",
+    isLocked: true,
+    isTop: true,
+    downloadCount: 980,
+    createdAt: "2026-02-01T00:00:00.000Z",
+  },
+  {
+    id: "track-3",
+    name: "Desert Mirage (Live Arena Edit)",
+    singer: "Kryso ft. Sound of Indus",
+    imageUrl: "/kryso-shows.jpg",
+    audioUrl: "https://res.cloudinary.com/tridevsosync/video/upload/v1790597850/kryso/sample-audio.mp3",
+    downloadUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    genre: "Afro House / Melodic",
+    isLocked: false,
+    isTop: true,
+    downloadCount: 840,
+    createdAt: "2026-02-18T00:00:00.000Z",
+  },
+  {
+    id: "track-4",
+    name: "Neon Horizon 2026",
+    singer: "Kryso",
+    imageUrl: "/music-hero.jpg",
+    audioUrl: "https://res.cloudinary.com/tridevsosync/video/upload/v1790597850/kryso/sample-audio.mp3",
+    downloadUrl: "https://drive.google.com/file/d/1KivN_SsCYal3jJRRTWA-bf52mklOc0nP/view?usp=sharing",
+    genre: "Mainstage Anthem",
+    isLocked: true,
+    isTop: true,
+    downloadCount: 1250,
+    createdAt: "2026-03-01T00:00:00.000Z",
+  },
+];
 
 export type SpotlightSlide = {
   id: string;
@@ -293,15 +351,15 @@ export type SpotlightSlide = {
 export const defaultSpotlightSlides: SpotlightSlide[] = [
   {
     id: "dj-pro-producer",
-    title: "Get Identified as a PRO DJ & Music Producer",
+    title: "Get Identified as a PRO. DJ & Music Producer",
     description:
       "Tomorrowland Academy is where music creators grow, at every stage of their journey. From first mixes to polished productions, from online courses to in-person experiences, each step is designed to build skills, confidence and artistic identity.",
     primaryBtnText: "View all courses",
     primaryBtnLink: "/academy",
-    secondaryBtnText: "enquiry",
+    secondaryBtnText: "Enquiry",
     secondaryBtnLink: "enquiry",
-    imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
-    tag: "PRO DJ & MUSIC PRODUCTION",
+    imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
+    tag: "PRO. DJ & MUSIC PRODUCTION",
   },
   {
     id: "live-stage-mastery",
@@ -312,7 +370,7 @@ export const defaultSpotlightSlides: SpotlightSlide[] = [
     primaryBtnLink: "/music",
     secondaryBtnText: "Book studio session",
     secondaryBtnLink: "enquiry",
-    imageUrl: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
+    imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop",
     tag: "STAGE & PERFORMANCE",
   },
 ];
@@ -331,19 +389,22 @@ export type KrysoPageConfig = {
   autoPlayVideo: boolean;
   loopVideo?: boolean;
   videoTitle?: string;
+  backgroundImageUrl?: string;
+  backgroundOverlayOpacity?: number; // 0 - 100
+  backgroundBlur?: number; // 0 - 20 (px)
 };
 
 export const defaultKrysoPageImages: KrysoPageImage[] = [
   {
     id: "kryso-img-1",
-    url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
+    url: "/kryso-dj-music-producer-bg.png",
     title: "Live Stage & Concert Experience",
     caption: "Master live performance, DJing, and concert stage energy with seasoned mentors.",
     link: "/academy",
   },
   {
     id: "kryso-img-2",
-    url: "/kryso-dj-music-producer-bg.png",
+    url: "/kryso-music-producer-presskit.png",
     title: "Acoustic & Studio Production",
     caption: "State-of-the-art recording equipment, soundproofing, and hands-on guidance.",
     link: "/music",
@@ -363,6 +424,9 @@ export const defaultKrysoPageConfig: KrysoPageConfig = {
   autoPlayVideo: true,
   loopVideo: true,
   videoTitle: "KRYSO Live Concert & Studio Showcase",
+  backgroundImageUrl: "/kryso-dj-music-producer-bg.png",
+  backgroundOverlayOpacity: 82,
+  backgroundBlur: 0,
 };
 
 export type KrysoBiography = {
@@ -433,6 +497,8 @@ export type KrysoShowsData = {
   titleHighlight?: string;
   subtitle?: string;
   bgImageUrl?: string;
+  bgLinkUrl?: string;
+  bgLinkText?: string;
   
   // Upcoming Events Slot
   upcomingEventsEnabled?: boolean;
@@ -738,6 +804,42 @@ export const defaultKrysoTechriderData: KrysoTechriderData = {
   facebookUrl: "https://facebook.com/krysomusic",
   soundcloudUrl: "https://soundcloud.com/kyrso_music",
   instagramUrl: "https://instagram.com/_krysomusic",
+};
+
+export type MusicHeaderData = {
+  badge?: string;
+  title?: string;
+  titleHighlight?: string;
+  description?: string;
+  bgImageUrl?: string;
+  cropPosition?: "left" | "center" | "right" | "top" | "bottom" | "custom";
+  positionX?: number; // 0% to 100%
+  positionY?: number; // 0% to 100%
+  zoom?: number; // 100% to 250%
+  brightness?: number; // 50% to 150%
+  contrast?: number; // 50% to 150%
+  opacity?: number; // 20% to 100%
+  badge1?: string;
+  badge2?: string;
+  badge3?: string;
+};
+
+export const defaultMusicHeaderData: MusicHeaderData = {
+  badge: "Kryso Official Music Releases",
+  title: "Music Releases &",
+  titleHighlight: "Exclusive Download.",
+  description: "Explore studio master releases, exclusive audio packages, and download high-definition MP4/MP3 files directly to your device.",
+  bgImageUrl: "/music-hero.jpg",
+  cropPosition: "custom",
+  positionX: 75,
+  positionY: 50,
+  zoom: 100,
+  brightness: 100,
+  contrast: 110,
+  opacity: 65,
+  badge1: "Studio Master Audio",
+  badge2: "Follow to Unlock Exclusive Downloads",
+  badge3: "Direct Audio & ZIP Downloads",
 };
 
 

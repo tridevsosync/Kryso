@@ -98,7 +98,7 @@ export function SpotlightManager() {
     defaultKrysoPageConfig
   );
   const [activeKrysoImgIndex, setActiveKrysoImgIndex] = useState(0);
-  const [adminMuted, setAdminMuted] = useState(true);
+  const [adminMuted, setAdminMuted] = useState(false);
 
   // 2. KRYSO DJ / Producer
   const [producer, setProducer] = useStored<KrysoProducerData>(
@@ -153,6 +153,7 @@ export function SpotlightManager() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const krysoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const krysoBgFileInputRef = useRef<HTMLInputElement | null>(null);
   const producerFileInputRef = useRef<HTMLInputElement | null>(null);
   const techriderFileInputRef = useRef<HTMLInputElement | null>(null);
   const academyFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -443,7 +444,7 @@ export function SpotlightManager() {
     setSaved(false);
     const newImg: KrysoPageImage = {
       id: `kryso-img-${Date.now()}`,
-      url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
+      url: "/kryso-dj-music-producer-bg.png",
     };
     const nextList = [...krysoImages, newImg];
     setKrysoImages(nextList);
@@ -908,8 +909,8 @@ export function SpotlightManager() {
     setSaved(false);
     const newImg: AcademySpotlightImage = {
       id: `img-${Date.now()}`,
-      url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790413445/kryso/spotlight/dj_producer_hero_spotlight.png",
-      alt: "Pro DJ Music Producer",
+      url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
+      alt: "Pro DJ Music Production & Live Decks",
     };
     const nextList = [...academyImages, newImg];
     setAcademyImages(nextList);
@@ -1228,6 +1229,131 @@ export function SpotlightManager() {
                 </div>
               </div>
 
+              {/* Fixed Page Background Image Card */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5">
+                      <ImageIcon size={12} /> Fixed Non-Moving Page Background
+                    </div>
+                    <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                      KRYSO Page Background Image
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Set a static background image that stays stationary while visitors scroll through the entire KRYSO page.
+                    </p>
+                  </div>
+                  {krysoConfig?.backgroundImageUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSaved(false);
+                        setKrysoConfig((prev) => ({ ...prev, backgroundImageUrl: "" }));
+                      }}
+                      className="text-destructive hover:bg-destructive/10 text-xs h-8 px-2.5 rounded-lg"
+                    >
+                      <Trash2 size={13} className="mr-1" /> Remove Background
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={krysoBgFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleUpload(file, (url) => {
+                            setSaved(false);
+                            setKrysoConfig((prev) => ({ ...prev, backgroundImageUrl: url }));
+                          });
+                        }
+                      }}
+                      className="hidden"
+                      id="kryso-bg-upload-input"
+                    />
+                    <label
+                      htmlFor="kryso-bg-upload-input"
+                      className={`inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/20 cursor-pointer transition-colors ${
+                        uploading ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      <CloudUpload size={14} /> Upload Background Image
+                    </label>
+                    <span className="text-xs text-muted-foreground">or enter URL / Google Drive link below</span>
+                  </div>
+
+                  <Input
+                    value={krysoConfig?.backgroundImageUrl || ""}
+                    placeholder="https://... or /kryso-dj-music-producer-bg.png or Google Drive Image link"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setKrysoConfig((prev) => ({ ...prev, backgroundImageUrl: e.target.value }));
+                    }}
+                    className="bg-background border-border text-foreground text-sm font-normal font-mono"
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Dark Overlay Opacity ({krysoConfig?.backgroundOverlayOpacity ?? 82}%)
+                        </label>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="95"
+                        step="5"
+                        value={krysoConfig?.backgroundOverlayOpacity ?? 82}
+                        onChange={(e) => {
+                          setSaved(false);
+                          setKrysoConfig((prev) => ({
+                            ...prev,
+                            backgroundOverlayOpacity: parseInt(e.target.value, 10),
+                          }));
+                        }}
+                        className="w-full accent-primary cursor-pointer"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Recommended: 75% - 85% for crystal-clear readability over text.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Background Blur ({krysoConfig?.backgroundBlur ?? 0}px)
+                        </label>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="12"
+                        step="1"
+                        value={krysoConfig?.backgroundBlur ?? 0}
+                        onChange={(e) => {
+                          setSaved(false);
+                          setKrysoConfig((prev) => ({
+                            ...prev,
+                            backgroundBlur: parseInt(e.target.value, 10),
+                          }));
+                        }}
+                        className="w-full accent-primary cursor-pointer"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        0px is sharp. 2-4px adds a subtle frosted concert stage atmosphere.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Video Playback Settings Card */}
               <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-sm">
                 <div className="border-b border-border/70 pb-3">
@@ -1386,7 +1512,7 @@ export function SpotlightManager() {
                   type="submit"
                   className="h-11 rounded-full px-8 font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 cursor-pointer"
                 >
-                  Save Image Changes
+                  Save Settings & Changes
                 </Button>
                 {saved && (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary">
@@ -1424,7 +1550,7 @@ export function SpotlightManager() {
                 {/* Miniature Grid of all images */}
                 <div className="pt-2 border-t border-border/60">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    All Images:
+                    All Carousel Images:
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {krysoImages.slice(0, 3).map((img, i) => (
@@ -1448,6 +1574,47 @@ export function SpotlightManager() {
                     ))}
                   </div>
                 </div>
+
+                {/* Fixed Background Image Live Preview Card */}
+                {krysoConfig?.backgroundImageUrl && (
+                  <div className="pt-3 border-t border-border/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <ImageIcon size={12} className="text-primary" /> Active Fixed Background:
+                      </span>
+                      <span className="text-[10px] text-primary font-bold">
+                        {100 - (krysoConfig?.backgroundOverlayOpacity ?? 82)}% Visible
+                      </span>
+                    </div>
+                    <div className="relative aspect-video rounded-xl overflow-hidden border border-border bg-black">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={formatImageUrl(krysoConfig.backgroundImageUrl)}
+                        alt="Background preview"
+                        className="size-full object-cover"
+                        style={{
+                          filter: krysoConfig.backgroundBlur
+                            ? `blur(${krysoConfig.backgroundBlur}px)`
+                            : undefined,
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0 bg-[#030712]"
+                        style={{
+                          opacity:
+                            krysoConfig.backgroundOverlayOpacity !== undefined
+                              ? krysoConfig.backgroundOverlayOpacity / 100
+                              : 0.82,
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center p-3 text-center">
+                        <span className="text-[11px] font-bold text-white drop-shadow bg-black/50 px-3 py-1 rounded-full border border-white/20">
+                          Non-Moving Page Background
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3051,15 +3218,30 @@ export function SpotlightManager() {
                       />
                     </div>
 
-                    {/* Event Poster / Artwork */}
-                    <div className="sm:col-span-3 space-y-1.5">
-                      <label className="text-xs font-bold text-foreground">Event Poster Artwork (Optional)</label>
+                    {/* Event Poster / Artwork (Google Drive Link, Image URL or Upload) */}
+                    <div className="sm:col-span-3 space-y-2.5 rounded-2xl border border-border/80 bg-background/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-foreground flex items-center gap-2">
+                          <ImageIcon size={14} className="text-primary" />
+                          <span>Event Poster Artwork (Google Drive Link or Upload)</span>
+                        </label>
+                        {extractGoogleDriveId(activeEvent.posterUrl) ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                            ✓ Google Drive Stream Connected
+                          </span>
+                        ) : activeEvent.posterUrl ? (
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded-full">
+                            Custom Image Set
+                          </span>
+                        ) : null}
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <Input
                           value={activeEvent.posterUrl || ""}
                           onChange={(e) => handleUpdateActiveEvent({ posterUrl: e.target.value })}
-                          placeholder="/kryso-shows.jpg or https://..."
-                          className="rounded-xl border-border bg-card text-xs text-foreground font-medium flex-1"
+                          placeholder="Paste Google Drive link (e.g. https://drive.google.com/file/d/...) or image URL"
+                          className="rounded-xl border-border bg-card text-xs text-foreground font-medium flex-1 font-mono"
                         />
                         <input
                           ref={eventPosterFileInputRef}
@@ -3085,6 +3267,44 @@ export function SpotlightManager() {
                           Upload
                         </Button>
                       </div>
+
+                      {/* Poster Live Preview Box */}
+                      {activeEvent.posterUrl && (
+                        <div className="flex items-center gap-3 pt-2 border-t border-border/60">
+                          <div className="relative size-16 sm:size-20 rounded-xl overflow-hidden border border-border bg-black shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={formatImageUrl(activeEvent.posterUrl)}
+                              alt="Event poster preview"
+                              className="size-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "/kryso-shows.jpg";
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <p className="text-[11px] font-bold text-foreground truncate">
+                              Poster Active
+                            </p>
+                            <p className="text-[10px] text-muted-foreground leading-tight">
+                              {extractGoogleDriveId(activeEvent.posterUrl)
+                                ? "Google Drive direct image proxy active."
+                                : "Custom image source."}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateActiveEvent({ posterUrl: "" })}
+                              className="text-[10px] font-bold text-destructive hover:underline cursor-pointer inline-flex items-center gap-1 mt-0.5"
+                            >
+                              <Trash2 size={11} /> Remove poster
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-muted-foreground">
+                        💡 Paste any shareable Google Drive image link (make sure <strong>&quot;Anyone with the link&quot;</strong> access is set).
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -3147,40 +3367,113 @@ export function SpotlightManager() {
               </div>
             </div>
 
-            {/* Background Artwork */}
-            <div className="space-y-2 pt-2 border-t border-border/60">
-              <label className="text-xs font-bold text-foreground">Section Background Artwork / Backdrop</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={sh.bgImageUrl || ""}
-                  onChange={(e) => updateShows({ bgImageUrl: e.target.value })}
-                  placeholder="/kryso-shows.jpg or Cloudinary / Drive link"
-                  className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium flex-1"
-                />
-                <input
-                  ref={showsFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleUpload(file, (url) => updateShows({ bgImageUrl: url }));
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => showsFileInputRef.current?.click()}
-                  className="rounded-xl text-xs font-bold shrink-0 cursor-pointer"
-                >
-                  <CloudUpload size={13} className="mr-1" />
-                  Upload
-                </Button>
+            {/* Background Artwork & Optional Section Link */}
+            <div className="space-y-4 pt-4 border-t border-border/60">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Background Image URL / Upload */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground">Shows Section Background Image</label>
+                    {sh.bgImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => updateShows({ bgImageUrl: "" })}
+                        className="text-[10px] font-semibold text-rose-400 hover:underline cursor-pointer"
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={sh.bgImageUrl || ""}
+                      onChange={(e) => updateShows({ bgImageUrl: e.target.value })}
+                      placeholder="/kryso-shows.jpg or Google Drive / Cloudinary link"
+                      className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium flex-1"
+                    />
+                    <input
+                      ref={showsFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleUpload(file, (url) => updateShows({ bgImageUrl: url }));
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => showsFileInputRef.current?.click()}
+                      className="rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                    >
+                      <CloudUpload size={13} className="mr-1" />
+                      Upload
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Supports Google Drive sharing links, direct image URLs, and Cloudinary uploads.
+                  </p>
+                </div>
+
+                {/* Optional Shows Section Link / Button */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground">Shows Section Link / Action URL (Optional)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      value={sh.bgLinkUrl || ""}
+                      onChange={(e) => updateShows({ bgLinkUrl: e.target.value })}
+                      placeholder="https://drive.google.com/... or /contact"
+                      className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                    />
+                    <Input
+                      value={sh.bgLinkText || ""}
+                      onChange={(e) => updateShows({ bgLinkText: e.target.value })}
+                      placeholder="Button Text: e.g. View Tour Highlights"
+                      className="rounded-xl border-border bg-secondary/60 text-xs text-foreground font-medium"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Adds a highlighted button in the Shows header leading to your Drive link or tour gallery.
+                  </p>
+                </div>
               </div>
+
+              {/* Background Image Live Preview */}
+              {sh.bgImageUrl && (
+                <div className="flex items-center gap-3 p-3 rounded-2xl border border-border/70 bg-secondary/40">
+                  <div className="relative size-16 sm:size-20 rounded-xl overflow-hidden border border-border bg-black shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={formatImageUrl(sh.bgImageUrl)}
+                      alt="Shows Section Backdrop Preview"
+                      className="size-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/kryso-shows.jpg";
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-foreground truncate">
+                      Shows Background Image Active
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      {extractGoogleDriveId(sh.bgImageUrl)
+                        ? "Google Drive link formatted automatically for live rendering."
+                        : "Custom background backdrop active for the Shows & Festivals section."}
+                    </p>
+                    {sh.bgLinkUrl && (
+                      <p className="text-[10px] text-primary truncate">
+                        Linked to: {sh.bgLinkUrl}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

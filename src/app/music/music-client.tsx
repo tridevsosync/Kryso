@@ -26,13 +26,18 @@ import musicHeroImage from "@/assets/music-hero.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
-import { siteSettings, type MusicTrack } from "@/data/catalog";
+import { siteSettings, defaultMusicHeaderData, type MusicTrack, type MusicHeaderData } from "@/data/catalog";
 import { formatImageUrl } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
+import { useStored } from "@/lib/kryso-storage";
 
 const ITEMS_PER_PAGE = 12;
 
 export function MusicShopClient() {
+  const [headerConfig, setHeaderConfig] = useStored<MusicHeaderData>(
+    "admin-kryso-music-header",
+    defaultMusicHeaderData
+  );
   const [trackList, setTrackList] = useState<MusicTrack[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
@@ -54,6 +59,18 @@ export function MusicShopClient() {
       localStorage.removeItem("kryso_unlocked_tracks");
     } catch {}
   }, []);
+
+  // Fetch dynamic music header from MongoDB (and fallback to localStorage)
+  useEffect(() => {
+    fetch("/api/collections?name=music_header")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setHeaderConfig(data.items[0]);
+        }
+      })
+      .catch(() => {});
+  }, [setHeaderConfig]);
 
   // Fetch dynamic music tracks from MongoDB (and fallback to localStorage)
   useEffect(() => {
@@ -219,38 +236,49 @@ export function MusicShopClient() {
 
   return (
     <SiteShell>
-      {/* Hero Banner */}
-      <section className="relative isolate overflow-hidden bg-background text-foreground border-b border-border">
-        <Image
-          src={musicHeroImage}
-          alt="KRYSO Music Studio & Live Stage"
-          fill
-          priority
-          sizes="100vw"
-          className="absolute inset-0 -z-20 object-cover object-[72%_center] sm:object-[75%_center] opacity-65 brightness-100 contrast-110"
-        />
-        <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-background/80 to-transparent sm:via-background/55" />
-        <div className="page-shell py-10 sm:py-14">
+      {/* Hero Banner with Fixed Aspect/Height & Dynamic Cropped Artwork */}
+      <section className="relative isolate overflow-hidden bg-background text-foreground border-b border-border min-h-[300px] sm:min-h-[340px] flex items-center">
+        {/* Dynamic Cropped & Positioned Background Artwork */}
+        <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={formatImageUrl(headerConfig?.bgImageUrl || "/music-hero.jpg")}
+            alt="KRYSO Music Studio & Live Stage"
+            style={{
+              objectPosition: `${headerConfig?.positionX ?? 75}% ${headerConfig?.positionY ?? 50}%`,
+              transform: `scale(${(headerConfig?.zoom ?? 100) / 100})`,
+              transformOrigin: `${headerConfig?.positionX ?? 75}% ${headerConfig?.positionY ?? 50}%`,
+              filter: `brightness(${headerConfig?.brightness ?? 100}%) contrast(${headerConfig?.contrast ?? 110}%)`,
+              opacity: (headerConfig?.opacity ?? 65) / 100,
+            }}
+            className="size-full object-cover transition-all duration-300"
+            onError={(e) => {
+              e.currentTarget.src = "/music-hero.jpg";
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-background/85 to-background/25 sm:via-background/70 sm:to-transparent" />
+        <div className="page-shell py-10 sm:py-14 w-full">
           <p className="eyebrow flex items-center gap-2">
-            <Sparkles size={14} className="text-primary" /> Kryso Official Music Releases
+            <Sparkles size={14} className="text-primary" /> {headerConfig?.badge || defaultMusicHeaderData.badge}
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-4xl font-extrabold sm:text-5xl text-foreground">
-            Music Releases &{" "}
+            {headerConfig?.title || defaultMusicHeaderData.title}{" "}
             <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">
-              Exclusive Download.
+              {headerConfig?.titleHighlight || defaultMusicHeaderData.titleHighlight}
             </span>
           </h1>
           <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-            Explore studio master releases, exclusive audio packages, and download high-definition MP4/MP3 files directly to your device.
+            {headerConfig?.description || defaultMusicHeaderData.description}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-2 text-foreground font-semibold">
-              <Headphones size={15} className="text-primary" /> Studio Master Audio
+              <Headphones size={15} className="text-primary" /> {headerConfig?.badge1 || defaultMusicHeaderData.badge1}
             </span>
             <span>·</span>
-            <span>Follow to Unlock Exclusive Downloads</span>
+            <span>{headerConfig?.badge2 || defaultMusicHeaderData.badge2}</span>
             <span>·</span>
-            <span>Direct Audio & ZIP Downloads</span>
+            <span>{headerConfig?.badge3 || defaultMusicHeaderData.badge3}</span>
           </div>
         </div>
       </section>

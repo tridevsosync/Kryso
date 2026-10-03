@@ -429,7 +429,7 @@ export function AcademyClient() {
                       <div className="overflow-hidden transition-all duration-300 ease-out md:max-h-0 md:opacity-0 md:-translate-y-1 md:pointer-events-none group-hover:max-h-16 group-hover:opacity-100 group-hover:translate-y-0 group-hover:mt-2.5 group-hover:pointer-events-auto max-md:max-h-16 max-md:opacity-100 max-md:mt-2.5">
                         <a
                           href="tel:9767378750"
-                          className="relative group/demo w-full flex items-center justify-center gap-2 rounded-full overflow-hidden bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#fb923c] animate-gradient-flow px-4 py-2.5 text-xs font-black text-white uppercase tracking-wider shadow-lg animate-demo-pulse hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer border border-orange-400/40"
+                          className="relative group/demo w-full flex items-center justify-center gap-2 rounded-full overflow-hidden bg-gradient-to-r from-[#ea580c] via-[#f97316] to-[#fb923c] animate-gradient-flow px-4 py-2.5 text-xs font-black text-white uppercase tracking-wider shadow-lg animate-demo-pulse hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer border border-orange-400/40 animate-border-glow-orange"
                         >
                           {/* Sweeping metallic light sheen */}
                           <span className="pointer-events-none absolute inset-0 -top-1 -bottom-1 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-demo-shimmer -z-0" />

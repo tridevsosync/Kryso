@@ -7,13 +7,13 @@ import {
   Mic2,
   Sparkles,
   ArrowRight,
-  Headphones,
   Sliders,
   Flame,
   Youtube,
   Instagram,
   Disc3,
   Play,
+  Pause,
   Globe,
   Users,
   Download,
@@ -32,6 +32,14 @@ import {
   Ticket,
   MapPin,
   Clock,
+  MessageCircle,
+  Lock,
+  Unlock,
+  Music,
+  Facebook,
+  Loader2,
+  Headphones,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteShell } from "@/components/kryso-site";
@@ -44,6 +52,8 @@ import {
   defaultKrysoDownloads,
   defaultKrysoProducerData,
   defaultKrysoTechriderData,
+  defaultMusicTracks,
+  siteSettings,
   type KrysoPageImage,
   type KrysoPageConfig,
   type KrysoBiography,
@@ -51,6 +61,7 @@ import {
   type KrysoDownloadItem,
   type KrysoProducerData,
   type KrysoTechriderData,
+  type MusicTrack,
 } from "@/data/catalog";
 import { formatImageUrl, formatVideoUrl, getVideoSourceInfo } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
@@ -63,6 +74,7 @@ export function HomeClient() {
   const [downloads, setDownloads] = useStored<KrysoDownloadItem[]>("admin-kryso-downloads", defaultKrysoDownloads);
   const [producer, setProducer] = useStored<KrysoProducerData>("admin-kryso-producer", defaultKrysoProducerData);
   const [techrider, setTechrider] = useStored<KrysoTechriderData>("admin-kryso-techrider", defaultKrysoTechriderData);
+  const [musicTracks, setMusicTracks] = useStored<MusicTrack[]>("admin-music-tracks-v1", defaultMusicTracks);
   const [downloadFilter, setDownloadFilter] = useState<"all" | "image" | "video">("all");
   const [activeVideoModal, setActiveVideoModal] = useState<KrysoDownloadItem | null>(null);
 
@@ -70,7 +82,7 @@ export function HomeClient() {
   const shouldStartWithVideo = totalTimerSeconds === 0 || (config?.autoPlayVideo && totalTimerSeconds === 0);
   const [showVideo, setShowVideo] = useState(shouldStartWithVideo);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -151,7 +163,130 @@ export function HomeClient() {
         }
       })
       .catch(() => {});
-  }, [setImages, setConfig, setBiography, setShows, setDownloads, setProducer, setTechrider]);
+
+    fetch("/api/collections?name=music_tracks")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          setMusicTracks(data.items);
+        }
+      })
+      .catch(() => {});
+  }, [setImages, setConfig, setBiography, setShows, setDownloads, setProducer, setTechrider, setMusicTracks]);
+
+  // Audio preview playback & download states for music in downloads section
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const [downloadingTrackId, setDownloadingTrackId] = useState<string | null>(null);
+  const [lockModalTrack, setLockModalTrack] = useState<MusicTrack | null>(null);
+  const [unlockedTrackIds, setUnlockedTrackIds] = useState<string[]>([]);
+  const [steps, setSteps] = useState({ sp: false, yt: false, ig: false, fb: false });
+
+  // Cleanup audio player on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Compute 4 Top Music Tracks (prefer tracks where isTop === true, fallback to fill 4 tracks)
+  const topMusicTracks = (() => {
+    const list = musicTracks && musicTracks.length > 0 ? musicTracks : defaultMusicTracks;
+    const topOnly = list.filter((t) => t.isTop);
+    if (topOnly.length >= 4) {
+      return topOnly.slice(0, 4);
+    }
+    const nonTop = list.filter((t) => !t.isTop);
+    return [...topOnly, ...nonTop].slice(0, 4);
+  })();
+
+  const togglePlayTrack = (track: MusicTrack) => {
+    if (!track.audioUrl) return;
+
+    if (playingTrackId === track.id) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setPlayingTrackId(null);
+    } else {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      const audio = new Audio(track.audioUrl);
+      audioPlayerRef.current = audio;
+      audio.play().catch(() => {});
+      audio.onended = () => setPlayingTrackId(null);
+      setPlayingTrackId(track.id);
+    }
+  };
+
+  const handleMusicDownloadClick = (track: MusicTrack) => {
+    const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
+    if (isUnlocked) {
+      triggerMusicDownload(track);
+    } else {
+      setLockModalTrack(track);
+      setSteps({ sp: false, yt: false, ig: false, fb: false });
+    }
+  };
+
+  const triggerMusicDownload = async (track: MusicTrack) => {
+    const downloadTarget = (track.downloadUrl && track.downloadUrl.trim()) || (track.audioUrl && track.audioUrl.trim());
+    if (!downloadTarget) {
+      alert("No audio/ZIP download link configured for this release yet.");
+      return;
+    }
+
+    setDownloadingTrackId(track.id);
+    const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
+    const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
+
+    try {
+      const lower = downloadTarget.toLowerCase();
+      const isZip = lower.includes(".zip") || (track.downloadUrl && !track.downloadUrl.match(/\.(mp3|mp4|wav|m4a)$/i));
+      const isMp4 = lower.includes(".mp4");
+      const isWav = lower.includes(".wav");
+      const isM4a = lower.includes(".m4a");
+      const ext = isZip ? ".zip" : isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
+      const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
+
+      const downloadEndpoint = `/api/download?url=${encodeURIComponent(downloadTarget)}&filename=${encodeURIComponent(filename)}`;
+      const link = document.createElement("a");
+      link.href = downloadEndpoint;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        setDownloadingTrackId(null);
+      }, 1500);
+    } catch (err) {
+      console.error("Track download error:", err);
+      window.open(downloadTarget, "_blank");
+      setDownloadingTrackId(null);
+    }
+  };
+
+  const markStepDone = (key: "sp" | "yt" | "ig" | "fb", url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setSteps((prev) => ({ ...prev, [key]: true }));
+  };
+
+  const completeUnlock = () => {
+    if (!lockModalTrack) return;
+    const currentTrack = lockModalTrack;
+    setUnlockedTrackIds((prev) => [...prev, currentTrack.id]);
+    setLockModalTrack(null);
+    triggerMusicDownload(currentTrack);
+  };
+
+  const allStepsDone = steps.sp && steps.yt && steps.ig && steps.fb;
 
   const activeVideoUrl =
     config?.videoUrl || "https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/view?usp=sharing";
@@ -207,11 +342,27 @@ export function HomeClient() {
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          // If browser policy requires muted playback, ensure muted and retry
+          // If browser policy requires initial muted playback without prior gesture,
+          // play with mute and auto-unmute on first user interaction
           if (videoRef.current) {
             videoRef.current.muted = true;
-            setIsMuted(true);
             videoRef.current.play().catch(() => {});
+
+            const handleFirstGesture = () => {
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+                setIsMuted(false);
+              }
+              window.removeEventListener("click", handleFirstGesture);
+              window.removeEventListener("touchstart", handleFirstGesture);
+              window.removeEventListener("keydown", handleFirstGesture);
+              window.removeEventListener("scroll", handleFirstGesture);
+            };
+
+            window.addEventListener("click", handleFirstGesture, { once: true });
+            window.addEventListener("touchstart", handleFirstGesture, { once: true });
+            window.addEventListener("keydown", handleFirstGesture, { once: true });
+            window.addEventListener("scroll", handleFirstGesture, { once: true });
           }
         });
       }
@@ -236,9 +387,39 @@ export function HomeClient() {
   return (
     <SiteShell>
       {/* ------------------------------------------------------------------ */}
+      {/* 0. FIXED PAGE BACKGROUND IMAGE (NON-MOVING ON SCROLL, ADMIN MANAGED)*/}
+      {/* ------------------------------------------------------------------ */}
+      {config?.backgroundImageUrl && (
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={formatImageUrl(config.backgroundImageUrl)}
+            alt="Kryso Page Background"
+            className="size-full object-cover object-center"
+            style={{
+              filter: config.backgroundBlur ? `blur(${config.backgroundBlur}px)` : undefined,
+              transform: config.backgroundBlur ? "scale(1.05)" : undefined,
+            }}
+          />
+          {/* Dark Overlay for Readability */}
+          <div
+            className="absolute inset-0 bg-[#030712]"
+            style={{
+              opacity:
+                config.backgroundOverlayOpacity !== undefined
+                  ? config.backgroundOverlayOpacity / 100
+                  : 0.82,
+            }}
+          />
+          {/* Ambient Top & Bottom Vignette */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90 pointer-events-none" />
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
       {/* 1. HERO SHOWCASE: FULLSCREEN 3 IMAGES ROTATING & VIDEO AUTO-REPEAT */}
       {/* ------------------------------------------------------------------ */}
-      <section className="relative w-full h-[65vh] sm:h-[80vh] md:h-[calc(100vh-4.75rem)] min-h-[400px] sm:min-h-[520px] bg-black overflow-hidden select-none border-b border-blue-900/40">
+      <section className="relative z-10 w-full h-[65vh] sm:h-[80vh] md:h-[calc(100vh-4.75rem)] min-h-[400px] sm:min-h-[520px] bg-black overflow-hidden select-none border-b border-blue-900/40">
         {!showVideo ? (
           <div className="relative size-full">
             {displayImages.map((img, idx) => {
@@ -308,20 +489,6 @@ export function HomeClient() {
             <video
               ref={(el) => {
                 videoRef.current = el;
-                if (el) {
-                  el.defaultMuted = isMuted;
-                  el.muted = isMuted;
-                  const p = el.play();
-                  if (p !== undefined) {
-                    p.catch(() => {
-                      if (el) {
-                        el.muted = true;
-                        setIsMuted(true);
-                        el.play().catch(() => {});
-                      }
-                    });
-                  }
-                }
               }}
               src={videoSource.src}
               className="size-full object-cover pointer-events-none"
@@ -376,7 +543,7 @@ export function HomeClient() {
       {/* ------------------------------------------------------------------ */}
       {/* 2. KRYSO ARTIST BIOGRAPHY SECTION                                  */}
       {/* ------------------------------------------------------------------ */}
-      <section className="relative bg-gradient-to-b from-[#030712] via-[#0B152B]/40 to-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+      <section className="relative z-10 bg-gradient-to-b from-[#030712]/90 via-[#0B152B]/60 to-[#030712]/90 py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden backdrop-blur-xs">
         {/* Ambient Stage & Navy Lighting */}
         <div className="pointer-events-none absolute top-1/3 left-10 size-[500px] rounded-full bg-orange-500/10 blur-[150px] -z-10" />
         <div className="pointer-events-none absolute bottom-10 right-10 size-[450px] rounded-full bg-blue-600/15 blur-[140px] -z-10" />
@@ -509,7 +676,7 @@ export function HomeClient() {
       {/* ------------------------------------------------------------------ */}
       {/* 3. KRYSO DJ/MUSIC PRODUCER SECTION                                 */}
       {/* ------------------------------------------------------------------ */}
-      <section className="relative isolate py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden bg-black text-white">
+      <section className="relative z-10 isolate py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden bg-black/85 backdrop-blur-xs text-white">
         {/* Background Presskit Image with dark gradient overlays for pristine readability */}
         <div className="absolute inset-0 -z-20">
           <Image
@@ -555,7 +722,7 @@ export function HomeClient() {
             {/* Explore KRYSO Music Action Button */}
             <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <Link href="/music">
-                <Button className="w-full sm:w-auto h-12 rounded-full px-8 font-extrabold bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:opacity-90 text-black shadow-xl shadow-orange-500/25 text-sm cursor-pointer transition-all hover:scale-105 border-0">
+                <Button className="w-full sm:w-auto h-12 rounded-full px-8 font-extrabold bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:opacity-90 text-black shadow-xl shadow-orange-500/25 text-sm cursor-pointer transition-all hover:scale-105 border border-orange-300/60 animate-border-glow-orange">
                   <Disc3 size={17} className="mr-2 animate-spin" style={{ animationDuration: "8s" }} />
                   <span>Explore KRYSO Music</span>
                   <ArrowRight size={15} className="ml-2" />
@@ -717,53 +884,20 @@ export function HomeClient() {
               </div>
             </div>
           </div>
-
-          {/* Production Highlights Pillars */}
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/80 backdrop-blur-md p-6 sm:p-7 shadow-2xl space-y-4 hover:border-orange-500/50 transition-all hover:-translate-y-1 group">
-              <div className="size-12 rounded-2xl bg-orange-500/15 text-orange-400 border border-orange-500/30 grid place-items-center shadow-xs group-hover:scale-110 transition-transform">
-                <Sliders size={22} />
-              </div>
-              <h3 className="font-display text-lg font-extrabold text-white">DAW & Sound Synthesis</h3>
-              <p className="text-xs sm:text-sm text-blue-100/75 leading-relaxed">
-                Advanced beat programming, MIDI orchestration, and hardware analog synthesis across Ableton Live, FL Studio, and Logic Pro.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/80 backdrop-blur-md p-6 sm:p-7 shadow-2xl space-y-4 hover:border-orange-500/50 transition-all hover:-translate-y-1 group">
-              <div className="size-12 rounded-2xl bg-orange-500/15 text-orange-400 border border-orange-500/30 grid place-items-center shadow-xs group-hover:scale-110 transition-transform">
-                <Mic2 size={22} />
-              </div>
-              <h3 className="font-display text-lg font-extrabold text-white">Vocal Processing & Tuning</h3>
-              <p className="text-xs sm:text-sm text-blue-100/75 leading-relaxed">
-                Pristine vocal tuning, formant shifting, harmonic stacks, dynamic compression, and spatial widening tailored for rappers and singers.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-blue-900/60 bg-[#0B152B]/80 backdrop-blur-md p-6 sm:p-7 shadow-2xl space-y-4 hover:border-orange-500/50 transition-all hover:-translate-y-1 group">
-              <div className="size-12 rounded-2xl bg-orange-500/15 text-orange-400 border border-orange-500/30 grid place-items-center shadow-xs group-hover:scale-110 transition-transform">
-                <Headphones size={22} />
-              </div>
-              <h3 className="font-display text-lg font-extrabold text-white">Mixing & Master Loudness</h3>
-              <p className="text-xs sm:text-sm text-blue-100/75 leading-relaxed">
-                Club-tested low-end control, stereo imaging, and commercial loudness optimization ready for Spotify, Apple Music, and live concert rigs.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 4. KRYSO MEDIA & PRESS DOWNLOADS SECTION (GOOGLE DRIVE REDIRECT)  */}
+      {/* 4. KRYSO MEDIA, PRESS & MUSIC DOWNLOADS SECTION                   */}
       {/* ------------------------------------------------------------------ */}
-      <section id="downloads" className="relative isolate bg-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+      <section id="downloads" className="relative z-10 isolate bg-[#030712]/85 backdrop-blur-xs py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
         {/* Ambient background glows */}
         <div className="pointer-events-none absolute top-10 right-1/4 size-[450px] rounded-full bg-orange-500/10 blur-[150px] -z-10" />
         <div className="pointer-events-none absolute bottom-10 left-10 size-[400px] rounded-full bg-blue-600/15 blur-[140px] -z-10" />
 
-        <div className="page-shell">
+        <div className="page-shell space-y-10">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-blue-900/40">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-blue-900/40">
             <div className="max-w-2xl space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-orange-400">
                 <FolderDown size={13} />
@@ -819,7 +953,7 @@ export function HomeClient() {
             </div>
           </div>
 
-          {/* Downloads Cards Grid */}
+          {/* 1. Image & Video Downloads Grid */}
           {(() => {
             const list = (downloads && downloads.length > 0 ? downloads : defaultKrysoDownloads).filter((item) => {
               if (downloadFilter === "all") return true;
@@ -828,7 +962,7 @@ export function HomeClient() {
 
             if (list.length === 0) {
               return (
-                <div className="mt-8 sm:mt-12 text-center py-16 rounded-3xl border border-dashed border-blue-900/60 bg-[#0B152B]/40">
+                <div className="mt-4 text-center py-16 rounded-3xl border border-dashed border-blue-900/60 bg-[#0B152B]/40">
                   <FolderDown size={40} className="mx-auto text-blue-300/50 mb-3 opacity-60" />
                   <h3 className="font-display text-lg font-bold text-white">No downloads in this category</h3>
                   <p className="text-xs sm:text-sm text-blue-200/70 mt-1">Check back soon or choose another filter above.</p>
@@ -837,7 +971,7 @@ export function HomeClient() {
             }
 
             return (
-              <div className="mt-8 sm:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {list.map((item) => {
                   const resolvedThumbnail = formatImageUrl(item.thumbnailUrl || "/kryso-hero.jpg");
                   const isVideo = item.type === "video";
@@ -995,6 +1129,142 @@ export function HomeClient() {
               </div>
             );
           })()}
+
+          {/* 2. 4 Music Cards Placed Under Image and Video Cards */}
+          <div className="pt-6 border-t border-blue-900/40 space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+              {topMusicTracks.map((track) => {
+                const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
+                const isPlaying = playingTrackId === track.id;
+                const isDownloading = downloadingTrackId === track.id;
+
+                return (
+                  <div
+                    key={track.id}
+                    className="group relative flex flex-col justify-between rounded-3xl border border-blue-900/60 bg-[#0B152B]/95 p-4 overflow-hidden shadow-xl hover:shadow-2xl hover:border-orange-500/60 transition-all duration-300 hover:-translate-y-1.5"
+                  >
+                    {/* Artwork Container */}
+                    <div>
+                      <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#070F1E] border border-blue-900/50 shadow-inner">
+                        {track.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={formatImageUrl(track.imageUrl)}
+                            alt={track.name}
+                            className="size-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.src = "/kryso-hero.jpg";
+                            }}
+                          />
+                        ) : (
+                          <div className="grid h-full place-items-center text-blue-300/40">
+                            <Music size={40} />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                        {/* Top Badges */}
+                        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10 pointer-events-none">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500 text-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wider shadow-md">
+                            ⭐ TOP RELEASE
+                          </span>
+                          {track.genre && (
+                            <span className="inline-flex items-center rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-300 border border-orange-500/30">
+                              {track.genre}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Free / VIP Badge */}
+                        <span
+                          className={`absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md z-10 ${
+                            isUnlocked
+                              ? "bg-emerald-500/90 text-white border border-emerald-400/40"
+                              : "bg-amber-500/90 text-black border border-amber-400/40 animate-pulse"
+                          }`}
+                        >
+                          {isUnlocked ? <Unlock size={10} /> : <Lock size={10} />}
+                          <span>{isUnlocked ? "FREE" : "VIP"}</span>
+                        </span>
+
+                        {/* Audio Preview Play/Pause button */}
+                        {track.audioUrl && (
+                          <div className="absolute inset-0 grid place-items-center bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => togglePlayTrack(track)}
+                              className="size-12 rounded-full bg-orange-500 hover:bg-orange-400 text-black grid place-items-center shadow-2xl transition-all transform scale-90 group-hover:scale-100 hover:scale-110 cursor-pointer"
+                              title={isPlaying ? "Pause Preview" : "Play Audio Preview"}
+                            >
+                              {isPlaying ? <Pause size={20} className="fill-current" /> : <Play size={20} className="fill-current ml-0.5" />}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Track Info */}
+                      <div className="mt-3.5 space-y-1">
+                        <h4 className="font-display text-base font-bold text-white group-hover:text-orange-400 transition-colors truncate" title={track.name}>
+                          {track.name}
+                        </h4>
+                        <p className="text-xs text-blue-200/70 truncate">
+                          Singer / Artist: <span className="font-medium text-blue-100">{track.singer}</span>
+                        </p>
+                        {track.bpm && (
+                          <p className="text-[11px] text-orange-400/80 font-mono">
+                            {track.bpm} BPM {track.key ? `• Key: ${track.key}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Download Action Button */}
+                    <div className="mt-4 pt-3 border-t border-blue-900/50">
+                      <button
+                        type="button"
+                        onClick={() => handleMusicDownloadClick(track)}
+                        disabled={isDownloading}
+                        className={`w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black uppercase tracking-wider shadow-md transition-all cursor-pointer ${
+                          isUnlocked
+                            ? "bg-orange-500 hover:bg-orange-400 text-black shadow-orange-500/20 hover:scale-[1.02]"
+                            : "bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black shadow-amber-500/20 hover:scale-[1.02]"
+                        }`}
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Downloading...</span>
+                          </>
+                        ) : isUnlocked ? (
+                          <>
+                            <Download size={13} />
+                            <span>Download Track</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={13} />
+                            <span>Unlock & Download</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 3. View More Music Button Underneath */}
+            <div className="flex items-center justify-center pt-2">
+              <Link
+                href="/music"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-orange-400/80 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-black px-8 py-3.5 text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/25 transition-all hover:scale-105 animate-border-glow-orange cursor-pointer"
+              >
+                <Disc3 size={17} className="animate-spin-slow" />
+                <span>View More Music</span>
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Video Player Modal */}
@@ -1088,12 +1358,181 @@ export function HomeClient() {
             </div>
           </div>
         )}
+
+        {/* Social Follow-to-Unlock Modal for Locked Top Music Tracks */}
+        {lockModalTrack && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn"
+            onClick={() => setLockModalTrack(null)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-3xl border border-orange-500/50 bg-[#0B152B] p-6 shadow-2xl text-white overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Ambient Glow */}
+              <div className="pointer-events-none absolute -top-20 -right-20 size-40 rounded-full bg-orange-500/20 blur-3xl" />
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setLockModalTrack(null)}
+                className="absolute top-4 right-4 size-8 rounded-full bg-blue-950/80 hover:bg-blue-900 text-blue-300 hover:text-white grid place-items-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Header */}
+              <div className="text-center space-y-2 pt-2">
+                <div className="mx-auto size-14 rounded-2xl bg-orange-500/20 border border-orange-500/40 text-orange-400 grid place-items-center shadow-lg">
+                  <Lock size={26} />
+                </div>
+                <h3 className="font-display text-xl sm:text-2xl font-black text-white">
+                  Unlock Free Track
+                </h3>
+                <p className="text-xs text-blue-200/80 max-w-xs mx-auto">
+                  Follow <span className="font-bold text-orange-400">KRYSO</span> on the official channels below to instantly unlock & download:
+                </p>
+                <div className="p-2.5 rounded-xl bg-[#070F1E] border border-blue-900/60 text-xs font-bold text-orange-300 truncate">
+                  🎵 {lockModalTrack.name} – {lockModalTrack.singer}
+                </div>
+              </div>
+
+              {/* Social Channels List */}
+              <div className="mt-5 space-y-2.5">
+                {/* Spotify */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-[#1DB954]/20 text-[#1DB954] grid place-items-center">
+                      <SpotifyIcon size={16} />
+                    </div>
+                    <span className="text-xs font-bold text-white">Follow on Spotify</span>
+                  </div>
+                  {steps.sp ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1DB954] bg-[#1DB954]/10 px-2.5 py-1 rounded-full">
+                      <Check size={12} /> Done
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markStepDone("sp", siteSettings.spotifyUrl)}
+                      className="px-3.5 py-1 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black text-xs font-black transition-all cursor-pointer hover:scale-105"
+                    >
+                      Follow
+                    </button>
+                  )}
+                </div>
+
+                {/* YouTube */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-red-600/20 text-red-500 grid place-items-center">
+                      <Youtube size={16} />
+                    </div>
+                    <span className="text-xs font-bold text-white">Subscribe YouTube</span>
+                  </div>
+                  {steps.yt ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full">
+                      <Check size={12} /> Done
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markStepDone("yt", siteSettings.youtubeUrl)}
+                      className="px-3.5 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
+                    >
+                      Subscribe
+                    </button>
+                  )}
+                </div>
+
+                {/* Instagram */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-pink-500/20 text-pink-400 grid place-items-center">
+                      <Instagram size={16} />
+                    </div>
+                    <span className="text-xs font-bold text-white">Follow Instagram</span>
+                  </div>
+                  {steps.ig ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-400 bg-pink-500/10 px-2.5 py-1 rounded-full">
+                      <Check size={12} /> Done
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markStepDone("ig", siteSettings.instagramUrl)}
+                      className="px-3.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:brightness-110 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
+                    >
+                      Follow
+                    </button>
+                  )}
+                </div>
+
+                {/* Facebook */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-blue-600/20 text-blue-400 grid place-items-center">
+                      <Facebook size={16} />
+                    </div>
+                    <span className="text-xs font-bold text-white">Follow Facebook</span>
+                  </div>
+                  {steps.fb ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full">
+                      <Check size={12} /> Done
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markStepDone("fb", siteSettings.facebookUrl)}
+                      className="px-3.5 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
+                    >
+                      Follow
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Complete Unlock Button */}
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={completeUnlock}
+                  disabled={!allStepsDone}
+                  className={`w-full py-3 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    allStepsDone
+                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-black shadow-lg shadow-orange-500/30 hover:scale-[1.02] animate-bounce"
+                      : "bg-blue-950/60 border border-blue-900 text-blue-400/50 cursor-not-allowed"
+                  }`}
+                >
+                  <Download size={16} />
+                  <span>{allStepsDone ? "Unlock & Download Now" : "Complete All 4 Steps to Unlock"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ------------------------------------------------------------------ */}
       {/* 5. KRYSO SHOWS & FESTIVALS SECTION                                 */}
       {/* ------------------------------------------------------------------ */}
-      <section className="relative isolate bg-[#030712] text-white py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+      <section className="relative z-10 isolate bg-[#030712]/90 backdrop-blur-xs text-white py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+        {/* Shows Section Dynamic Background Image from Admin Panel */}
+        {shows?.bgImageUrl && (
+          <div className="absolute inset-0 -z-20 overflow-hidden pointer-events-none">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={formatImageUrl(shows.bgImageUrl)}
+              alt="Kryso Shows Live Stage Background"
+              className="size-full object-cover object-center opacity-30 filter brightness-95 contrast-110 scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/95 via-[#030712]/80 to-[#030712]/95 backdrop-blur-[1px]" />
+          </div>
+        )}
+
         {/* Stage Concert Atmosphere & Orange/Navy Glow Lights */}
         <div className="pointer-events-none absolute top-0 left-1/4 size-[600px] rounded-full bg-blue-600/10 blur-[180px] -z-10" />
         <div className="pointer-events-none absolute bottom-0 right-1/4 size-[500px] rounded-full bg-orange-500/10 blur-[160px] -z-10" />
@@ -1117,6 +1556,21 @@ export function HomeClient() {
             <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed font-medium">
               {shows?.subtitle || defaultKrysoShowsData.subtitle}
             </p>
+
+            {/* Optional Admin-Configurable Shows Action Link / Drive Link */}
+            {shows?.bgLinkUrl && (
+              <div className="pt-2 flex items-center justify-center">
+                <a
+                  href={shows.bgLinkUrl}
+                  target={shows.bgLinkUrl.startsWith("http") ? "_blank" : undefined}
+                  rel={shows.bgLinkUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:opacity-90 text-black font-extrabold px-6 py-2.5 text-xs uppercase tracking-wider shadow-lg shadow-orange-500/25 transition-all hover:scale-105 cursor-pointer animate-border-glow-orange border border-orange-300/60"
+                >
+                  <span>{shows.bgLinkText || "View Tour Highlights / Gallery"}</span>
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+            )}
           </div>
 
           {/* ================================================================ */}
@@ -1151,11 +1605,29 @@ export function HomeClient() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center flex-wrap gap-2.5 shrink-0">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/20 border border-orange-500/40 px-3.5 py-1.5 text-xs font-black text-orange-400">
                       <span className="size-2 rounded-full bg-orange-400 animate-ping" />
                       <span>{activeEvents.length} Active Gigs</span>
                     </span>
+
+                    <a
+                      href="https://wa.me/918767828945?text=Hi%20KRYSO%20Team%2C%20I%20am%20inquiring%20about%20upcoming%20tour%20events%20and%20gig%20bookings."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold px-3.5 py-1.5 text-xs tracking-wider transition-all duration-300 animate-border-glow-whatsapp"
+                    >
+                      <MessageCircle size={13} className="fill-current text-black" />
+                      <span>WhatsApp</span>
+                    </a>
+
+                    <a
+                      href="tel:+918767828945"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-orange-500 hover:bg-orange-400 text-black font-extrabold px-3.5 py-1.5 text-xs tracking-wider transition-all duration-300 animate-border-glow-call"
+                    >
+                      <Phone size={13} />
+                      <span>Call Now</span>
+                    </a>
                   </div>
                 </div>
 
@@ -1172,16 +1644,30 @@ export function HomeClient() {
                         key={event.id}
                         className="group flex flex-col sm:flex-row items-stretch gap-4 sm:gap-5 rounded-2xl border border-blue-900/60 bg-[#070F1E]/90 hover:bg-[#0B152B] hover:border-orange-500/60 p-4 sm:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
                       >
-                        {/* Left: Date Block */}
-                        <div className="flex sm:flex-col items-center justify-between sm:justify-center rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-transparent border border-orange-500/30 p-3 sm:p-4 text-center sm:min-w-[110px] shrink-0">
-                          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-400">
+                        {/* Left: Date Block & Poster Artwork */}
+                        <div className="relative overflow-hidden flex sm:flex-col items-center justify-between sm:justify-center rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-transparent border border-orange-500/30 p-3 sm:p-4 text-center sm:min-w-[110px] shrink-0 group/poster">
+                          {event.posterUrl && (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={formatImageUrl(event.posterUrl)}
+                                alt={event.title}
+                                className="absolute inset-0 size-full object-cover object-center opacity-30 group-hover/poster:scale-110 transition-transform duration-500 pointer-events-none"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-[#070F1E]/60 backdrop-blur-[0.5px] pointer-events-none" />
+                            </>
+                          )}
+                          <span className="relative z-10 text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-400">
                             {event.day || "LIVE"}
                           </span>
-                          <span className="font-display text-lg sm:text-2xl font-black text-white tracking-tight leading-tight my-0.5">
+                          <span className="relative z-10 font-display text-lg sm:text-2xl font-black text-white tracking-tight leading-tight my-0.5">
                             {event.date}
                           </span>
                           {event.time && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-200/70 sm:mt-1">
+                            <span className="relative z-10 inline-flex items-center gap-1 text-[10px] font-bold text-blue-200/70 sm:mt-1">
                               <Clock size={10} className="text-orange-400" />
                               <span>{event.time}</span>
                             </span>
@@ -1385,7 +1871,7 @@ export function HomeClient() {
       {/* ------------------------------------------------------------------ */}
       {/* 6. KRYSO TECHRIDER & BOOKINGS CONTACT SECTION                     */}
       {/* ------------------------------------------------------------------ */}
-      <section id="techrider" className="relative isolate bg-[#030712] py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
+      <section id="techrider" className="relative z-10 isolate bg-[#030712]/85 backdrop-blur-xs py-16 sm:py-24 border-b border-blue-900/40 overflow-hidden">
         {/* Ambient background glow matching navy and warm orange lights */}
         <div className="pointer-events-none absolute top-12 left-10 size-[500px] rounded-full bg-blue-600/10 blur-[160px] -z-10" />
         <div className="pointer-events-none absolute bottom-10 right-10 size-[450px] rounded-full bg-orange-500/10 blur-[150px] -z-10" />

@@ -110,11 +110,17 @@ export function HomeSpotlight() {
                   </div>
                 )}
                 <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-extrabold leading-[1.15] sm:leading-[1.12] tracking-tight text-foreground">
-                  {currentSlide.title.toLowerCase().includes("pro dj") ? (
+                  {currentSlide.title.toLowerCase().includes("pro. dj") ? (
                     <>
-                      {currentSlide.title.split(/pro dj/i)[0]}
-                      <span className="text-primary font-black">PRO DJ</span>
-                      {currentSlide.title.split(/pro dj/i)[1]}
+                      {currentSlide.title.split(/pro\.\s*dj/i)[0]}
+                      <span className="text-primary font-black">PRO. DJ</span>
+                      {currentSlide.title.split(/pro\.\s*dj/i)[1]}
+                    </>
+                  ) : currentSlide.title.toLowerCase().includes("pro dj") ? (
+                    <>
+                      {currentSlide.title.split(/pro\s*dj/i)[0]}
+                      <span className="text-primary font-black">PRO. DJ</span>
+                      {currentSlide.title.split(/pro\s*dj/i)[1]}
                     </>
                   ) : (
                     currentSlide.title
@@ -128,7 +134,7 @@ export function HomeSpotlight() {
               <div className="mt-6 sm:mt-8 lg:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4">
                 <Link
                   href={currentSlide.primaryBtnLink || "/academy"}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] text-center"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] text-center animate-border-glow-orange border border-orange-300/60"
                 >
                   {currentSlide.primaryBtnText || "View all courses"} <ArrowRight size={16} />
                 </Link>
@@ -137,16 +143,16 @@ export function HomeSpotlight() {
                   <button
                     type="button"
                     onClick={handleSecondaryClick}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center cursor-pointer animate-border-glow-secondary border border-orange-400/60"
                   >
-                    {currentSlide.secondaryBtnText || "Join the Community"} <ArrowRight size={16} />
+                    {currentSlide.secondaryBtnText?.toLowerCase() === "enquiry" ? "Enquiry" : currentSlide.secondaryBtnText || "Enquiry"} <ArrowRight size={16} />
                   </button>
                 ) : (
                   <Link
                     href={currentSlide.secondaryBtnLink || "/contact"}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f05a14] px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm md:text-base font-bold text-white shadow-md shadow-[#f05a14]/25 transition-all hover:bg-[#e04f0d] hover:scale-[1.02] text-center animate-border-glow-secondary border border-orange-400/60"
                   >
-                    {currentSlide.secondaryBtnText || "Join the Community"} <ArrowRight size={16} />
+                    {currentSlide.secondaryBtnText?.toLowerCase() === "enquiry" ? "Enquiry" : currentSlide.secondaryBtnText || "Join the Community"} <ArrowRight size={16} />
                   </Link>
                 )}
               </div>
