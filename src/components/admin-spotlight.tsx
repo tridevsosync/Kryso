@@ -912,7 +912,7 @@ export function SpotlightManager() {
     setSaved(false);
     const newImg: AcademySpotlightImage = {
       id: `img-${Date.now()}`,
-      url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
+      url: "https://res.cloudinary.com/vc1jzmd4/image/upload/v1790597850/kryso/academy/course_djing.jpg",
       alt: "Pro DJ Music Production & Live Decks",
     };
     const nextList = [...academyImages, newImg];

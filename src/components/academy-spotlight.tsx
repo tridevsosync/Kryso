@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { useStored } from "@/lib/kryso-storage";
 import { formatImageUrl } from "@/lib/media-utils";
 
-const defaultHeroImage = "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg";
+const defaultHeroImage = "https://res.cloudinary.com/vc1jzmd4/image/upload/v1790597850/kryso/academy/course_djing.jpg";
 
 export interface AcademySpotlightImage {
   id: string;
@@ -18,7 +18,7 @@ export interface AcademySpotlightImage {
 export const defaultAcademySpotlightImages: AcademySpotlightImage[] = [
   {
     id: "img-dj-console-main",
-    url: "https://res.cloudinary.com/tridevsosync/image/upload/v1790597850/kryso/academy/course_djing.jpg",
+    url: "https://res.cloudinary.com/vc1jzmd4/image/upload/v1790597850/kryso/academy/course_djing.jpg",
     alt: "Pro DJ Music Production & Live Decks",
     caption: "Tomorrowland Certified DJ & Producer",
   },
