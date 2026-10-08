@@ -1,15 +1,67 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { MongoClient } from "mongodb";
 import { v2 as cloudinary } from "cloudinary";
 
-const MONGODB_URI = "mongodb+srv://saket062a_db_user:wGG7WkgvyyqGPemc@cluster0.shny3v5.mongodb.net/?appName=Cluster0";
-const DB_NAME = "kryso_db";
+// Safely load environment variables from .env.local and .env
+function loadEnv() {
+  const envFiles = [".env.local", ".env"];
+  for (const file of envFiles) {
+    const filePath = resolve(process.cwd(), file);
+    if (!existsSync(filePath)) continue;
 
-cloudinary.config({
-  cloud_name: "tridevsosync",
-  api_key: "684126362366272",
-  api_secret: "5NZcmiizozu0AJbZDZmKWAFpRXs",
-  secure: true,
-});
+    if (typeof process.loadEnvFile === "function") {
+      try {
+        process.loadEnvFile(filePath);
+        continue;
+      } catch {
+        // Fall back to manual parsing if process.loadEnvFile encounters an issue
+      }
+    }
+
+    try {
+      const content = readFileSync(filePath, "utf-8");
+      for (const line of content.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
+        }
+        if (!(key in process.env)) {
+          process.env[key] = val;
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+}
+
+loadEnv();
+
+const MONGODB_URI = process.env.MONGODB_URI;
+const DB_NAME = process.env.MONGODB_DB_NAME || "kryso_db";
+
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+const apiKey = process.env.CLOUDINARY_API_KEY;
+const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+const isCloudinaryConfigured = Boolean(cloudName && apiKey && apiSecret);
+if (isCloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true,
+  });
+}
 
 const rawCourses = [
   {
@@ -112,9 +164,30 @@ const rawCourses = [
 
 async function seed() {
   console.log("1. Uploading course images to Cloudinary (folder: kryso/academy)...");
+  if (!isCloudinaryConfigured) {
+    console.warn("⚠️ Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) not set. Using source image URLs.");
+  }
   const finalCourses = [];
 
   for (const course of rawCourses) {
+    if (!isCloudinaryConfigured) {
+      finalCourses.push({
+        id: course.id,
+        name: course.name,
+        imageUrl: course.sourceImageUrl,
+        instructor: course.instructor,
+        fees: course.fees,
+        actualPrice: course.actualPrice,
+        duration: course.duration,
+        level: course.level,
+        description: course.description,
+        syllabusOverview: course.syllabusOverview,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      continue;
+    }
+
     try {
       console.log(`Uploading image for ${course.name}...`);
       const publicId = `course_${course.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
@@ -159,7 +232,14 @@ async function seed() {
     }
   }
 
-  console.log("\n2. Connecting to MongoDB (kryso_db -> academy_courses)...");
+  if (!MONGODB_URI) {
+    console.warn("\n⚠️ MONGODB_URI is not set in environment variables (.env.local or .env). Skipping MongoDB persistence.");
+    console.log("\n--- JSON OUTPUT FOR CATALOG FALLBACK ---");
+    console.log(JSON.stringify(finalCourses, null, 2));
+    return;
+  }
+
+  console.log(`\n2. Connecting to MongoDB (${DB_NAME} -> academy_courses)...`);
   const client = new MongoClient(MONGODB_URI, {
     serverSelectionTimeoutMS: 8000,
     connectTimeoutMS: 10000,
