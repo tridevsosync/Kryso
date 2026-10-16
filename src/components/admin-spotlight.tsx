@@ -59,6 +59,7 @@ import {
   defaultKrysoPageConfig,
   defaultKrysoBiography,
   defaultKrysoDownloads,
+  defaultKrysoDownloadsSectionConfig,
   defaultKrysoProducerData,
   defaultKrysoTechriderData,
   defaultKrysoShowsData,
@@ -67,6 +68,7 @@ import {
   type KrysoPageConfig,
   type KrysoBiography,
   type KrysoDownloadItem,
+  type KrysoDownloadsSectionConfig,
   type KrysoProducerData,
   type KrysoTechriderData,
   type KrysoTechriderItem,
@@ -121,10 +123,14 @@ export function SpotlightManager() {
     defaultKrysoBiography
   );
 
-  // 5. KRYSO Downloads (Google Drive Links)
+  // 5. KRYSO Downloads (Google Drive Links & Section Heading/Description)
   const [downloads, setDownloads] = useStored<KrysoDownloadItem[]>(
     "admin-kryso-downloads",
     defaultKrysoDownloads
+  );
+  const [downloadsSection, setDownloadsSection] = useStored<KrysoDownloadsSectionConfig>(
+    "admin-kryso-downloads-section",
+    defaultKrysoDownloadsSectionConfig
   );
   const [activeDownloadIndex, setActiveDownloadIndex] = useState(0);
 
@@ -205,6 +211,16 @@ export function SpotlightManager() {
       })
       .catch(() => {});
 
+    fetch("/api/collections?name=kryso_downloads_section")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+          const remoteSection = data.items[0];
+          if (remoteSection) setDownloadsSection((prev) => ({ ...prev, ...remoteSection }));
+        }
+      })
+      .catch(() => {});
+
     fetch("/api/collections?name=academy_spotlight_images")
       .then((res) => res.json())
       .then((data) => {
@@ -243,7 +259,7 @@ export function SpotlightManager() {
         }
       })
       .catch(() => {});
-  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setAcademyImages, setProducer, setTechrider, setShows]);
+  }, [setKrysoImages, setKrysoConfig, setBiography, setDownloads, setDownloadsSection, setAcademyImages, setProducer, setTechrider, setShows]);
 
   // Upload image handler
   const handleUpload = async (file: File, onSuccess: (url: string) => void) => {
@@ -637,17 +653,27 @@ export function SpotlightManager() {
     setSaved(false);
 
     try {
-      const res = await fetch("/api/collections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "kryso_downloads",
-          items: downloads,
+      const [resDownloads] = await Promise.all([
+        fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "kryso_downloads",
+            items: downloads,
+          }),
         }),
-      });
-      const data = await res.json();
+        fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "kryso_downloads_section",
+            items: [downloadsSection || defaultKrysoDownloadsSectionConfig],
+          }),
+        }),
+      ]);
+      const data = await resDownloads.json();
       if (data?.success) {
-        setSaveTarget("Downloads & Google Drive links saved and live!");
+        setSaveTarget("Downloads, section title & Drive links saved and live!");
       } else {
         setSaveTarget("Saved locally to browser cache");
       }
@@ -660,21 +686,32 @@ export function SpotlightManager() {
   };
 
   const handleResetDownloads = async () => {
-    if (confirm("Reset all downloads to default assets & Google Drive links?")) {
+    if (confirm("Reset all downloads, section heading & description to defaults?")) {
       setDownloads(defaultKrysoDownloads);
+      setDownloadsSection(defaultKrysoDownloadsSectionConfig);
       setActiveDownloadIndex(0);
       setSaved(true);
-      setSaveTarget("Downloads restored to defaults!");
+      setSaveTarget("Downloads & section restored to defaults!");
 
       try {
-        await fetch("/api/collections", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: "kryso_downloads",
-            items: defaultKrysoDownloads,
+        await Promise.all([
+          fetch("/api/collections", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: "kryso_downloads",
+              items: defaultKrysoDownloads,
+            }),
           }),
-        });
+          fetch("/api/collections", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: "kryso_downloads_section",
+              items: [defaultKrysoDownloadsSectionConfig],
+            }),
+          }),
+        ]);
       } catch {}
     }
   };
@@ -2555,6 +2592,78 @@ export function SpotlightManager() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Editor (7 cols) */}
             <form onSubmit={handleSaveDownloads} className="lg:col-span-7 space-y-6">
+              {/* 1. KRYSO Downloads Section Header & Description */}
+              <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-border/80 pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center font-black text-xs">
+                      <FolderDown size={14} />
+                    </span>
+                    <h3 className="font-display text-base font-bold text-foreground">
+                      Downloads Section Heading & Description
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Website Section Header
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Badge / Eyebrow Text
+                    </label>
+                    <Input
+                      value={downloadsSection?.badge || ""}
+                      placeholder="OFFICIAL MEDIA & PRESS ASSETS"
+                      onChange={(e) =>
+                        setDownloadsSection((prev) => ({
+                          ...(prev || defaultKrysoDownloadsSectionConfig),
+                          badge: e.target.value,
+                        }))
+                      }
+                      className="bg-background border-border text-foreground text-sm font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Section Heading
+                    </label>
+                    <Input
+                      value={downloadsSection?.heading || ""}
+                      placeholder="Kryso Downloads"
+                      onChange={(e) =>
+                        setDownloadsSection((prev) => ({
+                          ...(prev || defaultKrysoDownloadsSectionConfig),
+                          heading: e.target.value,
+                        }))
+                      }
+                      className="bg-background border-border text-foreground text-sm font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Section Description
+                  </label>
+                  <Textarea
+                    rows={3}
+                    value={downloadsSection?.description || ""}
+                    placeholder="Access official 4K press portraits, live concert footage, tour artwork, and promo reels. Tap images to download, or play videos directly on the website."
+                    onChange={(e) =>
+                      setDownloadsSection((prev) => ({
+                        ...(prev || defaultKrysoDownloadsSectionConfig),
+                        description: e.target.value,
+                      }))
+                    }
+                    className="bg-background border-border text-foreground text-sm leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Download Item Editor */}
               <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
                 <div className="flex items-center justify-between border-b border-border/80 pb-4">
                   <div className="flex items-center gap-2">
@@ -2731,7 +2840,7 @@ export function SpotlightManager() {
                   type="submit"
                   className="h-11 rounded-full px-8 font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 cursor-pointer"
                 >
-                  Save Downloads & Drive Links
+                  Save Downloads & Section Settings
                 </Button>
                 {saved && (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary">
@@ -2741,9 +2850,41 @@ export function SpotlightManager() {
               </div>
             </form>
 
-            {/* Live Card Preview (5 cols) */}
+            {/* Live Card & Section Header Preview (5 cols) */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="flex items-center justify-between">
+              {/* Section Header Realtime Preview */}
+              <div className="rounded-3xl border border-border bg-card p-5 space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                  <p className="eyebrow">Section Header Preview</p>
+                  <span className="text-[11px] text-muted-foreground">Live on website</span>
+                </div>
+                <div className="space-y-2 pt-1">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
+                    <FolderDown size={11} />
+                    <span>{downloadsSection?.badge || defaultKrysoDownloadsSectionConfig.badge || "OFFICIAL MEDIA & PRESS ASSETS"}</span>
+                  </div>
+                  <h4 className="font-display text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                    {(() => {
+                      const heading = downloadsSection?.heading || defaultKrysoDownloadsSectionConfig.heading;
+                      const words = heading.trim().split(" ");
+                      if (words.length > 1) {
+                        return (
+                          <>
+                            <span>{words[0]} </span>
+                            <span className="text-primary">{words.slice(1).join(" ")}</span>
+                          </>
+                        );
+                      }
+                      return <span className="text-primary">{heading}</span>;
+                    })()}
+                  </h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {downloadsSection?.description || defaultKrysoDownloadsSectionConfig.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
                 <p className="eyebrow">Realtime Card Preview</p>
                 <span className="text-xs text-muted-foreground">Tap card to test redirect</span>
               </div>

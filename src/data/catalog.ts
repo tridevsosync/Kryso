@@ -672,6 +672,19 @@ export type KrysoDownloadItem = {
   dateAdded?: string;
 };
 
+export type KrysoDownloadsSectionConfig = {
+  badge?: string;
+  heading: string;
+  description: string;
+};
+
+export const defaultKrysoDownloadsSectionConfig: KrysoDownloadsSectionConfig = {
+  badge: "OFFICIAL MEDIA & PRESS ASSETS",
+  heading: "Kryso Downloads",
+  description:
+    "Access official 4K press portraits, live concert footage, tour artwork, and promo reels. Tap images to download, or play videos directly on the website.",
+};
+
 export const defaultKrysoDownloads: KrysoDownloadItem[] = [
   {
     id: "dl-1",
@@ -855,5 +868,4 @@ export const defaultMusicHeaderData: MusicHeaderData = {
   badge2: "Follow to Unlock Exclusive Downloads",
   badge3: "Direct Audio & ZIP Downloads",
 };
-
 

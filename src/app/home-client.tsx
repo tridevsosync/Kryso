@@ -33,16 +33,12 @@ import {
   MapPin,
   Clock,
   MessageCircle,
-  Lock,
-  Unlock,
-  Music,
   Facebook,
-  Loader2,
-  Headphones,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteShell } from "@/components/kryso-site";
+import { SpotifyIcon } from "@/components/spotify-icon";
 import { useStored } from "@/lib/kryso-storage";
 import {
   defaultKrysoPageImages,
@@ -50,21 +46,19 @@ import {
   defaultKrysoBiography,
   defaultKrysoShowsData,
   defaultKrysoDownloads,
+  defaultKrysoDownloadsSectionConfig,
   defaultKrysoProducerData,
   defaultKrysoTechriderData,
-  defaultMusicTracks,
-  siteSettings,
   type KrysoPageImage,
   type KrysoPageConfig,
   type KrysoBiography,
   type KrysoShowsData,
   type KrysoDownloadItem,
+  type KrysoDownloadsSectionConfig,
   type KrysoProducerData,
   type KrysoTechriderData,
-  type MusicTrack,
 } from "@/data/catalog";
 import { formatImageUrl, formatVideoUrl, getVideoSourceInfo } from "@/lib/media-utils";
-import { SpotifyIcon } from "@/components/spotify-icon";
 
 export function HomeClient() {
   const [images, setImages] = useStored<KrysoPageImage[]>("admin-kryso-images", defaultKrysoPageImages);
@@ -72,9 +66,12 @@ export function HomeClient() {
   const [biography, setBiography] = useStored<KrysoBiography>("admin-kryso-biography", defaultKrysoBiography);
   const [shows, setShows] = useStored<KrysoShowsData>("admin-kryso-shows", defaultKrysoShowsData);
   const [downloads, setDownloads] = useStored<KrysoDownloadItem[]>("admin-kryso-downloads", defaultKrysoDownloads);
+  const [downloadsSection, setDownloadsSection] = useStored<KrysoDownloadsSectionConfig>(
+    "admin-kryso-downloads-section",
+    defaultKrysoDownloadsSectionConfig,
+  );
   const [producer, setProducer] = useStored<KrysoProducerData>("admin-kryso-producer", defaultKrysoProducerData);
   const [techrider, setTechrider] = useStored<KrysoTechriderData>("admin-kryso-techrider", defaultKrysoTechriderData);
-  const [musicTracks, setMusicTracks] = useStored<MusicTrack[]>("admin-music-tracks-v1", defaultMusicTracks);
   const [downloadFilter, setDownloadFilter] = useState<"all" | "image" | "video">("all");
   const [activeVideoModal, setActiveVideoModal] = useState<KrysoDownloadItem | null>(null);
 
@@ -164,129 +161,16 @@ export function HomeClient() {
       })
       .catch(() => {});
 
-    fetch("/api/collections?name=music_tracks")
+    fetch("/api/collections?name=kryso_downloads_section")
       .then((res) => res.json())
       .then((data) => {
         if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
-          setMusicTracks(data.items);
+          const remoteSection = data.items[0];
+          if (remoteSection) setDownloadsSection((prev) => ({ ...prev, ...remoteSection }));
         }
       })
       .catch(() => {});
-  }, [setImages, setConfig, setBiography, setShows, setDownloads, setProducer, setTechrider, setMusicTracks]);
-
-  // Audio preview playback & download states for music in downloads section
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
-  const [downloadingTrackId, setDownloadingTrackId] = useState<string | null>(null);
-  const [lockModalTrack, setLockModalTrack] = useState<MusicTrack | null>(null);
-  const [unlockedTrackIds, setUnlockedTrackIds] = useState<string[]>([]);
-  const [steps, setSteps] = useState({ sp: false, yt: false, ig: false, fb: false });
-
-  // Cleanup audio player on unmount
-  useEffect(() => {
-    return () => {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-    };
-  }, []);
-
-  // Compute 4 Top Music Tracks (prefer tracks where isTop === true, fallback to fill 4 tracks)
-  const topMusicTracks = (() => {
-    const list = musicTracks && musicTracks.length > 0 ? musicTracks : defaultMusicTracks;
-    const topOnly = list.filter((t) => t.isTop);
-    if (topOnly.length >= 4) {
-      return topOnly.slice(0, 4);
-    }
-    const nonTop = list.filter((t) => !t.isTop);
-    return [...topOnly, ...nonTop].slice(0, 4);
-  })();
-
-  const togglePlayTrack = (track: MusicTrack) => {
-    if (!track.audioUrl) return;
-
-    if (playingTrackId === track.id) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-      setPlayingTrackId(null);
-    } else {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-      const audio = new Audio(track.audioUrl);
-      audioPlayerRef.current = audio;
-      audio.play().catch(() => {});
-      audio.onended = () => setPlayingTrackId(null);
-      setPlayingTrackId(track.id);
-    }
-  };
-
-  const handleMusicDownloadClick = (track: MusicTrack) => {
-    const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
-    if (isUnlocked) {
-      triggerMusicDownload(track);
-    } else {
-      setLockModalTrack(track);
-      setSteps({ sp: false, yt: false, ig: false, fb: false });
-    }
-  };
-
-  const triggerMusicDownload = async (track: MusicTrack) => {
-    const downloadTarget = (track.downloadUrl && track.downloadUrl.trim()) || (track.audioUrl && track.audioUrl.trim());
-    if (!downloadTarget) {
-      alert("No audio/ZIP download link configured for this release yet.");
-      return;
-    }
-
-    setDownloadingTrackId(track.id);
-    const cleanTrackName = (track.name || "Track").trim().replace(/[/\\?%*:|"<>]/g, "_");
-    const cleanSingerName = (track.singer || "Kryso").trim().replace(/[/\\?%*:|"<>]/g, "_");
-
-    try {
-      const lower = downloadTarget.toLowerCase();
-      const isZip = lower.includes(".zip") || (track.downloadUrl && !track.downloadUrl.match(/\.(mp3|mp4|wav|m4a)$/i));
-      const isMp4 = lower.includes(".mp4");
-      const isWav = lower.includes(".wav");
-      const isM4a = lower.includes(".m4a");
-      const ext = isZip ? ".zip" : isMp4 ? ".mp4" : isWav ? ".wav" : isM4a ? ".m4a" : ".mp3";
-      const filename = `${cleanTrackName} - ${cleanSingerName}${ext}`;
-
-      const downloadEndpoint = `/api/download?url=${encodeURIComponent(downloadTarget)}&filename=${encodeURIComponent(filename)}`;
-      const link = document.createElement("a");
-      link.href = downloadEndpoint;
-      link.download = filename;
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link);
-        }
-        setDownloadingTrackId(null);
-      }, 1500);
-    } catch (err) {
-      console.error("Track download error:", err);
-      window.open(downloadTarget, "_blank");
-      setDownloadingTrackId(null);
-    }
-  };
-
-  const markStepDone = (key: "sp" | "yt" | "ig" | "fb", url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-    setSteps((prev) => ({ ...prev, [key]: true }));
-  };
-
-  const completeUnlock = () => {
-    if (!lockModalTrack) return;
-    const currentTrack = lockModalTrack;
-    setUnlockedTrackIds((prev) => [...prev, currentTrack.id]);
-    setLockModalTrack(null);
-    triggerMusicDownload(currentTrack);
-  };
-
-  const allStepsDone = steps.sp && steps.yt && steps.ig && steps.fb;
+  }, [setImages, setConfig, setBiography, setShows, setDownloads, setDownloadsSection, setProducer, setTechrider]);
 
   const activeVideoUrl =
     config?.videoUrl || "https://drive.google.com/file/d/1mrKNVwkgZOpQ7plrQ56z2C7u-gog3TPf/view?usp=sharing";
@@ -901,15 +785,35 @@ export function HomeClient() {
             <div className="max-w-2xl space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-orange-400">
                 <FolderDown size={13} />
-                <span>OFFICIAL MEDIA & PRESS ASSETS</span>
+                <span>{downloadsSection?.badge || defaultKrysoDownloadsSectionConfig.badge || "OFFICIAL MEDIA & PRESS ASSETS"}</span>
               </div>
 
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-                Kryso <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">Downloads</span>
+                {(() => {
+                  const heading = downloadsSection?.heading || defaultKrysoDownloadsSectionConfig.heading;
+                  const words = heading.trim().split(" ");
+                  if (words.length > 1) {
+                    const firstWord = words[0];
+                    const restWords = words.slice(1).join(" ");
+                    return (
+                      <>
+                        <span className="text-white">{firstWord} </span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
+                          {restWords}
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
+                      {heading}
+                    </span>
+                  );
+                })()}
               </h2>
 
               <p className="text-sm sm:text-base text-blue-200/80 leading-relaxed">
-                Access official 4K press portraits, live concert footage, tour artwork, and promo reels. Tap images to download, or play videos directly on the website.
+                {downloadsSection?.description || defaultKrysoDownloadsSectionConfig.description}
               </p>
             </div>
 
@@ -1130,141 +1034,6 @@ export function HomeClient() {
             );
           })()}
 
-          {/* 2. 4 Music Cards Placed Under Image and Video Cards */}
-          <div className="pt-6 border-t border-blue-900/40 space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-              {topMusicTracks.map((track) => {
-                const isUnlocked = !track.isLocked || unlockedTrackIds.includes(track.id);
-                const isPlaying = playingTrackId === track.id;
-                const isDownloading = downloadingTrackId === track.id;
-
-                return (
-                  <div
-                    key={track.id}
-                    className="group relative flex flex-col justify-between rounded-3xl border border-blue-900/60 bg-[#0B152B]/95 p-4 overflow-hidden shadow-xl hover:shadow-2xl hover:border-orange-500/60 transition-all duration-300 hover:-translate-y-1.5"
-                  >
-                    {/* Artwork Container */}
-                    <div>
-                      <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#070F1E] border border-blue-900/50 shadow-inner">
-                        {track.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={formatImageUrl(track.imageUrl)}
-                            alt={track.name}
-                            className="size-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-                            onError={(e) => {
-                              e.currentTarget.src = "/kryso-hero.jpg";
-                            }}
-                          />
-                        ) : (
-                          <div className="grid h-full place-items-center text-blue-300/40">
-                            <Music size={40} />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-
-                        {/* Top Badges */}
-                        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10 pointer-events-none">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500 text-black px-2 py-0.5 text-[10px] font-black uppercase tracking-wider shadow-md">
-                            ⭐ TOP RELEASE
-                          </span>
-                          {track.genre && (
-                            <span className="inline-flex items-center rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-300 border border-orange-500/30">
-                              {track.genre}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Free / VIP Badge */}
-                        <span
-                          className={`absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md z-10 ${
-                            isUnlocked
-                              ? "bg-emerald-500/90 text-white border border-emerald-400/40"
-                              : "bg-amber-500/90 text-black border border-amber-400/40 animate-pulse"
-                          }`}
-                        >
-                          {isUnlocked ? <Unlock size={10} /> : <Lock size={10} />}
-                          <span>{isUnlocked ? "FREE" : "VIP"}</span>
-                        </span>
-
-                        {/* Audio Preview Play/Pause button */}
-                        {track.audioUrl && (
-                          <div className="absolute inset-0 grid place-items-center bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => togglePlayTrack(track)}
-                              className="size-12 rounded-full bg-orange-500 hover:bg-orange-400 text-black grid place-items-center shadow-2xl transition-all transform scale-90 group-hover:scale-100 hover:scale-110 cursor-pointer"
-                              title={isPlaying ? "Pause Preview" : "Play Audio Preview"}
-                            >
-                              {isPlaying ? <Pause size={20} className="fill-current" /> : <Play size={20} className="fill-current ml-0.5" />}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Track Info */}
-                      <div className="mt-3.5 space-y-1">
-                        <h4 className="font-display text-base font-bold text-white group-hover:text-orange-400 transition-colors truncate" title={track.name}>
-                          {track.name}
-                        </h4>
-                        <p className="text-xs text-blue-200/70 truncate">
-                          Singer / Artist: <span className="font-medium text-blue-100">{track.singer}</span>
-                        </p>
-                        {track.bpm && (
-                          <p className="text-[11px] text-orange-400/80 font-mono">
-                            {track.bpm} BPM {track.key ? `• Key: ${track.key}` : ""}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Download Action Button */}
-                    <div className="mt-4 pt-3 border-t border-blue-900/50">
-                      <button
-                        type="button"
-                        onClick={() => handleMusicDownloadClick(track)}
-                        disabled={isDownloading}
-                        className={`w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black uppercase tracking-wider shadow-md transition-all cursor-pointer ${
-                          isUnlocked
-                            ? "bg-orange-500 hover:bg-orange-400 text-black shadow-orange-500/20 hover:scale-[1.02]"
-                            : "bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black shadow-amber-500/20 hover:scale-[1.02]"
-                        }`}
-                      >
-                        {isDownloading ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin" />
-                            <span>Downloading...</span>
-                          </>
-                        ) : isUnlocked ? (
-                          <>
-                            <Download size={13} />
-                            <span>Download Track</span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock size={13} />
-                            <span>Unlock & Download</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 3. View More Music Button Underneath */}
-            <div className="flex items-center justify-center pt-2">
-              <Link
-                href="/music"
-                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-orange-400/80 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-black px-8 py-3.5 text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/25 transition-all hover:scale-105 animate-border-glow-orange cursor-pointer"
-              >
-                <Disc3 size={17} className="animate-spin-slow" />
-                <span>View More Music</span>
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-          </div>
         </div>
 
         {/* Video Player Modal */}
@@ -1359,158 +1128,6 @@ export function HomeClient() {
           </div>
         )}
 
-        {/* Social Follow-to-Unlock Modal for Locked Top Music Tracks */}
-        {lockModalTrack && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn"
-            onClick={() => setLockModalTrack(null)}
-          >
-            <div
-              className="relative w-full max-w-md rounded-3xl border border-orange-500/50 bg-[#0B152B] p-6 shadow-2xl text-white overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Ambient Glow */}
-              <div className="pointer-events-none absolute -top-20 -right-20 size-40 rounded-full bg-orange-500/20 blur-3xl" />
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setLockModalTrack(null)}
-                className="absolute top-4 right-4 size-8 rounded-full bg-blue-950/80 hover:bg-blue-900 text-blue-300 hover:text-white grid place-items-center transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-
-              {/* Header */}
-              <div className="text-center space-y-2 pt-2">
-                <div className="mx-auto size-14 rounded-2xl bg-orange-500/20 border border-orange-500/40 text-orange-400 grid place-items-center shadow-lg">
-                  <Lock size={26} />
-                </div>
-                <h3 className="font-display text-xl sm:text-2xl font-black text-white">
-                  Unlock Free Track
-                </h3>
-                <p className="text-xs text-blue-200/80 max-w-xs mx-auto">
-                  Follow <span className="font-bold text-orange-400">KRYSO</span> on the official channels below to instantly unlock & download:
-                </p>
-                <div className="p-2.5 rounded-xl bg-[#070F1E] border border-blue-900/60 text-xs font-bold text-orange-300 truncate">
-                  🎵 {lockModalTrack.name} – {lockModalTrack.singer}
-                </div>
-              </div>
-
-              {/* Social Channels List */}
-              <div className="mt-5 space-y-2.5">
-                {/* Spotify */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-[#1DB954]/20 text-[#1DB954] grid place-items-center">
-                      <SpotifyIcon size={16} />
-                    </div>
-                    <span className="text-xs font-bold text-white">Follow on Spotify</span>
-                  </div>
-                  {steps.sp ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1DB954] bg-[#1DB954]/10 px-2.5 py-1 rounded-full">
-                      <Check size={12} /> Done
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markStepDone("sp", siteSettings.spotifyUrl)}
-                      className="px-3.5 py-1 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black text-xs font-black transition-all cursor-pointer hover:scale-105"
-                    >
-                      Follow
-                    </button>
-                  )}
-                </div>
-
-                {/* YouTube */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-red-600/20 text-red-500 grid place-items-center">
-                      <Youtube size={16} />
-                    </div>
-                    <span className="text-xs font-bold text-white">Subscribe YouTube</span>
-                  </div>
-                  {steps.yt ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full">
-                      <Check size={12} /> Done
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markStepDone("yt", siteSettings.youtubeUrl)}
-                      className="px-3.5 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
-                    >
-                      Subscribe
-                    </button>
-                  )}
-                </div>
-
-                {/* Instagram */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-pink-500/20 text-pink-400 grid place-items-center">
-                      <Instagram size={16} />
-                    </div>
-                    <span className="text-xs font-bold text-white">Follow Instagram</span>
-                  </div>
-                  {steps.ig ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-pink-400 bg-pink-500/10 px-2.5 py-1 rounded-full">
-                      <Check size={12} /> Done
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markStepDone("ig", siteSettings.instagramUrl)}
-                      className="px-3.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:brightness-110 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
-                    >
-                      Follow
-                    </button>
-                  )}
-                </div>
-
-                {/* Facebook */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#070F1E] border border-blue-900/60">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-blue-600/20 text-blue-400 grid place-items-center">
-                      <Facebook size={16} />
-                    </div>
-                    <span className="text-xs font-bold text-white">Follow Facebook</span>
-                  </div>
-                  {steps.fb ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full">
-                      <Check size={12} /> Done
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markStepDone("fb", siteSettings.facebookUrl)}
-                      className="px-3.5 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all cursor-pointer hover:scale-105"
-                    >
-                      Follow
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Complete Unlock Button */}
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={completeUnlock}
-                  disabled={!allStepsDone}
-                  className={`w-full py-3 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    allStepsDone
-                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-black shadow-lg shadow-orange-500/30 hover:scale-[1.02] animate-bounce"
-                      : "bg-blue-950/60 border border-blue-900 text-blue-400/50 cursor-not-allowed"
-                  }`}
-                >
-                  <Download size={16} />
-                  <span>{allStepsDone ? "Unlock & Download Now" : "Complete All 4 Steps to Unlock"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* ------------------------------------------------------------------ */}
@@ -2107,4 +1724,3 @@ export function HomeClient() {
     </SiteShell>
   );
 }
-
