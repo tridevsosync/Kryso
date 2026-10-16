@@ -799,13 +799,33 @@ function ContactSection() {
     await deleteEnquiryRemote(id);
   };
 
-  const contactFields = [
+  const contactDirectFields = [
     { key: "phone" as const, label: "Primary Phone Number", placeholder: "+91 87678 28945" },
     { key: "altPhone" as const, label: "Alternate / WhatsApp Phone", placeholder: "+91 97673 78750" },
     { key: "email" as const, label: "Official Contact Email", placeholder: "krysomusicacademy@gmail.com" },
     { key: "address" as const, label: "Academy Studio Address", placeholder: "Pune, Maharashtra, India" },
     { key: "tagline" as const, label: "Academy Tagline", placeholder: "Learn Music and Enjoy Music" },
     { key: "footerText" as const, label: "Footer Copyright / Text", placeholder: "© 2026 Kryso Music Academy. All music, all heart." },
+  ];
+
+  const contactTextPageFields = [
+    { key: "contactHeroEyebrow" as const, label: "Hero Eyebrow", placeholder: "We'd love to hear from you" },
+    { key: "contactHeroTitle" as const, label: "Hero Title", placeholder: "Let's talk music." },
+    { key: "contactHeroSubtitle" as const, label: "Hero Subtitle / Description", placeholder: "Questions about concert coaching, classes or studio visits?" },
+    { key: "contactSectionLabel" as const, label: "Section Label", placeholder: "Find us in Pune" },
+    { key: "contactSectionTitle" as const, label: "Section Heading", placeholder: "Say hello, or come visit the studio." },
+    { key: "contactLocationBadge" as const, label: "Studio Location Badge", placeholder: "Pune, Maharashtra" },
+    { key: "contactStudioHours" as const, label: "Studio Hours", placeholder: "Mon – Sat: 10:00 AM – 8:30 PM · Sundays for masterclasses" },
+    { key: "contactStudioHeading" as const, label: "Studio Card Title", placeholder: "A place for live music, near you." },
+    { key: "contactStudioDescription" as const, label: "Studio Card Description", placeholder: "Get in touch for sound studio walkthroughs, auditions, and instrument trials." },
+  ];
+
+  const contactMapFields = [
+    { key: "contactMapEyebrow" as const, label: "Map Eyebrow Label", placeholder: "HEADQUARTERS LOCATION" },
+    { key: "contactMapTitle" as const, label: "Map Section Title", placeholder: "Find Kryso Music Academy" },
+    { key: "mapUrl" as const, label: "Google Maps Driving Link (Share URL)", placeholder: "https://share.google/igDtrSdlRRRTOAV1m" },
+    { key: "mapEmbedUrl" as const, label: "Google Map Embed Iframe URL", placeholder: "https://maps.google.com/maps?q=KRYSO+DJ+Academy+Pune&t=&z=15&ie=UTF8&iwloc=&output=embed" },
+    { key: "visitingInstructions" as const, label: "Visiting Instructions", placeholder: "Appointments recommended. Contact us ahead for studio walkthroughs & audition sessions." },
   ];
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -1155,54 +1175,101 @@ function ContactSection() {
       {/* 2. STUDIO SETTINGS TAB                               */}
       {/* ---------------------------------------------------- */}
       {tab === "studio" && (
-        <form className="grid gap-5 max-w-3xl" onSubmit={handleSaveSettings}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {contactFields.map((f) => (
-              <label key={f.key} className="grid gap-1.5 text-sm font-semibold text-foreground">
-                {f.label}
-                <Input
-                  value={settings[f.key] || ""}
-                  placeholder={f.placeholder}
-                  className="bg-card border-border text-foreground focus-visible:ring-primary"
-                  onChange={(e) => {
-                    setSaved(false);
-                    setSettings({ ...settings, [f.key]: e.target.value });
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-display text-base font-bold text-foreground">Studio Visit & Timings</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Information displayed for prospective students visiting the Pune studio.
-            </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
-              <div className="rounded-lg bg-secondary p-3 border border-border/50">
-                <p className="text-xs text-muted-foreground font-semibold">Studio Hours</p>
-                <p className="mt-1 font-bold text-foreground">Mon – Sat: 10:00 AM – 8:30 PM</p>
-                <p className="text-xs text-muted-foreground">Sunday: Live Masterclasses & Concerts</p>
-              </div>
-              <div className="rounded-lg bg-secondary p-3 border border-border/50">
-                <p className="text-xs text-muted-foreground font-semibold">Location Zone</p>
-                <p className="mt-1 font-bold text-foreground">{settings.address || "Pune, Maharashtra, India"}</p>
-                <p className="text-xs text-muted-foreground">Concert Hall & Sound Rehearsal Space</p>
-              </div>
+        <form className="grid gap-6 max-w-4xl" onSubmit={handleSaveSettings}>
+          {/* Section 1: Direct Contact Numbers & Studio Info */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <div>
+              <h2 className="font-display text-base font-bold text-foreground">Studio Direct Contact Details</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Phone numbers, email, address, and studio info displayed on contact cards.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {contactDirectFields.map((f) => (
+                <label key={f.key} className="grid gap-1.5 text-xs font-semibold text-foreground">
+                  {f.label}
+                  <Input
+                    value={settings[f.key] || ""}
+                    placeholder={f.placeholder}
+                    className="bg-secondary/60 border-border text-foreground text-xs focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, [f.key]: e.target.value });
+                    }}
+                  />
+                </label>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-4 pt-2">
+          {/* Section 2: Contact Page Dynamic Content */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <div>
+              <h2 className="font-display text-base font-bold text-foreground">Contact Page Dynamic Text</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Headlines, subtitles, section labels, and schedule displayed across the /contact page.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {contactTextPageFields.map((f) => (
+                <label key={f.key} className="grid gap-1.5 text-xs font-semibold text-foreground">
+                  {f.label}
+                  <Input
+                    value={settings[f.key] || ""}
+                    placeholder={f.placeholder}
+                    className="bg-secondary/60 border-border text-foreground text-xs focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, [f.key]: e.target.value });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 3: Google Map & Location Integration */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <div>
+              <h2 className="font-display text-base font-bold text-foreground">Google Map &amp; Navigation Link</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Google Maps share URL, interactive iframe embed, and visiting instructions for prospective students.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {contactMapFields.map((f) => (
+                <label
+                  key={f.key}
+                  className={`grid gap-1.5 text-xs font-semibold text-foreground ${
+                    f.key === "mapUrl" || f.key === "mapEmbedUrl" || f.key === "visitingInstructions" ? "sm:col-span-2" : ""
+                  }`}
+                >
+                  {f.label}
+                  <Input
+                    value={settings[f.key] || ""}
+                    placeholder={f.placeholder}
+                    className="bg-secondary/60 border-border text-foreground text-xs focus-visible:ring-primary"
+                    onChange={(e) => {
+                      setSaved(false);
+                      setSettings({ ...settings, [f.key]: e.target.value });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-1">
             <Button
               type="submit"
               disabled={saving}
-              className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90"
+              className="h-11 rounded-full px-7 font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 cursor-pointer"
             >
               {saving ? "Saving..." : "Save Contact Details"}
             </Button>
             {saved && (
               <span className="text-sm font-semibold text-emerald-400">
-                ✓ Saved successfully to database & live website!
+                ✓ Saved successfully to database &amp; live website!
               </span>
             )}
           </div>

@@ -252,7 +252,98 @@ export const siteSettings = {
   isMaintenanceMode: false,
   maintenanceTitle: "Under Scheduled Maintenance",
   maintenanceMessage: "We are currently tuning our audio servers and studio gear to bring you a better musical experience. We will be back online shortly!",
+
+  // Contact page dynamic text
+  contactHeroEyebrow: "We'd love to hear from you",
+  contactHeroTitle: "Let's talk music.",
+  contactHeroSubtitle: "Questions about concert coaching, classes or studio visits? Drop us a note or call our Pune academy directly.",
+  contactSectionLabel: "Find us in Pune",
+  contactSectionTitle: "Say hello, or come visit the studio.",
+  contactLocationBadge: "Pune, Maharashtra",
+  contactStudioHeading: "A place for live music, near you.",
+  contactStudioDescription: "Get in touch for sound studio walkthroughs, auditions, and instrument trials.",
+  contactStudioHours: "Mon – Sat: 10:00 AM – 8:30 PM · Sundays for masterclasses",
+  contactFormEyebrow: "Direct Contact Form",
+  contactFormTitle: "Send us a Message",
+  contactFormSubtitle: "Fill in your details below and our team will get back to you within 24 hours.",
+
+  // Map & Headquarters section (Reference style)
+  contactMapEyebrow: "HEADQUARTERS LOCATION",
+  contactMapTitle: "Find Kryso Music Academy",
+  contactMapSubtitle: "Kryso Music Academy, Pune, Maharashtra, India",
+  mapUrl: "https://share.google/igDtrSdlRRRTOAV1m",
+  mapEmbedUrl: "https://maps.google.com/maps?q=KRYSO+DJ+Academy+Pune&t=&z=15&ie=UTF8&iwloc=&output=embed",
+  visitingInstructions: "Appointments recommended. Contact us ahead for studio walkthroughs & audition sessions.",
 };
+
+export type MusicVideoItem = {
+  id: string;
+  title: string;
+  category?: string; // e.g. "Official Music Video", "Live Festival Set", "Festival Aftermovie"
+  videoUrl: string; // YouTube video link or direct MP4 stream
+  thumbnailUrl?: string; // Custom image or auto YouTube thumbnail
+  duration?: string; // e.g. "4K Festival Cut • 8:24"
+  description?: string;
+  createdAt?: string;
+};
+
+export function parseVideoUrl(url: string): { type: "youtube" | "direct"; embedUrl: string; youtubeId?: string } {
+  if (!url) return { type: "direct", embedUrl: "" };
+  const trimmed = url.trim();
+  const ytMatch = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: "youtube",
+      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0`,
+      youtubeId: ytMatch[1],
+    };
+  }
+  return { type: "direct", embedUrl: trimmed };
+}
+
+export function getVideoThumbnail(video: { thumbnailUrl?: string; videoUrl: string }): string {
+  if (video.thumbnailUrl && video.thumbnailUrl.trim()) {
+    return video.thumbnailUrl.trim();
+  }
+  const parsed = parseVideoUrl(video.videoUrl);
+  if (parsed.youtubeId) {
+    return `https://img.youtube.com/vi/${parsed.youtubeId}/hqdefault.jpg`;
+  }
+  return "/kryso-hero.jpg";
+}
+
+export const defaultMusicVideos: MusicVideoItem[] = [
+  {
+    id: "vid-1",
+    title: "KRYSO - Live Festival Set & Stage Visuals (4K Performance)",
+    category: "Live Festival Set",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    thumbnailUrl: "/kryso-hero.jpg",
+    duration: "4K Festival Cut • 8:24",
+    description: "Experience the electrifying live energy, stage visuals, and concert crowd of KRYSO on stage.",
+    createdAt: "2026-01-10T00:00:00.000Z",
+  },
+  {
+    id: "vid-2",
+    title: "KRYSO - KJSC Festival Official Aftermovie 4K",
+    category: "Festival Aftermovie",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    thumbnailUrl: "/kryso-dj-music-producer-bg.png",
+    duration: "Official Aftermovie • 3:15",
+    description: "Official aftermovie capturing the heart-pumping bass, festival atmosphere, and mainstage moments.",
+    createdAt: "2026-01-12T00:00:00.000Z",
+  },
+  {
+    id: "vid-3",
+    title: "KRYSO - Raving Astronaut (Official Music Video)",
+    category: "Official Music Video",
+    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    thumbnailUrl: "/kryso-music-producer-presskit.png",
+    duration: "Studio Master • 3:42",
+    description: "The official music video and spatial audio mix for Raving Astronaut.",
+    createdAt: "2026-01-15T00:00:00.000Z",
+  },
+];
 
 export type TrackAudioItem = {
   id: string;
@@ -762,6 +853,7 @@ export const defaultKrysoProducerData: KrysoProducerData = {
     "9XM",
     "ZOOM",
     "ZEE",
+    "Sony",
   ],
   artistSupporters: [
     "NICKY ROMERO",
@@ -825,7 +917,7 @@ export const defaultKrysoTechriderData: KrysoTechriderData = {
     { id: "tr-4", category: "Stage Audio Monitoring", spec: "2 IN EAR STEREO MONITORS" },
   ],
   contactTitle: "Bookings & Direct Channels",
-  bookingPhone: "+91 9767378750",
+  bookingPhone: "+91 87678 28945",
   bookingEmail: "krysomusic@gmail.com",
   websiteUrl: "https://www.krysomusic.com",
   facebookUrl: "https://facebook.com/krysomusic",

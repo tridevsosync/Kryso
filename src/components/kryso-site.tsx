@@ -194,7 +194,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const phoneDisplay = settings.altPhone || settings.phone || "+91 97673 78750";
+  const phoneDisplay = settings.phone || settings.altPhone || "+91 87678 28945";
   const phoneClean = phoneDisplay.replace(/[^0-9+]/g, "");
 
   return (
@@ -259,8 +259,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             <a
               href={`tel:${phoneClean}`}
               className="relative overflow-hidden group/call inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-black px-3.5 sm:px-5 h-9 sm:h-10 font-black shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.04] active:scale-95 transition-all text-xs sm:text-sm cursor-pointer border border-orange-300/60 animate-border-glow-call"
-              title={`Call Studio: ${phoneDisplay}`}
-              aria-label={`Call Studio: ${phoneDisplay}`}
+              title={`Call: ${phoneDisplay}`}
+              aria-label={`Call: ${phoneDisplay}`}
             >
               {/* Sweeping metallic light sheen */}
               <span className="pointer-events-none absolute inset-0 -top-1 -bottom-1 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-demo-shimmer -z-0" />
@@ -321,7 +321,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
                 className="flex items-center justify-center gap-2 h-11 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 font-extrabold text-black shadow-lg shadow-orange-500/25 text-xs sm:text-sm hover:opacity-95 transition-all cursor-pointer font-mono border border-orange-300/60 animate-border-glow-call"
               >
                 <Phone size={15} />
-                <span>Call Studio: {phoneDisplay}</span>
+                <span>Call: {phoneDisplay}</span>
               </a>
             </div>
           </div>
@@ -461,13 +461,13 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               </p>
               <div className="space-y-2.5 text-xs sm:text-sm text-blue-200/80">
                 <a
-                  href={`tel:${(settings.phone || "+91 97673 78750").replace(/[^0-9+]/g, "")}`}
+                  href={`tel:${(settings.phone || "+91 87678 28945").replace(/[^0-9+]/g, "")}`}
                   className="flex items-center gap-2.5 hover:text-orange-400 transition-colors group"
                 >
                   <span className="size-7 rounded-lg bg-orange-500/15 text-orange-400 grid place-items-center shrink-0 group-hover:bg-orange-500 group-hover:text-black transition-colors">
                     <Phone size={13} />
                   </span>
-                  <span>Primary: <strong className="text-white">{settings.phone || "+91 97673 78750"}</strong></span>
+                  <span>Primary: <strong className="text-white">{settings.phone || "+91 87678 28945"}</strong></span>
                 </a>
 
                 {settings.altPhone && (
@@ -684,9 +684,9 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         >
           {/* Call Button */}
           <a
-            href="tel:9767378750"
-            aria-label="Call Kryso Music Academy (9767378750)"
-            title="Call 9767378750"
+            href={`tel:${(settings.phone || "+91 87678 28945").replace(/[^0-9+]/g, "")}`}
+            aria-label={`Call Kryso Music Academy (${settings.phone || "+91 87678 28945"})`}
+            title={`Call ${settings.phone || "+91 87678 28945"}`}
             className="group flex size-12 sm:size-13 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-orange-500 text-primary-foreground shadow-xl shadow-primary/35 hover:scale-110 hover:shadow-primary/50 active:scale-95 transition-all duration-200 border border-white/20 cursor-pointer"
           >
             <Phone size={20} className="shrink-0 animate-bounce" />

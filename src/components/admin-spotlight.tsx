@@ -2143,7 +2143,7 @@ export function SpotlightManager() {
                     Booking Phone / WhatsApp
                     <Input
                       value={tr.bookingPhone || ""}
-                      placeholder="+91 9767378750"
+                      placeholder="+91 87678 28945"
                       onChange={(e) => updateTechrider({ bookingPhone: e.target.value })}
                       className="bg-background border-border text-foreground text-sm font-normal"
                     />
