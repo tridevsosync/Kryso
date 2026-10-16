@@ -1,3 +1,4 @@
+
 # Pixel Perfect Replica
 
 Implement exactly the screenshot and nothing else
