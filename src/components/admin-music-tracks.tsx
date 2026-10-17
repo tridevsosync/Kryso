@@ -40,12 +40,23 @@ import {
   Maximize2,
   ChevronUp,
   Star,
+  Film,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useStored } from "@/lib/kryso-storage";
-import { siteSettings, defaultMusicHeaderData, type MusicTrack, type MusicHeaderData } from "@/data/catalog";
+import {
+  siteSettings,
+  defaultMusicHeaderData,
+  type MusicTrack,
+  type MusicHeaderData,
+  type MusicVideoItem,
+  defaultMusicVideos,
+  parseVideoUrl,
+  getVideoThumbnail,
+} from "@/data/catalog";
 import { formatImageUrl, formatAudioUrl, formatDownloadUrl, extractGoogleDriveId } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
 
@@ -66,6 +77,104 @@ export function MusicTrackManager() {
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+
+  // Music Videos State & Management
+  const [videos, setVideos] = useStored<MusicVideoItem[]>("admin-music-videos", defaultMusicVideos);
+  const [editingVideo, setEditingVideo] = useState<MusicVideoItem | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<MusicVideoItem | null>(null);
+  const [uploadingVideoThumb, setUploadingVideoThumb] = useState(false);
+  const [videoSaved, setVideoSaved] = useState(false);
+
+  // Sync music_videos from MongoDB on mount
+  useEffect(() => {
+    fetch("/api/collections?name=music_videos")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          setVideos(data.items as MusicVideoItem[]);
+        }
+      })
+      .catch(() => {});
+  }, [setVideos]);
+
+  const saveVideosRemote = async (newVideos: MusicVideoItem[]) => {
+    setVideos(newVideos);
+    try {
+      await fetch("/api/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "music_videos",
+          items: newVideos,
+        }),
+      });
+    } catch (e) {
+      console.warn("Could not sync music_videos to MongoDB:", e);
+    }
+  };
+
+  const handleSaveVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideo) return;
+    if (!editingVideo.title.trim()) {
+      alert("Please enter a Video Title.");
+      return;
+    }
+    if (!editingVideo.videoUrl.trim()) {
+      alert("Please enter a Video URL (YouTube or MP4 link).");
+      return;
+    }
+
+    let finalThumb = editingVideo.thumbnailUrl?.trim();
+    if (!finalThumb) {
+      const parsed = parseVideoUrl(editingVideo.videoUrl);
+      if (parsed.youtubeId) {
+        finalThumb = `https://img.youtube.com/vi/${parsed.youtubeId}/hqdefault.jpg`;
+      }
+    }
+
+    const toSave: MusicVideoItem = {
+      ...editingVideo,
+      thumbnailUrl: finalThumb,
+      createdAt: editingVideo.createdAt || new Date().toISOString(),
+    };
+
+    const exists = videos.some((v) => v.id === toSave.id);
+    const updated = exists ? videos.map((v) => (v.id === toSave.id ? toSave : v)) : [toSave, ...videos];
+
+    await saveVideosRemote(updated);
+    setEditingVideo(null);
+    setVideoSaved(true);
+    setTimeout(() => setVideoSaved(false), 3000);
+  };
+
+  const handleDeleteVideo = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this video?")) return;
+    const updated = videos.filter((v) => v.id !== id);
+    await saveVideosRemote(updated);
+  };
+
+  const handleVideoThumbUpload = async (file: File) => {
+    if (!editingVideo) return;
+    setUploadingVideoThumb(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "kryso/music/videos");
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setEditingVideo({ ...editingVideo, thumbnailUrl: data.url });
+      } else {
+        alert(data.error || "Image upload failed.");
+      }
+    } catch {
+      alert("Error uploading thumbnail.");
+    } finally {
+      setUploadingVideoThumb(false);
+    }
+  };
 
   // Sync music_header from MongoDB on mount
   useEffect(() => {
@@ -1289,6 +1398,139 @@ export function MusicTrackManager() {
         </div>
       )}
 
+      {/* ==================================================================== */}
+      {/* MUSIC VIDEOS & LIVE SETS MANAGER                                     */}
+      {/* ==================================================================== */}
+      <div className="rounded-3xl border border-border bg-card p-5 sm:p-7 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border/80">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-400">
+              <Film size={20} />
+            </span>
+            <div>
+              <h2 className="font-display text-lg sm:text-xl font-bold text-foreground">
+                Official Music Videos &amp; Live Visuals
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Manage video releases and festival sets displayed at the bottom of the /music page.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() =>
+                setEditingVideo({
+                  id: `vid-${Date.now()}`,
+                  title: "",
+                  category: "Official Music Video",
+                  videoUrl: "",
+                  thumbnailUrl: "",
+                  duration: "4K Ultra HD",
+                  description: "",
+                  createdAt: new Date().toISOString(),
+                })
+              }
+              className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90 text-xs sm:text-sm"
+            >
+              <Plus size={15} className="mr-1" /> Add New Video
+            </Button>
+          </div>
+        </div>
+
+        {/* Video Cards Grid */}
+        {videos.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border py-12 text-center bg-secondary/30">
+            <Film size={32} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm font-bold text-foreground">No videos added yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Click &apos;Add New Video&apos; to publish your first video.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {videos.map((vid) => {
+              const thumb = getVideoThumbnail(vid);
+              return (
+                <div
+                  key={vid.id}
+                  className="rounded-2xl border border-border bg-secondary/40 overflow-hidden flex flex-col justify-between group hover:border-primary/50 transition-all shadow-md"
+                >
+                  <div className="relative aspect-video w-full bg-black/60 overflow-hidden">
+                    <img
+                      src={thumb}
+                      alt={vid.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVideo(vid)}
+                      className="absolute inset-0 grid place-items-center bg-black/40 hover:bg-black/25 transition-colors cursor-pointer"
+                      title="Play Preview"
+                    >
+                      <span className="size-11 rounded-full bg-primary/90 text-primary-foreground grid place-items-center shadow-lg group-hover:scale-110 transition-transform">
+                        <Play size={18} className="fill-current ml-0.5 text-black" />
+                      </span>
+                    </button>
+                    {vid.category && (
+                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-md text-orange-400 text-[10px] font-bold border border-white/10 uppercase tracking-wider">
+                        {vid.category}
+                      </span>
+                    )}
+                    {vid.duration && (
+                      <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-white text-[10px] font-mono font-semibold">
+                        {vid.duration}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-display font-bold text-sm text-foreground line-clamp-1">{vid.title}</h4>
+                      {vid.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                          {vid.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPreviewVideo(vid)}
+                        className="text-xs text-primary hover:text-primary font-bold px-2 h-8"
+                      >
+                        <Play size={12} className="mr-1 fill-current" /> Preview Play
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingVideo(vid)}
+                          className="h-8 rounded-lg text-xs px-2.5 border-border hover:bg-secondary"
+                        >
+                          <Pencil size={12} className="mr-1" /> Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteVideo(vid.id)}
+                          className="size-8 p-0 text-destructive hover:bg-destructive/10 rounded-lg"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Edit / Add Modal */}
       {editing && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-xs p-4">
@@ -1618,6 +1860,190 @@ export function MusicTrackManager() {
               </Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Video Add / Edit Modal */}
+      {editingVideo && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
+          <form
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card border border-border p-6 shadow-2xl text-card-foreground"
+            onSubmit={handleSaveVideo}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Film size={20} className="text-primary" />
+                <h3 className="font-display text-xl font-bold text-foreground">
+                  {editingVideo.id.startsWith("vid-") && !videos.some((v) => v.id === editingVideo.id)
+                    ? "Add New Video"
+                    : "Edit Video"}
+                </h3>
+              </div>
+              <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={() => setEditingVideo(null)}>
+                <X size={17} />
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Video Title <span className="text-primary">*</span>
+                <Input
+                  value={editingVideo.title}
+                  placeholder="e.g. KRYSO - Live at Sunburn Festival (Official DJ Set)"
+                  required
+                  onChange={(e) => setEditingVideo({ ...editingVideo, title: e.target.value })}
+                  className="bg-secondary/60 border-border text-foreground text-xs"
+                />
+              </label>
+
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Video URL (YouTube or MP4 Stream) <span className="text-primary">*</span>
+                <Input
+                  value={editingVideo.videoUrl}
+                  placeholder="https://www.youtube.com/watch?v=... or direct MP4 link"
+                  required
+                  onChange={(e) => setEditingVideo({ ...editingVideo, videoUrl: e.target.value })}
+                  className="bg-secondary/60 border-border text-foreground text-xs"
+                />
+                <span className="text-[10px] text-muted-foreground">
+                  Supports YouTube standard URLs, youtu.be shortlinks, or MP4/HLS video streams.
+                </span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                  Category / Badge
+                  <Input
+                    value={editingVideo.category || ""}
+                    placeholder="e.g. Official Music Video, Live Set"
+                    onChange={(e) => setEditingVideo({ ...editingVideo, category: e.target.value })}
+                    className="bg-secondary/60 border-border text-foreground text-xs"
+                  />
+                </label>
+
+                <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                  Duration / Quality Badge
+                  <Input
+                    value={editingVideo.duration || ""}
+                    placeholder="e.g. 4K Festival Cut • 8:24"
+                    onChange={(e) => setEditingVideo({ ...editingVideo, duration: e.target.value })}
+                    className="bg-secondary/60 border-border text-foreground text-xs"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                  Thumbnail Image URL (Optional)
+                  <div className="flex gap-2">
+                    <Input
+                      value={editingVideo.thumbnailUrl || ""}
+                      placeholder="Leave blank for auto-detected YouTube thumbnail"
+                      onChange={(e) => setEditingVideo({ ...editingVideo, thumbnailUrl: e.target.value })}
+                      className="bg-secondary/60 border-border text-foreground text-xs flex-1"
+                    />
+                    <label className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-xs font-bold cursor-pointer shrink-0">
+                      <Upload size={13} />
+                      <span>{uploadingVideoThumb ? "Uploading..." : "Upload"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingVideoThumb}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleVideoThumbUpload(f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </label>
+                {editingVideo.videoUrl && parseVideoUrl(editingVideo.videoUrl).youtubeId && !editingVideo.thumbnailUrl && (
+                  <p className="text-[10px] text-emerald-400 font-medium">
+                    ✓ High-definition YouTube thumbnail will be fetched automatically.
+                  </p>
+                )}
+              </div>
+
+              <label className="grid gap-1.5 text-xs font-semibold text-foreground">
+                Description (Optional)
+                <Textarea
+                  value={editingVideo.description || ""}
+                  rows={3}
+                  placeholder="Short description of this music video or festival performance..."
+                  onChange={(e) => setEditingVideo({ ...editingVideo, description: e.target.value })}
+                  className="bg-secondary/60 border-border text-foreground text-xs"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full border-border hover:bg-secondary text-xs"
+                onClick={() => setEditingVideo(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="rounded-full font-bold shadow-md shadow-primary/20 hover:bg-primary/90 text-xs px-6"
+              >
+                Save Video
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Admin Video Preview Modal */}
+      {previewVideo && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/90 backdrop-blur-md p-4 animate-fade-in"
+          onClick={() => setPreviewVideo(null)}
+        >
+          <div
+            className="w-full max-w-3xl rounded-2xl border border-white/15 bg-[#0B0F17] shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-black/40">
+              <span className="text-sm font-bold text-white truncate font-display">
+                Preview: {previewVideo.title}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewVideo(null)}
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="relative aspect-video w-full bg-black">
+              {(() => {
+                const parsed = parseVideoUrl(previewVideo.videoUrl);
+                if (parsed.type === "youtube") {
+                  return (
+                    <iframe
+                      src={parsed.embedUrl}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={previewVideo.title}
+                    />
+                  );
+                }
+                return (
+                  <video
+                    src={previewVideo.videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </div>

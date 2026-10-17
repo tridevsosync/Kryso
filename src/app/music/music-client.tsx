@@ -21,12 +21,23 @@ import {
   Unlock,
   X,
   Youtube,
+  Film,
+  Play,
 } from "lucide-react";
 import musicHeroImage from "@/assets/music-hero.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteShell, SectionHeading } from "@/components/kryso-site";
-import { siteSettings, defaultMusicHeaderData, type MusicTrack, type MusicHeaderData } from "@/data/catalog";
+import {
+  siteSettings,
+  defaultMusicHeaderData,
+  type MusicTrack,
+  type MusicHeaderData,
+  type MusicVideoItem,
+  defaultMusicVideos,
+  parseVideoUrl,
+  getVideoThumbnail,
+} from "@/data/catalog";
 import { formatImageUrl } from "@/lib/media-utils";
 import { SpotifyIcon } from "@/components/spotify-icon";
 import { useStored } from "@/lib/kryso-storage";
@@ -44,6 +55,22 @@ export function MusicShopClient() {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [selectedLockFilter, setSelectedLockFilter] = useState<"all" | "locked" | "unlocked">("all");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Dynamic Music Videos State
+  const [videos, setVideos] = useStored<MusicVideoItem[]>("admin-music-videos", defaultMusicVideos);
+  const [activeVideo, setActiveVideo] = useState<MusicVideoItem | null>(null);
+
+  // Sync music_videos from MongoDB on mount
+  useEffect(() => {
+    fetch("/api/collections?name=music_videos")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.items) && data.items.length > 0) {
+          setVideos(data.items as MusicVideoItem[]);
+        }
+      })
+      .catch(() => {});
+  }, [setVideos]);
 
   // Download state
   const [downloadingTrackId, setDownloadingTrackId] = useState<string | null>(null);
@@ -260,11 +287,11 @@ export function MusicShopClient() {
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-background via-background/85 to-background/25 sm:via-background/70 sm:to-transparent" />
         <div className="page-shell py-10 sm:py-14 w-full">
           <p className="eyebrow flex items-center gap-2">
-            <Sparkles size={14} className="text-primary" /> {headerConfig?.badge || defaultMusicHeaderData.badge}
+            <Sparkles size={14} className="text-amber-400" /> {headerConfig?.badge || defaultMusicHeaderData.badge}
           </p>
           <h1 className="mt-3 max-w-3xl font-display text-4xl font-extrabold sm:text-5xl text-foreground">
             {headerConfig?.title || defaultMusicHeaderData.title}{" "}
-            <span className="text-primary drop-shadow-[0_0_20px_rgba(255,122,0,0.35)]">
+            <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.35)]">
               {headerConfig?.titleHighlight || defaultMusicHeaderData.titleHighlight}
             </span>
           </h1>
@@ -273,7 +300,7 @@ export function MusicShopClient() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-2 text-foreground font-semibold">
-              <Headphones size={15} className="text-primary" /> {headerConfig?.badge1 || defaultMusicHeaderData.badge1}
+              <Headphones size={15} className="text-amber-400" /> {headerConfig?.badge1 || defaultMusicHeaderData.badge1}
             </span>
             <span>·</span>
             <span>{headerConfig?.badge2 || defaultMusicHeaderData.badge2}</span>
@@ -302,7 +329,7 @@ export function MusicShopClient() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by track, singer, genre..."
-                className="h-11 rounded-full pl-10 pr-9 bg-card border-border text-foreground focus-visible:ring-primary text-sm shadow-sm w-full"
+                className="h-11 rounded-full pl-10 pr-9 bg-card border-border text-foreground focus-visible:ring-amber-500 text-sm shadow-sm w-full"
               />
               {searchQuery && (
                 <button
@@ -319,7 +346,7 @@ export function MusicShopClient() {
             </div>
             <Button
               type="submit"
-              className="h-11 rounded-full px-6 font-bold shadow-md shadow-primary/20 hover:bg-primary/90 shrink-0 text-xs sm:text-sm"
+              className="h-11 rounded-full px-6 font-extrabold shadow-md shadow-amber-500/20 bg-amber-500 hover:bg-amber-400 text-black shrink-0 text-xs sm:text-sm cursor-pointer"
             >
               <Search size={15} className="mr-1.5" /> Search
             </Button>
@@ -342,9 +369,9 @@ export function MusicShopClient() {
                   setSelectedLockFilter("all");
                   setCurrentPage(1);
                 }}
-                className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                className={`rounded-md px-3 py-1 text-xs font-extrabold transition-all cursor-pointer ${
                   selectedLockFilter === "all"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-amber-500 text-black shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -356,9 +383,9 @@ export function MusicShopClient() {
                   setSelectedLockFilter("unlocked");
                   setCurrentPage(1);
                 }}
-                className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                className={`rounded-md px-3 py-1 text-xs font-extrabold transition-all cursor-pointer ${
                   selectedLockFilter === "unlocked"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-amber-500 text-black shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -370,9 +397,9 @@ export function MusicShopClient() {
                   setSelectedLockFilter("locked");
                   setCurrentPage(1);
                 }}
-                className={`rounded-md px-3 py-1 text-xs font-bold transition-all ${
+                className={`rounded-md px-3 py-1 text-xs font-extrabold transition-all cursor-pointer ${
                   selectedLockFilter === "locked"
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-amber-500 text-black shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -391,10 +418,10 @@ export function MusicShopClient() {
                       setSelectedGenre(genre);
                       setCurrentPage(1);
                     }}
-                    className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all border ${
+                    className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all border cursor-pointer ${
                       selectedGenre === genre
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        ? "border-amber-500 bg-amber-500 text-black shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:border-amber-500/50 hover:text-foreground"
                     }`}
                   >
                     {genre}
@@ -410,7 +437,7 @@ export function MusicShopClient() {
               variant="ghost"
               size="sm"
               onClick={handleResetFilters}
-              className="text-xs text-muted-foreground hover:text-primary gap-1.5"
+              className="text-xs text-muted-foreground hover:text-amber-400 gap-1.5"
             >
               <RotateCcw size={13} /> Reset filters
             </Button>
@@ -426,7 +453,7 @@ export function MusicShopClient() {
               return (
                 <article
                   key={track.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-3 sm:p-3.5 transition-all hover:border-primary/60 hover:shadow-xl hover:shadow-primary/5"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-3 sm:p-3.5 transition-all hover:border-amber-500/60 hover:shadow-xl hover:shadow-amber-500/10"
                 >
                   <div>
                     {/* Cover Artwork */}
@@ -448,23 +475,21 @@ export function MusicShopClient() {
                       {/* Genre & ZIP Tag Pills */}
                       <div className="absolute left-2 top-2 flex flex-col gap-1 items-start z-10 pointer-events-none">
                         {track.genre && (
-                          <span className="rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary border border-primary/30">
+                          <span className="rounded-full bg-black/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/30">
                             {track.genre}
                           </span>
                         )}
                         {track.downloadUrl && (
-                          <span className="rounded-full bg-primary/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-extrabold text-primary-foreground shadow-sm">
+                          <span className="rounded-full bg-amber-500/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-extrabold text-black shadow-sm">
                             📦 ZIP Package
                           </span>
                         )}
                       </div>
 
-                      {/* Lock / Free Status Pill */}
+                      {/* Lock / Free Status Pill (Standardized Amber-500 / #f59e0b) */}
                       <span
-                        className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold backdrop-blur-md shadow-sm ${
-                          isUnlocked
-                            ? "bg-emerald-500/95 text-white"
-                            : "bg-amber-500/95 text-black animate-pulse"
+                        className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold backdrop-blur-md shadow-sm bg-amber-500/95 text-black ${
+                          !isUnlocked ? "animate-pulse" : ""
                         }`}
                       >
                         {isUnlocked ? (
@@ -482,7 +507,7 @@ export function MusicShopClient() {
                     {/* Track Info */}
                     <div className="mt-2.5">
                       <h3
-                        className="font-display text-sm sm:text-base font-bold text-foreground group-hover:text-primary transition-colors truncate"
+                        className="font-display text-sm sm:text-base font-bold text-foreground group-hover:text-amber-400 transition-colors truncate"
                         title={track.name}
                       >
                         {track.name}
@@ -493,16 +518,12 @@ export function MusicShopClient() {
                     </div>
                   </div>
 
-                  {/* Download / Unlock CTA Button */}
+                  {/* Download / Unlock CTA Button (Standardized Amber-500 / #f59e0b) */}
                   <div className="mt-3 border-t border-border/70 pt-2.5">
                     <Button
                       onClick={() => handleDownloadClick(track)}
                       disabled={downloadingTrackId === track.id}
-                      className={`w-full h-9 rounded-lg font-bold shadow-sm transition-all text-xs ${
-                        isUnlocked
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
-                          : "bg-gradient-to-r from-amber-500 to-primary text-primary-foreground hover:brightness-110"
-                      }`}
+                      className="w-full h-9 rounded-lg font-extrabold shadow-sm transition-all text-xs bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 active:scale-[0.98] cursor-pointer"
                     >
                       {downloadingTrackId === track.id ? (
                         <>
@@ -586,10 +607,10 @@ export function MusicShopClient() {
                 <button
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
-                  className={`size-8 sm:size-9 rounded-full text-xs font-bold transition-all ${
+                  className={`size-8 sm:size-9 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
                     validPage === pageNum
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                      : "bg-card border border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                      : "bg-card border border-border text-muted-foreground hover:border-amber-500/50 hover:text-foreground"
                   }`}
                 >
                   {pageNum}
@@ -610,6 +631,91 @@ export function MusicShopClient() {
           </div>
         )}
       </section>
+
+      {/* ---------------------------------------------------- */}
+      {/* OFFICIAL MUSIC VIDEOS & LIVE VISUALS SECTION         */}
+      {/* ---------------------------------------------------- */}
+      {videos.length > 0 && (
+        <section className="page-shell pb-16 sm:pb-24 pt-10 border-t border-border/80">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+            <div>
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-black uppercase tracking-widest">
+                <Film size={12} /> Official Visuals &amp; Stage Footage
+              </span>
+              <h2 className="mt-2.5 font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-foreground tracking-tight">
+                Music Videos &amp; <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.35)]">Live Sets</span>
+              </h2>
+              <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground max-w-xl">
+                Stream official music releases, festival aftermovies, and exclusive live concert sets from KRYSO. Click any video to watch.
+              </p>
+            </div>
+          </div>
+
+          {/* Video Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {videos.map((vid) => {
+              const thumb = getVideoThumbnail(vid);
+              return (
+                <div
+                  key={vid.id}
+                  onClick={() => setActiveVideo(vid)}
+                  className="group relative rounded-2xl sm:rounded-3xl border border-border bg-card overflow-hidden cursor-pointer shadow-xl hover:border-amber-500/60 transition-all duration-300 hover:-translate-y-1"
+                >
+                  {/* 16:9 Thumbnail Canvas */}
+                  <div className="relative aspect-video w-full overflow-hidden bg-black/80">
+                    <img
+                      src={thumb}
+                      alt={vid.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 brightness-90 group-hover:brightness-100"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/20" />
+
+                    {/* Pulsing Glowing Play Button Overlay */}
+                    <div className="absolute inset-0 grid place-items-center">
+                      <div className="relative size-14 sm:size-16 rounded-full bg-amber-500/95 text-black grid place-items-center shadow-xl shadow-amber-500/40 group-hover:scale-115 transition-all duration-300 group-hover:bg-amber-400">
+                        <span className="absolute -inset-1 rounded-full bg-amber-500/40 animate-ping pointer-events-none" />
+                        <Play size={22} className="fill-current ml-0.5 text-black" />
+                      </div>
+                    </div>
+
+                    {/* Category Pill Top Left */}
+                    {vid.category && (
+                      <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md text-amber-400 text-[10px] font-black border border-white/10 uppercase tracking-wider">
+                        {vid.category}
+                      </span>
+                    )}
+
+                    {/* Duration Pill Bottom Right */}
+                    {vid.duration && (
+                      <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-white text-[10px] font-mono font-bold">
+                        {vid.duration}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Video Info Bottom */}
+                  <div className="p-4 sm:p-5">
+                    <h3 className="font-display font-bold text-sm sm:text-base text-foreground group-hover:text-amber-400 transition-colors line-clamp-1">
+                      {vid.title}
+                    </h3>
+                    {vid.description && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {vid.description}
+                      </p>
+                    )}
+                    <div className="mt-3.5 flex items-center justify-between text-xs font-semibold text-amber-400 pt-3 border-t border-border/60">
+                      <span className="inline-flex items-center gap-1 group-hover:underline">
+                        Watch Video <Play size={11} className="fill-current" />
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-normal">KRYSO Official</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ---------------------------------------------------- */}
       {/* Social Follow-to-Unlock Modal                        */}
@@ -821,6 +927,70 @@ export function MusicShopClient() {
                   )}
                 </Button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* Interactive Video Player Modal (Cinema Popup)        */}
+      {/* ---------------------------------------------------- */}
+      {activeVideo && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/90 backdrop-blur-lg p-3 sm:p-6 animate-fade-in"
+          onClick={() => setActiveVideo(null)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-2xl sm:rounded-3xl border border-white/15 bg-[#0B0F17] shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Bar */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-black/40">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <span className="size-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                <span className="text-xs sm:text-sm font-bold text-white truncate font-display">
+                  {activeVideo.title}
+                </span>
+                {activeVideo.category && (
+                  <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold shrink-0">
+                    {activeVideo.category}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveVideo(null)}
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition-colors cursor-pointer shrink-0"
+                aria-label="Close video player"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Video Canvas Container 16:9 */}
+            <div className="relative aspect-video w-full bg-black">
+              {(() => {
+                const parsed = parseVideoUrl(activeVideo.videoUrl);
+                if (parsed.type === "youtube") {
+                  return (
+                    <iframe
+                      src={parsed.embedUrl}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      title={activeVideo.title}
+                    />
+                  );
+                }
+                return (
+                  <video
+                    src={activeVideo.videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>
